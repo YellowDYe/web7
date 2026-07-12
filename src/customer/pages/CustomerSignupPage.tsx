@@ -379,7 +379,7 @@ export default function CustomerSignupPage() {
 
       await signup(formData.email, formData.password, customerData);
       localStorage.removeItem('customerSignupDraft');
-      navigate('/shop/account');
+      navigate('/account');
     } catch (err: any) {
       setError(err.message || 'Error al crear la cuenta');
     } finally {
@@ -878,11 +878,11 @@ export default function CustomerSignupPage() {
               {error}
               {error.includes('ya está registrado') && (
                 <div className="mt-2 flex gap-2">
-                  <Link to="/shop/login" className="text-red-600 hover:text-red-800 font-medium underline">
+                  <Link to="/login" className="text-red-600 hover:text-red-800 font-medium underline">
                     Iniciar Sesión
                   </Link>
                   <span>•</span>
-                  <Link to="/shop/forgot-password" className="text-red-600 hover:text-red-800 font-medium underline">
+                  <Link to="/forgot-password" className="text-red-600 hover:text-red-800 font-medium underline">
                     ¿Olvidaste tu contraseña?
                   </Link>
                 </div>
@@ -931,7 +931,7 @@ export default function CustomerSignupPage() {
 
           <div className="mt-8 text-center text-sm">
             <span className="text-gray-600">¿Ya tienes cuenta? </span>
-            <Link to="/shop/login" className="text-red-600 hover:text-red-700 font-medium">
+            <Link to="/login" className="text-red-600 hover:text-red-700 font-medium">
               Iniciar sesión
             </Link>
           </div>

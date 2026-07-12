@@ -78,7 +78,7 @@ export default function CustomerAccountPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* CMS Content for Account Page - Profile, Order History, etc. */}
-      <CMSRenderer modules={modules} basePath="/shop" />
+      <CMSRenderer modules={modules} basePath="" />
     </div>
   );
 }

@@ -9,7 +9,7 @@ interface CustomerSiteHeaderProps {
 }
 
 export const CustomerSiteHeader: React.FC<CustomerSiteHeaderProps> = ({
-  basePath = "/shop",
+  basePath = "/",
   backgroundColor = "bg-[#e9ff93]",
   showAuthButton = false
 }) => {

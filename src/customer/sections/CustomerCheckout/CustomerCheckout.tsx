@@ -105,7 +105,7 @@ export const CustomerCheckout: React.FC = () => {
 
   useEffect(() => {
     if (!hasItems && !hasProteinItems && !submitSuccess) {
-      navigate('/shop/cart');
+      navigate('/cart');
     }
   }, [hasItems, hasProteinItems, navigate, submitSuccess]);
 
@@ -246,7 +246,7 @@ export const CustomerCheckout: React.FC = () => {
   };
 
   const handleBackToCart = () => {
-    navigate('/shop/cart');
+    navigate('/cart');
   };
 
   const cartTotals = (cart || hasProteinItems) ? (() => {
@@ -408,14 +408,14 @@ export const CustomerCheckout: React.FC = () => {
           {/* Action buttons */}
           <div className="flex flex-col sm:flex-row gap-3">
             <button
-              onClick={() => navigate('/shop/account?tab=orders')}
+              onClick={() => navigate('/account?tab=orders')}
               className="flex-1 bg-red-600 hover:bg-red-700 text-white px-6 py-3.5 rounded-xl font-semibold text-sm transition-colors flex items-center justify-center gap-2"
             >
               <Package className="w-4 h-4" />
               Ver mis pedidos
             </button>
             <button
-              onClick={() => navigate('/shop')}
+              onClick={() => navigate('/')}
               className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3.5 rounded-xl font-semibold text-sm transition-colors flex items-center justify-center gap-2"
             >
               <Home className="w-4 h-4" />

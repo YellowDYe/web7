@@ -220,7 +220,7 @@ export const ProteinShakes: React.FC = () => {
         {/* CTA to cart */}
         <div className="text-center">
           <button
-            onClick={() => navigate('/shop/cart')}
+            onClick={() => navigate('/cart')}
             className="inline-flex items-center gap-2 bg-white border-2 border-gray-200 hover:border-gray-300 text-gray-700 hover:text-gray-900 font-semibold px-8 py-3.5 rounded-xl transition-all duration-200 shadow-sm hover:shadow-md"
           >
             <ShoppingCart className="w-5 h-5" />

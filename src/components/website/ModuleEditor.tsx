@@ -453,7 +453,7 @@ export const ModuleEditor: React.FC = () => {
           subtitle: "Consejos de nutrición, recetas y más",
           postsToShow: 3,
           showViewAll: true,
-          viewAllLink: "/shop/blog",
+          viewAllLink: "/blog",
           viewAllText: "Ver todos los artículos"
         };
       } else if (type === 'Objectives') {

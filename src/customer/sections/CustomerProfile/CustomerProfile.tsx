@@ -105,7 +105,7 @@ export const CustomerProfile: React.FC = () => {
             onClick={async () => {
               try {
                 await logout();
-                window.location.href = '/shop/login';
+                window.location.href = '/login';
               } catch (error) {
                 console.error('Logout error:', error);
               }
@@ -120,7 +120,7 @@ export const CustomerProfile: React.FC = () => {
   }
 
   if (!user) {
-    window.location.href = '/shop/login';
+    window.location.href = '/login';
     return null;
   }
 

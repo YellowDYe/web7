@@ -12,8 +12,8 @@ interface NavigationItem {
 }
 
 const navigationItems: NavigationItem[] = [
-  { id: 'website', label: 'Sitio Web', path: '/website', icon: Globe, permission: 'website_view' },
-  { id: 'admin', label: 'Admin', path: '/admin', icon: Shield, permission: 'admin_users' },
+  { id: 'website', label: 'Sitio Web', path: '/admin/website', icon: Globe, permission: 'website_view' },
+  { id: 'admin', label: 'Admin', path: '/admin/users', icon: Shield, permission: 'admin_users' },
 ];
 
 const Sidebar: React.FC = () => {

@@ -217,7 +217,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/shop/account`,
+          redirectTo: `${window.location.origin}/account`,
         },
       });
 
@@ -251,7 +251,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/shop/account`,
+          emailRedirectTo: `${window.location.origin}/account`,
           data: {
             user_type: 'customer',
           },
