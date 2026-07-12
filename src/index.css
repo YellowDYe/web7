@@ -1,0 +1,1186 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+}
+
+/* Rich Text Editor (TipTap) content styles */
+.rich-editor-content .tiptap {
+  padding: 0.75rem 1rem;
+  outline: none;
+  min-height: 320px;
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  color: #111827;
+}
+
+.rich-editor-content .tiptap p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: #9ca3af;
+  pointer-events: none;
+  float: left;
+  height: 0;
+}
+
+.rich-editor-content .tiptap h2 {
+  font-size: 1.375rem;
+  font-weight: 700;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+  color: #111827;
+  line-height: 1.3;
+}
+
+.rich-editor-content .tiptap h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-top: 1.25rem;
+  margin-bottom: 0.4rem;
+  color: #1f2937;
+  line-height: 1.3;
+}
+
+.rich-editor-content .tiptap p {
+  margin-bottom: 0.75rem;
+}
+
+.rich-editor-content .tiptap strong {
+  font-weight: 700;
+}
+
+.rich-editor-content .tiptap em {
+  font-style: italic;
+}
+
+.rich-editor-content .tiptap u {
+  text-decoration: underline;
+}
+
+.rich-editor-content .tiptap s {
+  text-decoration: line-through;
+}
+
+.rich-editor-content .tiptap code {
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  padding: 0.1em 0.35em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.875em;
+  color: #d97706;
+}
+
+.rich-editor-content .tiptap ul {
+  list-style-type: disc;
+  margin-left: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.rich-editor-content .tiptap ol {
+  list-style-type: decimal;
+  margin-left: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.rich-editor-content .tiptap li {
+  margin-bottom: 0.25rem;
+}
+
+.rich-editor-content .tiptap blockquote {
+  border-left: 4px solid #d1d5db;
+  padding-left: 1rem;
+  color: #6b7280;
+  font-style: italic;
+  margin: 1rem 0;
+}
+
+.rich-editor-content .tiptap hr {
+  border: none;
+  border-top: 2px solid #e5e7eb;
+  margin: 1.5rem 0;
+}
+
+.rich-editor-content .tiptap a {
+  color: #2563eb;
+  text-decoration: underline;
+}
+
+.rich-editor-content .tiptap a:hover {
+  color: #1d4ed8;
+}
+
+.rich-editor-content .tiptap img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  margin: 0.75rem 0;
+}
+
+.rich-editor-content .tiptap .is-empty::before {
+  content: attr(data-placeholder);
+  color: #9ca3af;
+  pointer-events: none;
+  float: left;
+  height: 0;
+}
+
+/* Screen-only styles for grocery list print preview */
+@media screen {
+  .grocery-print-content .grocery-print-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0;
+    background: #fff;
+    border: 2px solid #000;
+    table-layout: fixed;
+  }
+
+  .grocery-print-content .grocery-print-table th,
+  .grocery-print-content .grocery-print-table td {
+    border: 1px solid #000;
+    padding: 8px;
+    text-align: center;
+    vertical-align: top;
+    background: #fff;
+    color: #000;
+    font-size: 14px;
+    line-height: 1.2;
+    word-wrap: break-word;
+    overflow: hidden;
+  }
+
+  .grocery-print-content .grocery-print-table th {
+    background: #e0e0e0;
+    font-weight: bold;
+    font-size: 16px;
+    padding: 10px;
+  }
+
+  /* Column widths for grocery table - matching print layout */
+  .grocery-print-content .grocery-print-table .category-column {
+    width: 20%;
+    text-align: left;
+  }
+
+  .grocery-print-content .grocery-print-table .ingredient-column {
+    width: 35%;
+    text-align: left;
+  }
+
+  .grocery-print-content .grocery-print-table .quantity-column {
+    width: 15%;
+    text-align: center;
+  }
+
+  .grocery-print-content .grocery-print-table .cost-column {
+    width: 15%;
+    text-align: center;
+  }
+
+  .grocery-print-content .grocery-print-table .total-column {
+    width: 15%;
+    text-align: center;
+  }
+
+  /* Row styling for screen preview */
+  .grocery-print-content .grocery-row:nth-child(even) {
+    background: #f8f8f8;
+  }
+
+  /* Supplier section styling for screen */
+  .grocery-print-content .supplier-header {
+    background: #f0f0f0;
+    border: 1px solid #ccc;
+    padding: 12px;
+    margin-bottom: 8px;
+    border-radius: 4px;
+  }
+
+  .grocery-print-content .supplier-header h3 {
+    font-size: 18px;
+    font-weight: bold;
+    color: #000;
+    margin: 0;
+  }
+
+  .grocery-print-content .supplier-header p {
+    font-size: 14px;
+    color: #666;
+    margin: 4px 0 0 0;
+  }
+
+  /* Summary section styling for screen */
+  .grocery-print-content .summary-section {
+    background: #f0f0f0;
+    border: 2px solid #ccc;
+    padding: 16px;
+    margin-top: 24px;
+    border-radius: 8px;
+  }
+
+  .grocery-print-content .summary-section h3 {
+    font-size: 20px;
+    font-weight: bold;
+    color: #000;
+    margin-bottom: 16px;
+    text-align: center;
+  }
+}
+
+/* Grocery List Print Styles */
+@media print and (min-width: 0) {
+  /* Hide non-print elements for grocery list */
+  .no-print,
+  header,
+  nav,
+  .app-header,
+  .app-sidebar,
+  button:not(.print-button),
+  .print-button {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  /* Page setup for grocery list - user selects orientation */
+  .grocery-print-content {
+    page: grocery-page;
+  }
+
+  @page grocery-page {
+    margin: 0.5in;
+  }
+
+  /* Grocery print content */
+  .grocery-print-content,
+  #grocery-printable-content {
+    position: static !important;
+    width: 100% !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    color: black !important;
+    font-family: Arial, sans-serif !important;
+    font-size: 10pt !important;
+    line-height: 1.2 !important;
+  }
+
+  /* Print title */
+  #grocery-print-title {
+    text-align: center !important;
+    margin-bottom: 20pt !important;
+    page-break-after: avoid !important;
+  }
+
+  #grocery-print-title h1 {
+    font-size: 18pt !important;
+    font-weight: bold !important;
+    color: black !important;
+    margin-bottom: 8pt !important;
+  }
+
+  #grocery-print-title h2 {
+    font-size: 14pt !important;
+    font-weight: bold !important;
+    color: black !important;
+    margin-bottom: 4pt !important;
+  }
+
+  #grocery-print-title p {
+    font-size: 10pt !important;
+    color: #666 !important;
+  }
+
+  /* Supplier sections */
+  .supplier-section {
+    page-break-inside: avoid !important;
+    margin-bottom: 20pt !important;
+  }
+
+  .supplier-header {
+    background: #f0f0f0 !important;
+    border: 1pt solid black !important;
+    padding: 8pt !important;
+    margin-bottom: 8pt !important;
+    page-break-after: avoid !important;
+  }
+
+  .supplier-header h3 {
+    font-size: 14pt !important;
+    font-weight: bold !important;
+    color: black !important;
+    margin: 0 !important;
+  }
+
+  .supplier-header p {
+    font-size: 9pt !important;
+    color: #666 !important;
+    margin: 2pt 0 0 0 !important;
+  }
+
+  /* Grocery table */
+  .grocery-print-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    margin-bottom: 16pt !important;
+    background: white !important;
+    border: 1pt solid black !important;
+    page-break-inside: auto !important;
+  }
+
+  .grocery-print-table th {
+    background: #e0e0e0 !important;
+    border: 1pt solid black !important;
+    padding: 6pt !important;
+    text-align: center !important;
+    font-size: 10pt !important;
+    font-weight: bold !important;
+    color: black !important;
+    page-break-after: avoid !important;
+  }
+
+  .grocery-print-table td {
+    border: 0.5pt solid #666 !important;
+    padding: 4pt !important;
+    font-size: 9pt !important;
+    color: black !important;
+    background: white !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* Column widths for grocery table */
+  .grocery-print-table .category-column {
+    width: 20% !important;
+    text-align: left !important;
+  }
+
+  .grocery-print-table .ingredient-column {
+    width: 35% !important;
+    text-align: left !important;
+  }
+
+  .grocery-print-table .quantity-column {
+    width: 15% !important;
+    text-align: center !important;
+  }
+
+  .grocery-print-table .cost-column {
+    width: 15% !important;
+    text-align: center !important;
+  }
+
+  .grocery-print-table .total-column {
+    width: 15% !important;
+    text-align: center !important;
+  }
+
+  /* Row styling */
+  .grocery-row:nth-child(even) {
+    background: #f8f8f8 !important;
+  }
+
+  /* Summary section */
+  .summary-section {
+    background: #f0f0f0 !important;
+    border: 2pt solid black !important;
+    padding: 12pt !important;
+    margin-top: 20pt !important;
+    page-break-inside: avoid !important;
+  }
+
+  .summary-section h3 {
+    font-size: 16pt !important;
+    font-weight: bold !important;
+    color: black !important;
+    margin-bottom: 12pt !important;
+    text-align: center !important;
+  }
+
+  .summary-section .grid {
+    display: block !important;
+  }
+
+  .summary-section > div > div {
+    display: inline-block !important;
+    width: 24% !important;
+    text-align: center !important;
+    margin-right: 1% !important;
+    vertical-align: top !important;
+  }
+
+  .summary-section p {
+    margin: 2pt 0 !important;
+  }
+}
+
+/* Allergies Print Styles - user selects orientation */
+@media print and (min-width: 0) {
+  /* Page setup for allergies - user selects orientation */
+  .allergies-print-content {
+    page: allergies-page;
+  }
+
+  @page allergies-page {
+    margin: 0.5in;
+  }
+
+  /* Allergies print content */
+  .allergies-print-content,
+  #allergies-printable-content {
+    position: static !important;
+    width: 100% !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    color: black !important;
+    font-family: Arial, sans-serif !important;
+    font-size: 10pt !important;
+    line-height: 1.2 !important;
+  }
+
+  /* Print title for allergies */
+  #allergies-print-title {
+    text-align: center !important;
+    margin-bottom: 20pt !important;
+    page-break-after: avoid !important;
+  }
+
+  #allergies-print-title h1 {
+    font-size: 18pt !important;
+    font-weight: bold !important;
+    color: black !important;
+    margin-bottom: 8pt !important;
+  }
+
+  #allergies-print-title h2 {
+    font-size: 14pt !important;
+    font-weight: bold !important;
+    color: black !important;
+    margin-bottom: 4pt !important;
+  }
+
+  #allergies-print-title p {
+    font-size: 10pt !important;
+    color: #666 !important;
+  }
+
+  /* Plan sections */
+  .plan-section {
+    page-break-before: auto !important;
+    page-break-inside: auto !important;
+    margin-bottom: 20pt !important;
+    orphans: 3;
+    widows: 3;
+  }
+
+  .plan-header {
+    background: #f0f0f0 !important;
+    border: 1pt solid black !important;
+    padding: 8pt !important;
+    margin-bottom: 8pt !important;
+    page-break-after: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .plan-header h3 {
+    font-size: 14pt !important;
+    font-weight: bold !important;
+    color: black !important;
+    margin: 0 !important;
+  }
+
+  /* Allergies table - flexible layout for dynamic content */
+  .allergies-print-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    margin-bottom: 16pt !important;
+    background: white !important;
+    border: 1pt solid black !important;
+    page-break-inside: auto !important;
+    table-layout: auto !important;
+  }
+
+  .allergies-print-table th {
+    background: #e0e0e0 !important;
+    border: 1pt solid black !important;
+    padding: 6pt !important;
+    text-align: center !important;
+    font-size: 10pt !important;
+    font-weight: bold !important;
+    color: black !important;
+    page-break-after: avoid !important;
+  }
+
+  .allergies-print-table td {
+    border: 0.5pt solid #666 !important;
+    padding: 6pt !important;
+    font-size: 8pt !important;
+    color: black !important;
+    background: white !important;
+    page-break-inside: avoid !important;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    vertical-align: top !important;
+  }
+
+  /* Column widths for allergies table - flexible percentages */
+  .allergies-print-table .day-column {
+    width: 10% !important;
+    text-align: center !important;
+  }
+
+  .allergies-print-table .meal-column {
+    width: 12% !important;
+    text-align: center !important;
+  }
+
+  .allergies-print-table .recipe-column {
+    width: 15% !important;
+    text-align: left !important;
+  }
+
+  .allergies-print-table .customer-column {
+    width: 15% !important;
+    text-align: left !important;
+  }
+
+  .allergies-print-table .restrictions-column {
+    width: 40% !important;
+    text-align: left !important;
+  }
+
+  .allergies-print-table .quantity-column {
+    width: 8% !important;
+    text-align: center !important;
+  }
+
+  /* Row styling */
+  .allergies-row:nth-child(even) {
+    background: #f8f8f8 !important;
+  }
+
+  /* Summary section for allergies */
+  .summary-section {
+    background: #f0f0f0 !important;
+    border: 2pt solid black !important;
+    padding: 12pt !important;
+    margin-top: 20pt !important;
+    page-break-inside: avoid !important;
+  }
+
+  .summary-section h3 {
+    font-size: 16pt !important;
+    font-weight: bold !important;
+    color: black !important;
+    margin-bottom: 12pt !important;
+    text-align: center !important;
+  }
+
+  /* Page break controls for allergies */
+  .allergies-list-container {
+    page-break-inside: auto !important;
+  }
+
+  .plan-header {
+    page-break-after: avoid !important;
+  }
+
+  .allergies-print-table thead {
+    page-break-after: avoid !important;
+  }
+
+  .allergies-row {
+    page-break-inside: avoid !important;
+  }
+}
+
+/* Screen-only styles for allergies print preview */
+@media screen {
+  .allergies-print-content .allergies-print-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0;
+    background: #fff;
+    border: 2px solid #000;
+    table-layout: auto;
+  }
+
+  .allergies-print-content .allergies-print-table th,
+  .allergies-print-content .allergies-print-table td {
+    border: 1px solid #000;
+    padding: 12px;
+    text-align: center;
+    vertical-align: top;
+    background: #fff;
+    color: #000;
+    font-size: 14px;
+    line-height: 1.4;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  }
+
+  .allergies-print-content .allergies-print-table th {
+    background: #e0e0e0;
+    font-weight: bold;
+    font-size: 16px;
+    padding: 12px;
+  }
+
+  /* Column widths for allergies table - matching print layout */
+  .allergies-print-content .allergies-print-table .day-column {
+    width: 10%;
+    text-align: center;
+  }
+
+  .allergies-print-content .allergies-print-table .meal-column {
+    width: 12%;
+    text-align: center;
+  }
+
+  .allergies-print-content .allergies-print-table .recipe-column {
+    width: 15%;
+    text-align: left;
+  }
+
+  .allergies-print-content .allergies-print-table .customer-column {
+    width: 15%;
+    text-align: left;
+  }
+
+  .allergies-print-content .allergies-print-table .restrictions-column {
+    width: 40%;
+    text-align: left;
+  }
+
+  .allergies-print-content .allergies-print-table .quantity-column {
+    width: 8%;
+    text-align: center;
+  }
+
+  /* Row styling for screen preview */
+  .allergies-print-content .allergies-row:nth-child(even) {
+    background: #f8f8f8;
+  }
+
+  /* Plan section styling for screen */
+  .allergies-print-content .plan-header {
+    background: #f0f0f0;
+    border: 1px solid #ccc;
+    padding: 12px;
+    margin-bottom: 8px;
+    border-radius: 4px;
+  }
+
+  .allergies-print-content .plan-header h3 {
+    font-size: 18px;
+    font-weight: bold;
+    color: #000;
+    margin: 0;
+  }
+
+  /* Summary section styling for screen */
+  .allergies-print-content .summary-section {
+    background: #fef2f2;
+    border: 2px solid #fca5a5;
+    padding: 16px;
+    margin-top: 24px;
+    border-radius: 8px;
+  }
+
+  .allergies-print-content .summary-section h3 {
+    font-size: 20px;
+    font-weight: bold;
+    color: #991b1b;
+    margin-bottom: 16px;
+    text-align: center;
+  }
+
+  /* Page break controls */
+  .grocery-list-container {
+    page-break-inside: auto !important;
+  }
+
+  /* Prevent orphaned headers */
+  .supplier-header {
+    page-break-after: avoid !important;
+  }
+
+  .grocery-print-table thead {
+    page-break-after: avoid !important;
+  }
+
+  /* Allow table rows to break across pages if needed */
+  .grocery-row {
+    page-break-inside: avoid !important;
+  }
+}
+
+/* Prep List Print Styles */
+@media print and (min-width: 0) {
+  /* Page setup for prep - user selects orientation */
+  .prep-print-content {
+    page: prep-page;
+  }
+
+  @page prep-page {
+    margin: 0.5in;
+  }
+
+  /* Prep print content */
+  .prep-print-content,
+  #prep-printable-content {
+    position: static !important;
+    width: 100% !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    color: black !important;
+    font-family: Arial, sans-serif !important;
+    font-size: 10pt !important;
+    line-height: 1.2 !important;
+  }
+
+  /* Print title for prep */
+  #prep-print-title {
+    text-align: center !important;
+    margin-bottom: 20pt !important;
+    page-break-after: avoid !important;
+  }
+
+  #prep-print-title h1 {
+    font-size: 18pt !important;
+    font-weight: bold !important;
+    color: black !important;
+    margin-bottom: 8pt !important;
+  }
+
+  #prep-print-title h2 {
+    font-size: 14pt !important;
+    font-weight: bold !important;
+    color: black !important;
+    margin-bottom: 4pt !important;
+  }
+
+  #prep-print-title p {
+    font-size: 10pt !important;
+    color: #666 !important;
+  }
+
+  /* Supplier sections */
+  .supplier-section {
+    page-break-inside: avoid !important;
+    margin-bottom: 20pt !important;
+  }
+
+  .supplier-header {
+    background: #f0f0f0 !important;
+    border: 1pt solid black !important;
+    padding: 8pt !important;
+    margin-bottom: 8pt !important;
+    page-break-after: avoid !important;
+  }
+
+  .supplier-header h3 {
+    font-size: 14pt !important;
+    font-weight: bold !important;
+    color: black !important;
+    margin: 0 !important;
+  }
+
+  .supplier-header p {
+    font-size: 9pt !important;
+    color: #666 !important;
+    margin: 2pt 0 0 0 !important;
+  }
+
+  /* Prep table */
+  .prep-print-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    margin-bottom: 16pt !important;
+    background: white !important;
+    border: 1pt solid black !important;
+    page-break-inside: auto !important;
+  }
+
+  .prep-print-table th {
+    background: #e0e0e0 !important;
+    border: 1pt solid black !important;
+    padding: 6pt !important;
+    text-align: center !important;
+    font-size: 10pt !important;
+    font-weight: bold !important;
+    color: black !important;
+    page-break-after: avoid !important;
+  }
+
+  .prep-print-table td {
+    border: 0.5pt solid #666 !important;
+    padding: 4pt !important;
+    font-size: 9pt !important;
+    color: black !important;
+    background: white !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* Column widths for prep table */
+  .prep-print-table .category-column {
+    width: 15% !important;
+    text-align: left !important;
+  }
+
+  .prep-print-table .ingredient-column {
+    width: 20% !important;
+    text-align: left !important;
+  }
+
+  .prep-print-table .process-column {
+    width: 20% !important;
+    text-align: left !important;
+  }
+
+  .prep-print-table .quantity-column {
+    width: 15% !important;
+    text-align: center !important;
+  }
+
+  .prep-print-table .description-column {
+    width: 30% !important;
+    text-align: left !important;
+  }
+
+  /* Row styling */
+  .prep-row:nth-child(even) {
+    background: #f8f8f8 !important;
+  }
+
+  /* Summary section */
+  .summary-section {
+    background: #f0f0f0 !important;
+    border: 2pt solid black !important;
+    padding: 12pt !important;
+    margin-top: 20pt !important;
+    page-break-inside: avoid !important;
+  }
+
+  .summary-section h3 {
+    font-size: 16pt !important;
+    font-weight: bold !important;
+    color: black !important;
+    margin-bottom: 12pt !important;
+    text-align: center !important;
+  }
+
+  .summary-section .grid {
+    display: block !important;
+  }
+
+  .summary-section > div > div {
+    display: inline-block !important;
+    width: 19% !important;
+    text-align: center !important;
+    margin-right: 1% !important;
+    vertical-align: top !important;
+  }
+
+  .summary-section p {
+    margin: 2pt 0 !important;
+  }
+}
+
+/* Screen-only styles for prep print preview */
+@media screen {
+  .prep-print-content .prep-print-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0;
+    background: #fff;
+    border: 2px solid #000;
+    table-layout: fixed;
+  }
+
+  .prep-print-content .prep-print-table th,
+  .prep-print-content .prep-print-table td {
+    border: 1px solid #000;
+    padding: 8px;
+    text-align: center;
+    vertical-align: top;
+    background: #fff;
+    color: #000;
+    font-size: 14px;
+    line-height: 1.2;
+    word-wrap: break-word;
+    overflow: hidden;
+  }
+
+  .prep-print-content .prep-print-table th {
+    background: #e0e0e0;
+    font-weight: bold;
+    font-size: 16px;
+    padding: 10px;
+  }
+
+  /* Column widths for prep table - matching print layout */
+  .prep-print-content .prep-print-table .category-column {
+    width: 15%;
+    text-align: left;
+  }
+
+  .prep-print-content .prep-print-table .ingredient-column {
+    width: 20%;
+    text-align: left;
+  }
+
+  .prep-print-content .prep-print-table .process-column {
+    width: 20%;
+    text-align: left;
+  }
+
+  .prep-print-content .prep-print-table .quantity-column {
+    width: 15%;
+    text-align: center;
+  }
+
+  .prep-print-content .prep-print-table .description-column {
+    width: 30%;
+    text-align: left;
+  }
+
+  /* Row styling for screen preview */
+  .prep-print-content .prep-row:nth-child(even) {
+    background: #f8f8f8;
+  }
+
+  /* Supplier section styling for screen */
+  .prep-print-content .supplier-header {
+    background: #f0f0f0;
+    border: 1px solid #ccc;
+    padding: 12px;
+    margin-bottom: 8px;
+    border-radius: 4px;
+  }
+
+  .prep-print-content .supplier-header h3 {
+    font-size: 18px;
+    font-weight: bold;
+    color: #000;
+    margin: 0;
+  }
+
+  .prep-print-content .supplier-header p {
+    font-size: 14px;
+    color: #666;
+    margin: 4px 0 0 0;
+  }
+
+  /* Summary section styling for screen */
+  .prep-print-content .summary-section {
+    background: #f0f0f0;
+    border: 2px solid #ccc;
+    padding: 16px;
+    margin-top: 24px;
+    border-radius: 8px;
+  }
+
+  .prep-print-content .summary-section h3 {
+    font-size: 20px;
+    font-weight: bold;
+    color: #000;
+    margin-bottom: 16px;
+    text-align: center;
+  }
+
+  /* Page break controls */
+  .prep-list-container {
+    page-break-inside: auto !important;
+  }
+
+  /* Prevent orphaned headers */
+  .supplier-header {
+    page-break-after: avoid !important;
+  }
+
+  .prep-print-table thead {
+    page-break-after: avoid !important;
+  }
+
+  /* Allow table rows to break across pages if needed */
+  .prep-row {
+    page-break-inside: avoid !important;
+  }
+}
+/* Print styles for kitchen reports - user selects orientation */
+@media print {
+  /* Hide browser header/footer and navigation elements */
+  .no-print,
+  header,
+  nav,
+  .app-header,
+  .app-sidebar,
+  button,
+  .print-button {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  /* Page setup for kitchen reports - user selects orientation */
+  .print-content,
+  #printable-content {
+    page: kitchen-page;
+  }
+
+  @page kitchen-page {
+    margin: 0.25in;
+  }
+
+  /* Body and main container */
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    font-family: Arial, sans-serif !important;
+    font-size: 10pt !important;
+    background: white !important;
+  }
+
+  /* Print content container */
+  .print-content,
+  #printable-content {
+    position: static !important;
+    width: 100% !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 8pt !important;
+    background: white !important;
+    color: black !important;
+    page-break-after: avoid !important;
+  }
+
+  /* Print title */
+  #print-title {
+    text-align: center !important;
+    margin-bottom: 12pt !important;
+    font-size: 16pt !important;
+    font-weight: bold !important;
+    color: black !important;
+  }
+
+  /* Table container */
+  .table-container {
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+  }
+
+  /* Kitchen table - flexible layout */
+  .kitchen-print-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    margin: 0 auto !important;
+    background: white !important;
+    page-break-inside: avoid !important;
+    table-layout: auto !important;
+    border: 2pt solid black !important;
+    transform: scale(0.95) !important;
+    transform-origin: top center !important;
+    font-size: 10pt !important;
+  }
+
+  .kitchen-print-table th,
+  .kitchen-print-table td {
+    border: 1pt solid black !important;
+    padding: 4pt !important;
+    text-align: center !important;
+    vertical-align: top !important;
+    background: white !important;
+    color: black !important;
+    font-size: 10pt !important;
+    line-height: 1.2 !important;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+  }
+
+  .kitchen-print-table th {
+    background: #f0f0f0 !important;
+    font-weight: bold !important;
+    font-size: 12pt !important;
+    padding: 6pt !important;
+  }
+
+  /* Column sizing */
+  .kitchen-print-table .day-column {
+    width: 15% !important;
+    font-weight: bold !important;
+    background: #f8f8f8 !important;
+  }
+
+  .kitchen-print-table .meal-plan-column {
+    width: 25% !important;
+  }
+
+  .kitchen-print-table .total-column {
+    width: 10% !important;
+    font-weight: bold !important;
+    background: #f0f0f0 !important;
+  }
+
+  /* Meal plan backgrounds */
+  .kitchen-print-table .balance-cell {
+    background: #fef3c7 !important;
+  }
+
+  .kitchen-print-table .fitness-cell {
+    background: #fecaca !important;
+  }
+
+  .kitchen-print-table .lowcarb-cell {
+    background: #d1fae5 !important;
+  }
+
+  /* Recipe text */
+  .recipe-text {
+    font-weight: bold !important;
+    color: black !important;
+    margin-bottom: 4pt !important;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    hyphens: auto !important;
+    font-size: 9pt !important;
+    line-height: 1.2 !important;
+  }
+
+  /* Quantity numbers */
+  .quantity-number {
+    font-size: 14pt !important;
+    font-weight: bold !important;
+    color: black !important;
+    background: white !important;
+    border: 1pt solid black !important;
+    padding: 4pt !important;
+    text-align: center !important;
+    margin-top: 4pt !important;
+    border-radius: 3pt !important;
+  }
+
+  /* Empty cells */
+  .empty-content {
+    color: #666 !important;
+    font-style: italic !important;
+    font-size: 9pt !important;
+  }
+
+  /* Page break prevention */
+  .no-page-break,
+  .kitchen-print-table,
+  .table-container,
+  #printable-content,
+  .print-content {
+    page-break-inside: avoid !important;
+    page-break-before: avoid !important;
+    page-break-after: avoid !important;
+  }
+}
