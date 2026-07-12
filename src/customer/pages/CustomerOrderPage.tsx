@@ -78,7 +78,7 @@ export const CustomerOrderPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* CMS Content */}
-      <CMSRenderer modules={modules} basePath="" />
+      <CMSRenderer modules={modules} basePath="/shop" />
     </div>
   );
 };

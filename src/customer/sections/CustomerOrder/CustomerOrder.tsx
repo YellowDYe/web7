@@ -651,7 +651,7 @@ export const CustomerOrder: React.FC = () => {
     });
 
     // Redirect to cart page to review
-    navigate('/cart');
+    navigate('/shop/cart');
   };
 
   const getCurrentStep = () => {

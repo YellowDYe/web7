@@ -10,7 +10,7 @@ import { websiteService } from '../services/websiteService';
 
 const Website: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'pages' | 'modules' | 'custom-modules' | 'media' | 'settings' | 'blog'>('pages');
-  const [liveSiteUrl, setLiveSiteUrl] = useState('/');
+  const [liveSiteUrl, setLiveSiteUrl] = useState('/shop');
 
   useEffect(() => {
     websiteService.getSettingByName('public_site_url').then((setting) => {

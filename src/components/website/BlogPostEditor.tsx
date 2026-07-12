@@ -278,7 +278,7 @@ export const BlogPostEditor: React.FC<BlogPostEditorProps> = ({ post, onSave, on
                   Slug (URL) <span className="text-red-500">*</span>
                 </label>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-400 whitespace-nowrap">/blog/</span>
+                  <span className="text-sm text-gray-400 whitespace-nowrap">/shop/blog/</span>
                   <input
                     type="text"
                     value={form.slug}
@@ -413,7 +413,7 @@ export const BlogPostEditor: React.FC<BlogPostEditorProps> = ({ post, onSave, on
                       {form.meta_title || form.title}
                     </p>
                     <p className="text-[#006621] text-sm">
-                      {window.location.origin}/blog/{form.slug}
+                      {window.location.origin}/shop/blog/{form.slug}
                     </p>
                     <p className="text-[#545454] text-sm mt-1 line-clamp-2">
                       {form.meta_description || form.summary || 'Sin descripción.'}
@@ -478,7 +478,7 @@ export const BlogPostEditor: React.FC<BlogPostEditorProps> = ({ post, onSave, on
               <p>Actualizado: {new Date(post.updated_at).toLocaleDateString('es-MX', { dateStyle: 'medium' })}</p>
               {post.status === 'published' && post.published_at && (
                 <a
-                  href={`/blog/${post.slug}`}
+                  href={`/shop/blog/${post.slug}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="block text-primary-600 hover:underline mt-1"

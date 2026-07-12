@@ -26,9 +26,9 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     return <Auth />;
   }
 
-  if (passwordChangeRequired && location.pathname !== '/admin/force-password-change') {
+  if (passwordChangeRequired && location.pathname !== '/force-password-change') {
     console.log('Password change required, redirecting to force-password-change');
-    return <Navigate to="/admin/force-password-change" replace />;
+    return <Navigate to="/force-password-change" replace />;
   }
 
   return <>{children}</>;

@@ -69,7 +69,7 @@ const CustomerBlogPostPage: React.FC = () => {
             El artículo que buscas no existe o ya no está disponible.
           </p>
           <Link
-            to="/blog"
+            to="/shop/blog"
             className="inline-flex items-center gap-2 bg-[#1e1e1e] text-white px-6 py-3 rounded-full text-sm font-medium [font-family:'Chivo',Helvetica] hover:bg-gray-800 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -103,7 +103,7 @@ const CustomerBlogPostPage: React.FC = () => {
       <article className="max-w-3xl mx-auto px-4 py-12">
         {/* Back link */}
         <Link
-          to="/blog"
+          to="/shop/blog"
           className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 [font-family:'Chivo',Helvetica] mb-8 group"
         >
           <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
@@ -116,7 +116,7 @@ const CustomerBlogPostPage: React.FC = () => {
             {post.tags.map(tag => (
               <Link
                 key={tag}
-                to={`/blog?tag=${encodeURIComponent(tag)}`}
+                to={`/shop/blog?tag=${encodeURIComponent(tag)}`}
                 className="text-xs font-medium bg-[#e9ff93] text-[#1e1e1e] px-2.5 py-1 rounded-full border border-black/10 hover:bg-[#d4e87a] transition-colors [font-family:'Chivo',Helvetica]"
               >
                 {tag}
@@ -176,7 +176,7 @@ const CustomerBlogPostPage: React.FC = () => {
               {post.tags.map(tag => (
                 <Link
                   key={tag}
-                  to={`/blog?tag=${encodeURIComponent(tag)}`}
+                  to={`/shop/blog?tag=${encodeURIComponent(tag)}`}
                   className="text-sm bg-gray-100 text-gray-700 px-3 py-1 rounded-full hover:bg-gray-200 transition-colors [font-family:'Chivo',Helvetica]"
                 >
                   #{tag}
@@ -192,7 +192,7 @@ const CustomerBlogPostPage: React.FC = () => {
             ¿Te gustó este artículo?
           </p>
           <Link
-            to="/blog"
+            to="/shop/blog"
             className="inline-flex items-center gap-2 bg-[#1e1e1e] text-white px-7 py-3 rounded-full text-sm font-medium [font-family:'Chivo',Helvetica] hover:bg-gray-800 transition-colors"
           >
             Ver todos los artículos

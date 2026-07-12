@@ -17,7 +17,7 @@ export function ProtectedCustomerRoute({ children }: { children: ReactNode }) {
   }
 
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/shop/login" replace />;
   }
 
   return <>{children}</>;

@@ -294,7 +294,7 @@ class CustomerOrderSubmissionService {
         return parts.join(', ');
       };
 
-      const shopUrl = `${window.location.origin}`;
+      const shopUrl = `${window.location.origin}/shop`;
 
       await mailgunService.sendOrderConfirmationEmail({
         customerName: `${customer.customer_name} ${customer.customer_lastname}`.trim(),

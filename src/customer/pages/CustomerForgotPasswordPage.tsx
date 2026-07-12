@@ -20,7 +20,7 @@ export default function CustomerForgotPasswordPage() {
 
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+        redirectTo: `${window.location.origin}/shop/reset-password`,
       });
 
       if (error) throw error;
@@ -93,7 +93,7 @@ export default function CustomerForgotPasswordPage() {
 
               <div className="mt-8 text-center">
                 <Link
-                  to="/login"
+                  to="/shop/login"
                   className="inline-flex items-center gap-2 text-red-600 hover:text-red-700 font-medium"
                 >
                   <ArrowLeft className="h-4 w-4" />
@@ -120,7 +120,7 @@ export default function CustomerForgotPasswordPage() {
                   </ul>
                 </div>
                 <Link
-                  to="/login"
+                  to="/shop/login"
                   className="inline-flex items-center gap-2 text-red-600 hover:text-red-700 font-medium"
                 >
                   <ArrowLeft className="h-4 w-4" />

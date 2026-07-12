@@ -22,7 +22,7 @@ export default function CustomerLoginPage() {
 
     try {
       await login(email, password);
-      navigate('/account');
+      navigate('/shop/account');
     } catch (err: any) {
       setError(err.message || 'Correo electrónico o contraseña inválidos');
     } finally {
@@ -96,7 +96,7 @@ export default function CustomerLoginPage() {
 
             <div className="flex items-center justify-between text-sm">
               <Link
-                to="/forgot-password"
+                to="/shop/forgot-password"
                 className="text-red-600 hover:text-red-700 font-medium"
               >
                 ¿Olvidaste tu contraseña?
@@ -165,7 +165,7 @@ export default function CustomerLoginPage() {
             <UserPlus className="h-12 w-12 text-red-600 mx-auto mb-3" />
             <h2 className="text-xl font-bold text-gray-900 mb-2">¿No tienes cuenta?</h2>
             <p className="text-gray-600 mb-4">Únete a Hola Dieta y comienza tu viaje hacia una alimentación saludable</p>
-            <Link to="/signup">
+            <Link to="/shop/signup">
               <Button className="w-full bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg font-medium transition-colors">
                 Crear Cuenta Nueva
               </Button>

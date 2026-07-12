@@ -86,9 +86,9 @@ export const BlogGrid: React.FC<BlogGridProps> = ({
   subtitle = "Consejos de nutrición, recetas y más",
   postsToShow = 3,
   showViewAll = true,
-  viewAllLink = "/blog",
+  viewAllLink = "/shop/blog",
   viewAllText = "Ver todos los artículos",
-  basePath = ''
+  basePath = '/shop'
 }) => {
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
@@ -100,7 +100,7 @@ export const BlogGrid: React.FC<BlogGridProps> = ({
       .finally(() => setLoading(false));
   }, [postsToShow]);
 
-  const resolvedViewAllLink = viewAllLink.startsWith('/blog') ? viewAllLink : `${basePath}${viewAllLink}`;
+  const resolvedViewAllLink = viewAllLink.startsWith('/shop') ? viewAllLink : `${basePath}${viewAllLink}`;
 
   if (loading) {
     return (

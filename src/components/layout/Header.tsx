@@ -27,7 +27,7 @@ const Header: React.FC = () => {
     sessionStorage.clear();
 
     // Force redirect and reload
-    window.location.href = '/admin';
+    window.location.href = '/';
   };
 
   const toggleMobileMenu = () => {

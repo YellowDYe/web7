@@ -98,7 +98,7 @@ const CustomerCartPage: React.FC = () => {
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Página No Encontrada</h1>
-          <a href="/" className="text-blue-600 hover:text-blue-800">
+          <a href="/shop" className="text-blue-600 hover:text-blue-800">
             Volver al Inicio
           </a>
         </div>
@@ -106,7 +106,7 @@ const CustomerCartPage: React.FC = () => {
     );
   }
 
-  return <CMSRenderer modules={modules} basePath="" />;
+  return <CMSRenderer modules={modules} basePath="/shop" />;
 };
 
 export default CustomerCartPage;

@@ -34,23 +34,23 @@ function App() {
         <Route path="/politica-de-privacidad" element={<PrivacyPolicy />} />
         <Route path="/terminos-y-condiciones" element={<TermsAndConditions />} />
 
-        {/* Admin auth routes */}
-        <Route path="/admin/auth" element={
+        {/* Admin auth routes - ONLY admin auth provider */}
+        <Route path="/auth" element={
           <AuthProvider>
             <AuthCallback />
           </AuthProvider>
         } />
-        <Route path="/admin/force-password-change" element={
+        <Route path="/force-password-change" element={
           <AuthProvider>
             <ForcePasswordChange />
           </AuthProvider>
         } />
-        <Route path="/admin/forgot-password" element={
+        <Route path="/forgot-password" element={
           <AuthProvider>
             <ForgotPassword />
           </AuthProvider>
         } />
-        <Route path="/admin/reset-password" element={
+        <Route path="/reset-password" element={
           <AuthProvider>
             <ResetPassword />
           </AuthProvider>
@@ -59,33 +59,9 @@ function App() {
         {/* Gmail OAuth callback - runs in popup window */}
         <Route path="/auth/gmail/callback" element={<GmailOAuthCallback />} />
 
-        {/* Admin routes - at /admin */}
+        {/* Customer shop routes - ONLY customer auth provider */}
         <Route
-          path="/admin"
-          element={
-            <AuthProvider>
-              <ProtectedRoute>
-                <Layout />
-              </ProtectedRoute>
-            </AuthProvider>
-          }
-        >
-          <Route index element={<Navigate to="/admin/website" replace />} />
-          <Route path="website" element={
-            <ProtectedRouteWithPermission permission="website_view">
-              <Website />
-            </ProtectedRouteWithPermission>
-          } />
-          <Route path="users" element={
-            <ProtectedRouteWithPermission permission="admin_users">
-              <Admin />
-            </ProtectedRouteWithPermission>
-          } />
-        </Route>
-
-        {/* Customer routes - at root */}
-        <Route
-          path="/*"
+          path="/shop/*"
           element={
             <CustomerAuthProvider>
               <CartProvider>
@@ -127,6 +103,53 @@ function App() {
                 </Routes>
               </CartProvider>
             </CustomerAuthProvider>
+          }
+        />
+
+        {/* Admin routes - with admin auth provider */}
+        <Route
+          path="/"
+          element={
+            <AuthProvider>
+              <ProtectedRoute>
+                <Layout />
+              </ProtectedRoute>
+            </AuthProvider>
+          }
+        >
+          <Route index element={<Navigate to="/website" replace />} />
+          <Route path="website" element={
+            <ProtectedRouteWithPermission permission="website_view">
+              <Website />
+            </ProtectedRouteWithPermission>
+          } />
+          <Route path="admin" element={
+            <ProtectedRouteWithPermission permission="admin_users">
+              <Admin />
+            </ProtectedRouteWithPermission>
+          } />
+        </Route>
+
+        {/* Catch-all route for 404s */}
+        <Route
+          path="*"
+          element={
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
+              <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md text-center">
+                <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                  Página no encontrada
+                </h2>
+                <p className="text-gray-600 mb-6">
+                  La página que buscas no existe o ha sido movida.
+                </p>
+                <button
+                  onClick={() => (window.location.href = '/')}
+                  className="bg-primary-500 hover:bg-primary-600 text-white px-6 py-3 rounded-xl font-medium transition-colors"
+                >
+                  Ir al inicio
+                </button>
+              </div>
+            </div>
           }
         />
       </Routes>

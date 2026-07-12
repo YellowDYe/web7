@@ -248,7 +248,7 @@ export const BlogManager: React.FC = () => {
 
                 {post.status === 'published' && (
                   <a
-                    href={`/blog/${post.slug}`}
+                    href={`/shop/blog/${post.slug}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     title="Ver publicado"

@@ -75,5 +75,5 @@ export default function CustomerCheckoutPage() {
     );
   }
 
-  return <CMSRenderer modules={modules} basePath="" />;
+  return <CMSRenderer modules={modules} basePath="/shop" />;
 }
