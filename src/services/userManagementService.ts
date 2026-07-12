@@ -97,7 +97,7 @@ export class UserManagementService {
       .insert([
         {
           user_id,
-          auth_user_id: userData.firebase_uid || null,
+          auth_user_id: null,
           is_active: userData.is_active ?? true,
           email: userData.email,
           full_name: userData.full_name,
@@ -436,7 +436,6 @@ export class UserManagementService {
     // Create new app user with ADMIN role by default
     try {
       const newUser = await this.createUser({
-        firebase_uid: authUser.uid,
         email: authUser.email,
         full_name: authUser.displayName || authUser.email.split('@')[0],
         role_id: 'ADMIN',

@@ -144,7 +144,6 @@ export class BankAccountService {
   async reconcileAccount(
     accountId: string,
     newBalance: number,
-    firebaseUid?: string,
     notes?: string
   ): Promise<{ account: BankAccount; reconciliation: any; adjustment: null }> {
     try {

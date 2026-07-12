@@ -59,7 +59,6 @@ export interface CreateUserData {
   full_name: string;
   role_id: string;
   is_active?: boolean;
-  firebase_uid?: string;
 }
 
 export interface UpdateUserData {
