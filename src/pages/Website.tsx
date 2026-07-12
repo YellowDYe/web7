@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Globe, ExternalLink, FileText, Layers, Image as ImageIcon, Settings, Box, BookOpen } from 'lucide-react';
 import { PageManager } from '../components/website/PageManager';
 import { ModuleEditor } from '../components/website/ModuleEditor';
@@ -6,21 +6,11 @@ import { CustomModulesManager } from '../components/website/CustomModulesManager
 import { MediaManager } from '../components/website/MediaManager';
 import { SettingsManager } from '../components/website/SettingsManager';
 import { BlogManager } from '../components/website/BlogManager';
-import { websiteService } from '../services/websiteService';
 
 const Website: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'pages' | 'modules' | 'custom-modules' | 'media' | 'settings' | 'blog'>('pages');
-  const [liveSiteUrl, setLiveSiteUrl] = useState('/');
-
-  useEffect(() => {
-    websiteService.getSettingByName('public_site_url').then((setting) => {
-      const url = setting?.value?.url;
-      if (url) setLiveSiteUrl(url);
-    }).catch(() => {});
-  }, []);
-
   const handleOpenLiveSite = () => {
-    window.location.href = liveSiteUrl;
+    window.location.href = '/';
   };
 
   return (
