@@ -119,11 +119,11 @@ export const CustomerCart: React.FC = () => {
   };
 
   const handleContinueShopping = () => {
-    navigate('/shop/order');
+    navigate('/order');
   };
 
   const handleProceedToCheckout = () => {
-    navigate('/shop/checkout');
+    navigate('/checkout');
   };
 
   const hasMealItems = cart && cart.orderItems && cart.orderItems.length > 0;
@@ -179,7 +179,7 @@ export const CustomerCart: React.FC = () => {
                 Explorar Planes
               </Button>
               <Button
-                onClick={() => navigate('/shop/proteinas')}
+                onClick={() => navigate('/proteinas')}
                 className="bg-red-500 hover:bg-red-600 text-white px-8 py-3 rounded-full text-lg"
               >
                 <Zap className="h-5 w-5 mr-2" />

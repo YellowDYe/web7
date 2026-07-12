@@ -36,13 +36,13 @@ export const MainMenu: React.FC<MainMenuProps> = ({
 
   const enhancedNavigationItems = useMemo(() => {
     const currentPath = location.pathname;
-    const isHomePage = currentPath === '/shop' || currentPath === '/shop/';
+    const isHomePage = currentPath === '/' || currentPath === '';
     const isAuthPage = currentPath.includes('/login') || currentPath.includes('/signup');
     const isCheckout = currentPath.includes('/checkout');
 
     const inicioItem: NavigationItem = {
       label: 'Inicio',
-      href: basePath || '/shop',
+      href: basePath || '/',
       active: false
     };
 
@@ -70,7 +70,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
   const handleLogout = async () => {
     try {
       await logout();
-      navigate('/shop');
+      navigate('/');
       setIsUserMenuOpen(false);
       closeMobileMenu();
     } catch (error) {
@@ -83,7 +83,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
       <header className={`flex flex-wrap w-full h-[90px] md:h-[104px] items-center gap-[0px_24px] py-4 md:py-8 px-4 md:px-8 ${backgroundColor} rounded-[0px_0px_45px_45px] border-b border-[#d9d9d9]`}>
         {/* Logo */}
         <div className="inline-flex items-center gap-6 relative flex-[0_0_auto]">
-          <Link to={basePath || "/shop"} onClick={closeMobileMenu}>
+          <Link to={basePath || "/"} onClick={closeMobileMenu}>
             <div className="flex items-center justify-center h-12 md:h-16 px-3 md:px-4">
               {!imageError && logoUrl && logoUrl.trim() ? (
                 <img
@@ -126,7 +126,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
         {/* Desktop Cart and Auth Buttons */}
         <div className={`hidden md:flex items-center relative gap-2 ${isCheckoutPage ? 'invisible' : ''}`}>
           {/* Cart Icon with Badge */}
-          <Link to="/shop/cart" className="relative p-2 hover:bg-gray-100 rounded-full transition-colors">
+          <Link to="/cart" className="relative p-2 hover:bg-gray-100 rounded-full transition-colors">
             <ShoppingCart className="h-6 w-6 text-gray-700" />
             {totalCartCount > 0 && (
               <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
@@ -154,7 +154,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                     <p className="text-xs text-gray-500 truncate">{customer.customer_email}</p>
                   </div>
                   <Link
-                    to="/shop/account"
+                    to="/account"
                     onClick={() => setIsUserMenuOpen(false)}
                     className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
                   >
@@ -176,7 +176,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
               asChild
               className="h-auto px-4 py-2 rounded-full bg-[#ff4d8b] hover:bg-[#ff3377] text-white transition-all"
             >
-              <Link to="/shop/login">Iniciar Sesión</Link>
+              <Link to="/login">Iniciar Sesión</Link>
             </Button>
           )}
         </div>
@@ -218,7 +218,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
               ))}
               {/* Mobile Cart Link */}
               {!isCheckoutPage && (
-                <Link to="/shop/cart" onClick={closeMobileMenu}>
+                <Link to="/cart" onClick={closeMobileMenu}>
                   <div className="flex items-center justify-between px-4 py-3 text-black border-b border-gray-100 hover:bg-[#ffb3e3]/30 transition-colors">
                     <div className="flex items-center gap-2">
                       <ShoppingCart className="h-4 w-4" />
@@ -242,7 +242,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                       <p className="text-xs text-gray-500">{customer.customer_email}</p>
                     </div>
                     <Link
-                      to="/shop/account"
+                      to="/account"
                       onClick={closeMobileMenu}
                       className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-[#ffb3e3]/30 rounded-lg transition-colors"
                     >
@@ -259,7 +259,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                   </div>
                 ) : (
                   <Link
-                    to="/shop/login"
+                    to="/login"
                     onClick={closeMobileMenu}
                     className="block text-center px-4 py-2 rounded-full bg-[#ff4d8b] hover:bg-[#ff3377] text-white transition-colors"
                   >

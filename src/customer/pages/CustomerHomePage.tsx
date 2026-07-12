@@ -50,7 +50,7 @@ const CMSPage: React.FC = () => {
       setError(null);
 
       // Remove /shop prefix from path for CMS lookup
-      const cmsPath = location.pathname.replace(/^\/shop/, '') || '/';
+      const cmsPath = location.pathname || '/';
       console.log('[CustomerHomePage] CMS path after processing:', cmsPath);
 
       // Use direct REST API instead of Supabase client
@@ -141,7 +141,7 @@ const CMSPage: React.FC = () => {
             </button>
 
             <a
-              href="/shop"
+              href="/"
               className="block w-full px-4 py-2 text-blue-600 hover:text-blue-800 transition-colors"
             >
               Return to Home
@@ -207,7 +207,7 @@ const CMSPage: React.FC = () => {
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Page Not Found</h1>
-          <a href="/shop" className="text-blue-600 hover:text-blue-800">
+          <a href="/" className="text-blue-600 hover:text-blue-800">
             Return to Home
           </a>
         </div>
@@ -215,7 +215,7 @@ const CMSPage: React.FC = () => {
     );
   }
 
-  return <CMSRenderer modules={modules} basePath="/shop" />;
+  return <CMSRenderer modules={modules} basePath="" />;
 };
 
 export const CustomerHomePage: React.FC = () => {

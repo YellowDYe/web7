@@ -123,7 +123,7 @@ export const CMSRenderer: React.FC<CMSRendererProps> = ({ modules, basePath = ''
       <WhatsAppWidget />
       <div className="bg-gray-900 py-3 px-6 flex justify-center">
         <a
-          href="/"
+          href="/admin"
           className="text-gray-400 hover:text-white text-xs font-medium tracking-widest uppercase transition-colors duration-200"
         >
           Admin
