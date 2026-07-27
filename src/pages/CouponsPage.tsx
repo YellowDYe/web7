@@ -1,17 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  Ticket,
-  Plus,
-  ArrowLeft,
-  Loader2,
-  AlertCircle,
-  Trash2,
-  Power,
-  X,
-  Percent,
-  DollarSign,
-} from 'lucide-react';
+import { Ticket, Plus, ArrowLeft, Loader as Loader2, CircleAlert as AlertCircle, Trash2, Power, X, Percent, DollarSign } from 'lucide-react';
 import { couponService } from '../services/couponService';
 import {
   Coupon,
