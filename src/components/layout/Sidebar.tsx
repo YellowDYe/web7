@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { Shield, Globe } from 'lucide-react';
+import { Shield, Globe, Megaphone } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 
 interface NavigationItem {
@@ -13,6 +13,7 @@ interface NavigationItem {
 
 const navigationItems: NavigationItem[] = [
   { id: 'website', label: 'Sitio Web', path: '/admin/website', icon: Globe, permission: 'website_view' },
+  { id: 'marketing', label: 'Marketing', path: '/admin/marketing', icon: Megaphone, permission: 'coupons_view' },
   { id: 'admin', label: 'Admin', path: '/admin/users', icon: Shield, permission: 'admin_users' },
 ];
 
