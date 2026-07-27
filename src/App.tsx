@@ -25,6 +25,7 @@ import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsAndConditions from './pages/TermsAndConditions';
 import Website from './pages/Website';
 import Marketing from './pages/Marketing';
+import CouponsPage from './pages/CouponsPage';
 import GmailOAuthCallback from './pages/GmailOAuthCallback';
 
 function App() {
@@ -85,6 +86,11 @@ function App() {
           <Route path="marketing" element={
             <ProtectedRouteWithPermission permission="coupons_view">
               <Marketing />
+            </ProtectedRouteWithPermission>
+          } />
+          <Route path="marketing/coupons" element={
+            <ProtectedRouteWithPermission permission="coupons_view">
+              <CouponsPage />
             </ProtectedRouteWithPermission>
           } />
         </Route>
