@@ -102,7 +102,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
         </div>
 
         {/* Desktop Navigation */}
-        <nav className="hidden md:flex flex-wrap items-start justify-end gap-[8px_8px] relative flex-1 grow">
+        <nav className="hidden lg:flex flex-wrap items-start justify-end gap-[8px_8px] relative flex-1 grow">
           {enhancedNavigationItems.map((item, index) => (
             <Button
               key={index}
@@ -124,7 +124,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
         </nav>
 
         {/* Desktop Cart and Auth Buttons */}
-        <div className={`hidden md:flex items-center relative gap-2 ${isCheckoutPage ? 'invisible' : ''}`}>
+        <div className={`hidden lg:flex items-center relative gap-2 ${isCheckoutPage ? 'invisible' : ''}`}>
           {/* Cart Icon with Badge */}
           <Link to="/cart" className="relative p-2 hover:bg-gray-100 rounded-full transition-colors">
             <ShoppingCart className="h-6 w-6 text-gray-700" />
@@ -182,7 +182,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
         </div>
 
         {/* Mobile Hamburger Button */}
-        <div className="md:hidden ml-auto">
+        <div className="lg:hidden ml-auto">
           <Button
             variant="ghost"
             onClick={toggleMobileMenu} 
@@ -202,7 +202,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
 
       {/* Mobile Navigation Menu - Outside header */}
       {isMobileMenuOpen && (
-        <div className="md:hidden absolute top-full left-0 right-0 z-50">
+        <div className="lg:hidden absolute top-full left-0 right-0 z-50">
           <div className="bg-[#e9ff93] mx-4 mt-2 rounded-3xl shadow-lg border border-gray-100">
             <nav className="py-2">
               {enhancedNavigationItems.map((item, index) => (

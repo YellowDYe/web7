@@ -59,7 +59,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
           </Link>
         </div>
 
-        <nav className="hidden md:flex flex-wrap items-start justify-end gap-[8px_8px] relative flex-1 grow">
+        <nav className="hidden lg:flex flex-wrap items-start justify-end gap-[8px_8px] relative flex-1 grow">
           {navigationItems.map((item, index) => (
             <Link key={index} to={item.href}>
               <button
@@ -75,7 +75,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
           ))}
         </nav>
 
-        <div className="hidden md:flex items-center relative">
+        <div className="hidden lg:flex items-center relative">
           <button
             onClick={() => alert('Esta es una vista previa. En el sitio real, este botón llevará a los clientes a iniciar sesión.')}
             className="h-auto flex items-center justify-center gap-2 p-2 relative bg-[#bfd730] rounded-[1000px] overflow-hidden border border-solid border-[#767676] font-normal text-[#1e1e1e] text-base hover:bg-[#bfd730]/80 transition-all duration-200 cursor-pointer"
@@ -84,7 +84,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
           </button>
         </div>
 
-        <div className="md:hidden ml-auto">
+        <div className="lg:hidden ml-auto">
           <button
             onClick={toggleMobileMenu}
             className="h-auto p-2 rounded-[100px] bg-transparent hover:bg-[#ffb3e3]/80 transition-all duration-200"
@@ -100,7 +100,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
       </header>
 
       {isMobileMenuOpen && (
-        <div className="md:hidden absolute top-full left-0 right-0 z-50">
+        <div className="lg:hidden absolute top-full left-0 right-0 z-50">
           <div className="bg-[#e9ff93] mx-4 mt-2 rounded-3xl shadow-lg border border-gray-100">
             <nav className="py-2">
               {navigationItems.map((item, index) => (
