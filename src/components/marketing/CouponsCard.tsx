@@ -1,15 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Ticket,
-  Plus,
-  Loader2,
-  AlertCircle,
-  Trash2,
-  Power,
-  X,
-  Percent,
-  DollarSign,
-} from 'lucide-react';
+import { Ticket, Plus, Loader as Loader2, CircleAlert as AlertCircle, Trash2, Power, X, Percent, DollarSign } from 'lucide-react';
 import { couponService } from '../../services/couponService';
 import {
   Coupon,
@@ -193,7 +183,9 @@ const CouponsCard: React.FC = () => {
     });
   };
 
-  const formatValue = (c: Coupon): string => {
+  const formatValue = (c
+  )
+}: Coupon): string => {
     return c.discount_type === 'percentage'
       ? `${c.discount_value}%`
       : `$${Number(c.discount_value).toFixed(2)}`;
