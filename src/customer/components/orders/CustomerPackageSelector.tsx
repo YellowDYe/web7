@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Package, Coffee, Sun, Soup, Minus, Plus, Grid3x2 as Grid3X3, Check, ShoppingBag, Trash2 } from 'lucide-react';
+import { Package, Coffee, Sun, Soup, Minus, Plus, Grid3x2 as Grid3X3, Check, ShoppingBag, Trash2, TriangleAlert as AlertTriangle } from 'lucide-react';
 import { SelectedWeek } from '../../../types/week';
 import { MealPlan } from '../../../types/mealPlan';
 import { PendingOrderItem, BILLABLE_MEAL_TYPES } from '../../../types/orderMenu';
@@ -45,6 +45,7 @@ interface CustomerPackageSelectorProps {
   orderItems: PendingOrderItem[];
   selectedFamilyMemberId: string | null;
   selectedFamilyMemberName?: string;
+  customerRestrictions?: string[];
   onConfirmPackage: (items: PendingOrderItem[], pendingIds: string[]) => void;
   onRemovePackageMealType: (mealType: string, planId: string, weekName: string) => void;
   onOpenPersonalizedMenu: () => void;
@@ -58,6 +59,7 @@ const MEAL_CATEGORIES = [
   {
     key: 'desayuno' as const,
     label: 'Desayuno',
+    labelPlural: 'Desayunos',
     mealType: 'Desayuno' as const,
     icon: Sun,
     color: 'amber' as const,
@@ -66,6 +68,7 @@ const MEAL_CATEGORIES = [
   {
     key: 'comida' as const,
     label: 'Comida',
+    labelPlural: 'Comidas',
     mealType: 'Comida' as const,
     icon: Soup,
     color: 'emerald' as const,
@@ -74,6 +77,7 @@ const MEAL_CATEGORIES = [
   {
     key: 'cena' as const,
     label: 'Cena',
+    labelPlural: 'Cenas',
     mealType: 'Cena' as const,
     icon: Coffee,
     color: 'blue' as const,
@@ -150,6 +154,7 @@ const CustomerPackageSelector: React.FC<CustomerPackageSelectorProps> = ({
   orderItems,
   selectedFamilyMemberId,
   selectedFamilyMemberName,
+  customerRestrictions = [],
   onConfirmPackage,
   onRemovePackageMealType,
   onOpenPersonalizedMenu,
@@ -169,6 +174,7 @@ const CustomerPackageSelector: React.FC<CustomerPackageSelectorProps> = ({
 
   const [menuRecipesRow, setMenuRecipesRow] = useState<Record<string, string | null> | null>(null);
   const [recipeNames, setRecipeNames] = useState<Map<string, string>>(new Map());
+  const [recipeRestrictions, setRecipeRestrictions] = useState<Map<string, string[]>>(new Map());
 
   const weekName = activeWeek.week.week_name;
 
@@ -230,26 +236,49 @@ const CustomerPackageSelector: React.FC<CustomerPackageSelectorProps> = ({
 
         if (recipeIds.size === 0) {
           setRecipeNames(new Map());
+          setRecipeRestrictions(new Map());
           return;
         }
 
-        const { data: recipesData } = await supabase
-          .from('recipes')
-          .select('recipe_id, recipe_name')
-          .in('recipe_id', Array.from(recipeIds));
+        const [recipesRes, ingredientsRes] = await Promise.all([
+          supabase
+            .from('recipes')
+            .select('recipe_id, recipe_name')
+            .in('recipe_id', Array.from(recipeIds)),
+          customerRestrictions.length > 0
+            ? supabase
+                .from('recipe_ingredients')
+                .select('recipe_id, ingredient_id, ingredients!inner(ingredient_id, ingredient_name)')
+                .in('recipe_id', Array.from(recipeIds))
+                .in('ingredient_id', customerRestrictions)
+            : Promise.resolve({ data: null }),
+        ]);
 
         const nameMap = new Map<string, string>();
-        if (recipesData) {
-          recipesData.forEach(r => nameMap.set(r.recipe_id, r.recipe_name));
+        if (recipesRes.data) {
+          recipesRes.data.forEach(r => nameMap.set(r.recipe_id, r.recipe_name));
         }
         setRecipeNames(nameMap);
+
+        const restrictionMap = new Map<string, string[]>();
+        if (ingredientsRes.data) {
+          (ingredientsRes.data as any[]).forEach(row => {
+            const existing = restrictionMap.get(row.recipe_id) || [];
+            const ingName = row.ingredients?.ingredient_name || '';
+            if (ingName && !existing.includes(ingName)) {
+              existing.push(ingName);
+            }
+            restrictionMap.set(row.recipe_id, existing);
+          });
+        }
+        setRecipeRestrictions(restrictionMap);
       } catch {
         // silently ignore fetch errors
       }
     };
 
     fetchRecipes();
-  }, [activeWeek, selectedPlan]);
+  }, [activeWeek, selectedPlan, customerRestrictions]);
 
   const buildItemsForMealType = (
     mealType: 'Desayuno' | 'Comida' | 'Cena',
@@ -335,6 +364,93 @@ const CustomerPackageSelector: React.FC<CustomerPackageSelectorProps> = ({
       );
       onConfirmPackage(items, []);
     }
+  };
+
+  const adjustDayQuantity = (key: keyof CardQuantity, day: string, delta: number) => {
+    if (disabled) return;
+    if (!selected[key]) return;
+
+    const cat = MEAL_CATEGORIES.find(c => c.key === key)!;
+    const currentMemberId = selectedFamilyMemberId || null;
+
+    const dayItems = orderItems.filter(item =>
+      item.meal_type === cat.mealType &&
+      item.day_of_week === day &&
+      item.meal_plans_id === selectedPlan.meal_plans_id &&
+      item.week_name === weekName &&
+      (item.family_member_id || null) === currentMemberId
+    );
+    const currentDayQty = dayItems.reduce((sum, item) => sum + item.quantity, 0);
+    const newDayQty = Math.max(0, currentDayQty + delta);
+
+    const totalDelta = newDayQty - currentDayQty;
+    const newTotalQty = Math.max(MIN_QUANTITY, quantities[key] + totalDelta);
+    setQuantities(prev => ({ ...prev, [key]: newTotalQty }));
+
+    if (newTotalQty === 0) {
+      onRemovePackageMealType(cat.mealType, selectedPlan.meal_plans_id, weekName);
+      setSelected(prev => ({ ...prev, [key]: false }));
+    } else {
+      const items = buildItemsForMealTypeByDay(
+        cat.mealType,
+        day,
+        newDayQty,
+        selectedPlan.meal_plans_id,
+        selectedPlan.meal_plans_name,
+        selectedPlan.meal_plans_price,
+        activeWeek.week.week_name,
+        activeWeek.week.week_id,
+      );
+      onConfirmPackage(items, []);
+    }
+  };
+
+  const buildItemsForMealTypeByDay = (
+    mealType: 'Desayuno' | 'Comida' | 'Cena',
+    targetDay: string,
+    newDayQty: number,
+    planId: string,
+    planName: string,
+    pricePerDish: number,
+    entryWeekName: string,
+    entryWeekId: string,
+  ): PendingOrderItem[] => {
+    const currentMemberId = selectedFamilyMemberId || null;
+    const otherDayItems = orderItems.filter(item =>
+      item.meal_type === mealType &&
+      item.meal_plans_id === planId &&
+      item.week_name === entryWeekName &&
+      (item.family_member_id || null) === currentMemberId &&
+      item.day_of_week !== targetDay
+    );
+
+    const items: PendingOrderItem[] = [...otherDayItems];
+
+    if (newDayQty > 0) {
+      let recipeName: string | undefined;
+      if (menuRecipesRow) {
+        const col = buildRecipeColumn(targetDay, mealType);
+        const recipeId = menuRecipesRow[col];
+        if (recipeId) recipeName = recipeNames.get(recipeId);
+      }
+      items.push({
+        tempId: `pkg_${entryWeekName}_${mealType}_${targetDay}_${Date.now()}`,
+        order_week_id: '',
+        meal_plans_id: planId,
+        meal_type: mealType,
+        day_of_week: targetDay,
+        quantity: newDayQty,
+        meal_plan_name: planName,
+        meal_plan_price: pricePerDish,
+        recipe_name: recipeName,
+        week_name: entryWeekName,
+        week_id: entryWeekId,
+        family_member_id: selectedFamilyMemberId || undefined,
+        family_member_name: selectedFamilyMemberName,
+      });
+    }
+
+    return items;
   };
 
   const handleRemoveMealType = (mealType: string, planId: string) => {
@@ -480,8 +596,8 @@ const CustomerPackageSelector: React.FC<CustomerPackageSelectorProps> = ({
                 const col = buildRecipeColumn(day, category.mealType);
                 const recipeId = menuRecipesRow[col];
                 const name = recipeId ? recipeNames.get(recipeId) : undefined;
-                return name ? { day, name } : null;
-              }).filter(Boolean) as { day: string; name: string }[]
+                return name ? { day, name, recipeId: recipeId! } : null;
+              }).filter(Boolean) as { day: string; name: string; recipeId: string }[]
             : [];
 
           const getDayQuantity = (day: string): number => {
@@ -533,16 +649,41 @@ const CustomerPackageSelector: React.FC<CustomerPackageSelectorProps> = ({
                 {/* Dish list from weekly menu */}
                 {dishes.length > 0 && (
                   <div className={`rounded-xl border ${isSelected ? colors.border : 'border-gray-100'} bg-white bg-opacity-60 divide-y divide-gray-50 mb-3`}>
-                    {dishes.map(({ day, name }) => {
+                    {dishes.map(({ day, name, recipeId }) => {
                       const dayQty = isSelected ? getDayQuantity(day) : 0;
+                      const warnings = recipeRestrictions.get(recipeId) || [];
                       return (
-                        <div key={day} className="flex items-center px-3 py-1.5 gap-2">
-                          <span className={`text-xs font-semibold uppercase tracking-wide flex-shrink-0 w-10 ${colors.text}`}>{day.slice(0, 3)}</span>
-                          <span className="text-sm text-gray-600 leading-tight flex-1 min-w-0 truncate">{name}</span>
-                          {isSelected && dayQty > 0 && (
-                            <span className={`flex-shrink-0 inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${colors.badgeSelected}`}>
-                              {dayQty}
-                            </span>
+                        <div key={day} className="px-3 py-2">
+                          <div className="flex items-center gap-2">
+                            <span className={`text-xs font-semibold uppercase tracking-wide flex-shrink-0 w-10 ${colors.text}`}>{day.slice(0, 3)}</span>
+                            <span className="text-sm text-gray-600 leading-tight flex-1 min-w-0 truncate">{name}</span>
+                            {isSelected && (
+                              <div className="flex-shrink-0 flex items-center gap-1">
+                                <button
+                                  onClick={() => adjustDayQuantity(category.key, day, -1)}
+                                  disabled={disabled || dayQty <= 0}
+                                  className={`w-6 h-6 rounded-full border flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${colors.border}`}
+                                >
+                                  <Minus className="w-3 h-3" />
+                                </button>
+                                <span className={`w-5 text-center text-sm font-bold ${dayQty > 0 ? 'text-gray-900' : 'text-gray-300'}`}>{dayQty}</span>
+                                <button
+                                  onClick={() => adjustDayQuantity(category.key, day, 1)}
+                                  disabled={disabled}
+                                  className={`w-6 h-6 rounded-full border flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${colors.border}`}
+                                >
+                                  <Plus className="w-3 h-3" />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                          {warnings.length > 0 && (
+                            <div className="flex items-center gap-1 mt-1 ml-12">
+                              <AlertTriangle className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
+                              <span className="text-xs text-amber-600 font-medium truncate">
+                                Contiene: {warnings.join(', ')}
+                              </span>
+                            </div>
                           )}
                         </div>
                       );
@@ -592,7 +733,7 @@ const CustomerPackageSelector: React.FC<CustomerPackageSelectorProps> = ({
                       className={`w-full flex items-center justify-center space-x-2 py-3 rounded-xl font-semibold text-sm transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed ${colors.addBtn} shadow-sm hover:shadow-md`}
                     >
                       <Plus className="w-4 h-4" />
-                      <span>Seleccionar {category.label}</span>
+                      <span>Agregar {category.labelPlural}</span>
                     </button>
                   </div>
                 ) : (
