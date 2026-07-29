@@ -52,7 +52,6 @@ const Header: React.FC = () => {
     { label: 'WooCommerce', path: '/woocommerce', permission: 'admin_users' },
     { label: 'Contabilidad', path: '/contabilidad', permission: 'accounting_view' },
     { label: 'Nómina', path: '/nomina', permission: 'payroll_manage' },
-    { label: 'Admin', path: '/admin', permission: 'admin_users' },
   ];
 
   return (
