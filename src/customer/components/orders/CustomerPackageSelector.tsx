@@ -475,11 +475,32 @@ const CustomerPackageSelector: React.FC<CustomerPackageSelectorProps> = ({
             m => m.mealType === category.mealType && m.planId === selectedPlan.meal_plans_id
           );
 
+          const dishes = menuRecipesRow
+            ? DAYS_OF_WEEK.map(day => {
+                const col = buildRecipeColumn(day, category.mealType);
+                const recipeId = menuRecipesRow[col];
+                const name = recipeId ? recipeNames.get(recipeId) : undefined;
+                return name ? { day, name } : null;
+              }).filter(Boolean) as { day: string; name: string }[]
+            : [];
+
+          const getDayQuantity = (day: string): number => {
+            const currentMemberId = selectedFamilyMemberId || null;
+            return orderItems
+              .filter(item =>
+                item.meal_type === category.mealType &&
+                item.day_of_week === day &&
+                item.meal_plans_id === selectedPlan.meal_plans_id &&
+                item.week_name === weekName &&
+                (item.family_member_id || null) === currentMemberId
+              )
+              .reduce((sum, item) => sum + item.quantity, 0);
+          };
+
           return (
             <div
               key={category.key}
-              onClick={() => toggleCard(category.key)}
-              className={`rounded-2xl border-2 overflow-hidden transition-all duration-200 cursor-pointer select-none ${
+              className={`rounded-2xl border-2 overflow-hidden transition-all duration-200 select-none ${
                 isSelected
                   ? `${colors.borderSelected} ${colors.bgSelected} shadow-md`
                   : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm'
@@ -510,42 +531,36 @@ const CustomerPackageSelector: React.FC<CustomerPackageSelectorProps> = ({
                 <p className="text-sm text-gray-500 mt-0.5 mb-3">{category.description}</p>
 
                 {/* Dish list from weekly menu */}
-                {menuRecipesRow && (() => {
-                  const dishes = DAYS_OF_WEEK.map(day => {
-                    const col = buildRecipeColumn(day, category.mealType);
-                    const recipeId = menuRecipesRow[col];
-                    const name = recipeId ? recipeNames.get(recipeId) : undefined;
-                    return name ? { day, name } : null;
-                  }).filter(Boolean) as { day: string; name: string }[];
-
-                  if (dishes.length === 0) return null;
-
-                  return (
-                    <div className={`rounded-xl border ${isSelected ? colors.border : 'border-gray-100'} bg-white bg-opacity-60 divide-y divide-gray-50 mb-3`}>
-                      {dishes.map(({ day, name }) => (
-                        <div key={day} className="flex items-start px-3 py-1.5 gap-2">
+                {dishes.length > 0 && (
+                  <div className={`rounded-xl border ${isSelected ? colors.border : 'border-gray-100'} bg-white bg-opacity-60 divide-y divide-gray-50 mb-3`}>
+                    {dishes.map(({ day, name }) => {
+                      const dayQty = isSelected ? getDayQuantity(day) : 0;
+                      return (
+                        <div key={day} className="flex items-center px-3 py-1.5 gap-2">
                           <span className={`text-xs font-semibold uppercase tracking-wide flex-shrink-0 w-10 ${colors.text}`}>{day.slice(0, 3)}</span>
-                          <span className="text-sm text-gray-600 leading-tight">{name}</span>
+                          <span className="text-sm text-gray-600 leading-tight flex-1 min-w-0 truncate">{name}</span>
+                          {isSelected && dayQty > 0 && (
+                            <span className={`flex-shrink-0 inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${colors.badgeSelected}`}>
+                              {dayQty}
+                            </span>
+                          )}
                         </div>
-                      ))}
-                    </div>
-                  );
-                })()}
+                      );
+                    })}
+                  </div>
+                )}
 
                 {/* Quantity stepper — only visible when selected */}
                 {isSelected && (
-                  <div
-                    className={`mt-4 rounded-xl border ${colors.border} ${colors.bg} px-4 py-3`}
-                    onClick={e => e.stopPropagation()}
-                  >
+                  <div className={`mt-4 rounded-xl border ${colors.border} ${colors.bg} px-4 py-3`}>
                     <div className="flex items-center justify-between mb-1">
-                      <span className={`text-xs font-semibold uppercase tracking-wide ${colors.text}`}>Cantidad</span>
+                      <span className={`text-xs font-semibold uppercase tracking-wide ${colors.text}`}>Cantidad total</span>
                       <span className={`text-xs font-medium text-gray-400`}>0 = eliminar</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
                         <button
-                          onClick={e => adjustQuantity(category.key, -1, e)}
+                          onClick={() => adjustQuantity(category.key, -1, { stopPropagation: () => {} } as React.MouseEvent)}
                           disabled={disabled || qty <= 0}
                           className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${colors.stepper}`}
                         >
@@ -553,7 +568,7 @@ const CustomerPackageSelector: React.FC<CustomerPackageSelectorProps> = ({
                         </button>
                         <span className="w-8 text-center text-xl font-bold text-gray-900">{qty}</span>
                         <button
-                          onClick={e => adjustQuantity(category.key, 1, e)}
+                          onClick={() => adjustQuantity(category.key, 1, { stopPropagation: () => {} } as React.MouseEvent)}
                           disabled={disabled}
                           className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${colors.stepper}`}
                         >
@@ -565,11 +580,30 @@ const CustomerPackageSelector: React.FC<CustomerPackageSelectorProps> = ({
                   </div>
                 )}
 
-                {/* Price preview when not selected */}
-                {!isSelected && (
-                  <p className={`mt-3 text-sm font-semibold ${colors.textDark}`}>
-                    desde {formatCurrency(selectedPlan.meal_plans_price)}
-                  </p>
+                {/* Explicit action button */}
+                {!isSelected ? (
+                  <div className="mt-4">
+                    <p className="text-sm text-gray-500 mb-2">
+                      {DEFAULT_QUANTITY} platillos · {formatCurrency(DEFAULT_QUANTITY * selectedPlan.meal_plans_price)}
+                    </p>
+                    <button
+                      onClick={() => toggleCard(category.key)}
+                      disabled={disabled}
+                      className={`w-full flex items-center justify-center space-x-2 py-3 rounded-xl font-semibold text-sm transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed ${colors.addBtn} shadow-sm hover:shadow-md`}
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Seleccionar {category.label}</span>
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => toggleCard(category.key)}
+                    disabled={disabled}
+                    className="w-full mt-4 flex items-center justify-center space-x-2 py-2.5 rounded-xl font-semibold text-sm border-2 border-red-200 text-red-600 hover:bg-red-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    <span>Quitar del pedido</span>
+                  </button>
                 )}
               </div>
             </div>
