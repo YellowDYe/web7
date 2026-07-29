@@ -144,7 +144,7 @@ const CustomerOrderSidePanel: React.FC<CustomerOrderSidePanelProps> = ({
         )}
       </div>
 
-      <div className="p-5 space-y-5 overflow-y-auto max-h-[calc(100vh-8rem)]">
+      <div className="p-5 space-y-5">
         {/* Items by Week */}
         <div className="space-y-4">
           {Object.entries(itemsByWeek).map(([weekName, items]) => {

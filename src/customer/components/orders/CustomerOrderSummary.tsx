@@ -148,22 +148,6 @@ const CustomerOrderSummary: React.FC<CustomerOrderSummaryProps> = ({
                   </div>
 
                   <div className="flex items-center space-x-4">
-                    <div className="text-right">
-                      {BILLABLE_MEAL_TYPES.includes(item.meal_type as any) ? (
-                        <>
-                          <div className="text-sm font-medium text-gray-900">
-                            {item.quantity} x ${item.meal_plan_price}
-                          </div>
-                          <div className="text-xs text-gray-600">
-                            ${(item.meal_plan_price * item.quantity).toFixed(2)}
-                          </div>
-                        </>
-                      ) : (
-                        <div className="text-sm font-medium text-green-600 italic">
-                          incluidas
-                        </div>
-                      )}
-                    </div>
                     <button
                       onClick={() => !disabled && onRemoveItem(item.tempId!)}
                       disabled={disabled}
