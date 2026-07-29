@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Package, Coffee, Sun, Soup, Minus, Plus, Grid3x2 as Grid3X3, Check, ShoppingBag, Trash2, TriangleAlert as AlertTriangle } from 'lucide-react';
 import { SelectedWeek } from '../../../types/week';
 import { MealPlan } from '../../../types/mealPlan';
@@ -205,6 +205,37 @@ const CustomerPackageSelector: React.FC<CustomerPackageSelectorProps> = ({
       return order.indexOf(a.mealType) - order.indexOf(b.mealType);
     });
   }, [orderItems, weekName]);
+
+  const orderItemsRef = useRef(orderItems);
+  orderItemsRef.current = orderItems;
+
+  useEffect(() => {
+    const items = orderItemsRef.current;
+    const planId = selectedPlan.meal_plans_id;
+    const memberId = selectedFamilyMemberId ?? null;
+
+    const nextQuantities: CardQuantity = { desayuno: DEFAULT_QUANTITY, comida: DEFAULT_QUANTITY, cena: DEFAULT_QUANTITY };
+    const nextSelected: CardSelected = { desayuno: false, comida: false, cena: false };
+
+    MEAL_CATEGORIES.forEach(cat => {
+      const total = items
+        .filter(item =>
+          item.meal_plans_id === planId &&
+          item.week_name === weekName &&
+          item.meal_type === cat.mealType &&
+          (item.family_member_id ?? null) === memberId
+        )
+        .reduce((sum, item) => sum + item.quantity, 0);
+
+      if (total > 0) {
+        nextQuantities[cat.key] = total;
+        nextSelected[cat.key] = true;
+      }
+    });
+
+    setQuantities(nextQuantities);
+    setSelected(nextSelected);
+  }, [selectedPlan.meal_plans_id, weekName, selectedFamilyMemberId]);
 
   useEffect(() => {
     if (!activeWeek?.week.weekly_menu || !selectedPlan) return;
