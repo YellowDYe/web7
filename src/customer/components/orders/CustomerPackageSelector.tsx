@@ -648,15 +648,16 @@ const CustomerPackageSelector: React.FC<CustomerPackageSelectorProps> = ({
 
                 {/* Dish list from weekly menu */}
                 {dishes.length > 0 && (
-                  <div className={`rounded-xl border ${isSelected ? colors.border : 'border-gray-100'} bg-white bg-opacity-60 divide-y divide-gray-50 mb-3`}>
+                  <div className="space-y-2 mb-3">
                     {dishes.map(({ day, name, recipeId }) => {
                       const dayQty = isSelected ? getDayQuantity(day) : 0;
                       const warnings = recipeRestrictions.get(recipeId) || [];
+                      const displayName = name.length > 40 ? `${name.slice(0, 40)}...` : name;
                       return (
-                        <div key={day} className="px-3 py-2">
-                          <div className="flex items-center gap-2">
-                            <span className={`text-xs font-semibold uppercase tracking-wide flex-shrink-0 w-10 ${colors.text}`}>{day.slice(0, 3)}</span>
-                            <span className="text-sm text-gray-600 leading-tight flex-1 min-w-0 truncate">{name}</span>
+                        <div key={day} className="py-1">
+                          <div className="flex items-start gap-2">
+                            <span className={`text-xs font-semibold uppercase tracking-wide flex-shrink-0 w-10 pt-0.5 ${colors.text}`}>{day.slice(0, 3)}</span>
+                            <span className="text-sm text-gray-600 leading-snug flex-1 min-w-0 break-words">{displayName}</span>
                             {isSelected && (
                               <div className="flex-shrink-0 flex items-center gap-1">
                                 <button
@@ -678,9 +679,9 @@ const CustomerPackageSelector: React.FC<CustomerPackageSelectorProps> = ({
                             )}
                           </div>
                           {warnings.length > 0 && (
-                            <div className="flex items-center gap-1 mt-1 ml-12">
-                              <AlertTriangle className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
-                              <span className="text-xs text-amber-600 font-medium truncate">
+                            <div className="flex items-start gap-1 mt-1 ml-12">
+                              <AlertTriangle className="w-3.5 h-3.5 text-amber-500 flex-shrink-0 mt-0.5" />
+                              <span className="text-xs text-amber-600 font-medium leading-snug break-words">
                                 Contiene: {warnings.join(', ')}
                               </span>
                             </div>
