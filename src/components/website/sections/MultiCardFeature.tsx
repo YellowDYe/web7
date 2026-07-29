@@ -25,7 +25,7 @@ const MacrosBlock: React.FC<{ macros: PlanCard['macros'] }> = ({ macros }) => {
       <p className="text-xs font-bold text-black text-center uppercase tracking-widest mb-3 opacity-60">
         {macros.title || 'Macros'}
       </p>
-      <div className="flex w-full h-12 rounded-lg overflow-hidden border border-black/10">
+      <div className="flex w-full h-12 rounded-full overflow-hidden border border-black/10">
         {columns.map((col, i) => {
           const pct = parsePercent(col.percentage);
           const width = (pct / total) * 100;
@@ -38,10 +38,10 @@ const MacrosBlock: React.FC<{ macros: PlanCard['macros'] }> = ({ macros }) => {
                 backgroundColor: col.percentageBgColor || 'rgba(255,255,255,0.4)'
               }}
             >
-              <span className="text-[10px] font-semibold text-black text-center leading-tight px-1 truncate w-full">
+              <span className="text-[10px] font-semibold text-white text-center leading-tight px-1 truncate w-full drop-shadow-sm">
                 {col.header}
               </span>
-              <span className="text-sm font-bold text-black leading-none">
+              <span className="text-sm font-bold text-white leading-none drop-shadow-sm">
                 {col.percentage}
               </span>
             </div>
