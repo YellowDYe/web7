@@ -15,13 +15,21 @@ interface MainMenuProps {
   basePath?: string;
 }
 
+const isValidCssColor = (value: string): boolean => {
+  return /^#[0-9A-Fa-f]{3,8}$/.test(value) ||
+    /^rgba?\(/.test(value) ||
+    /^hsla?\(/.test(value) ||
+    /^[a-zA-Z]+$/.test(value);
+};
+
 export const MainMenu: React.FC<MainMenuProps> = ({
   navigationItems = [],
   logo = "/logo-h-rojo.png",
   logoAlt = "Hola Dieta Logo",
-  backgroundColor = "bg-[#e9ff93]",
+  backgroundColor = "#e9ff93",
   basePath = ""
 }) => {
+  const safeBgColor = backgroundColor && isValidCssColor(backgroundColor) ? backgroundColor : "#e9ff93";
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [imageError, setImageError] = useState(false);
@@ -80,7 +88,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
 
   return (
     <div className="relative">
-      <header className={`flex flex-wrap w-full h-[90px] md:h-[104px] items-center gap-[0px_24px] py-4 md:py-8 px-4 md:px-8 ${backgroundColor} rounded-[0px_0px_45px_45px] border-b border-[#d9d9d9]`}>
+      <header className="flex flex-wrap w-full h-[90px] md:h-[104px] items-center gap-[0px_24px] py-4 md:py-8 px-4 md:px-8 rounded-[0px_0px_45px_45px] border-b border-[#d9d9d9]" style={{ backgroundColor: safeBgColor }}>
         {/* Logo */}
         <div className="inline-flex items-center gap-6 relative flex-[0_0_auto]">
           <Link to={basePath || "/"} onClick={closeMobileMenu}>
@@ -203,7 +211,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
       {/* Mobile Navigation Menu - Outside header */}
       {isMobileMenuOpen && (
         <div className="lg:hidden absolute top-full left-0 right-0 z-50">
-          <div className="bg-[#e9ff93] mx-4 mt-2 rounded-3xl shadow-lg border border-gray-100">
+          <div className="mx-4 mt-2 rounded-3xl shadow-lg border border-gray-100" style={{ backgroundColor: safeBgColor }}>
             <nav className="py-2">
               {enhancedNavigationItems.map((item, index) => (
                 <Link key={index} to={item.href} onClick={closeMobileMenu}>
