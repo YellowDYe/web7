@@ -240,7 +240,7 @@ const CustomerPackageSelector: React.FC<CustomerPackageSelectorProps> = ({
           return;
         }
 
-        const [recipesRes, ingredientsRes] = await Promise.all([
+        const [recipesRes, recipeIngredientsRes] = await Promise.all([
           supabase
             .from('recipes')
             .select('recipe_id, recipe_name')
@@ -248,10 +248,10 @@ const CustomerPackageSelector: React.FC<CustomerPackageSelectorProps> = ({
           customerRestrictions.length > 0
             ? supabase
                 .from('recipe_ingredients')
-                .select('recipe_id, ingredient_id, ingredients!inner(ingredient_id, ingredient_name)')
+                .select('recipe_id, ingredient_id')
                 .in('recipe_id', Array.from(recipeIds))
                 .in('ingredient_id', customerRestrictions)
-            : Promise.resolve({ data: null }),
+            : Promise.resolve({ data: [] }),
         ]);
 
         const nameMap = new Map<string, string>();
@@ -260,14 +260,23 @@ const CustomerPackageSelector: React.FC<CustomerPackageSelectorProps> = ({
         }
         setRecipeNames(nameMap);
 
+        const matchedRows = (recipeIngredientsRes.data as { recipe_id: string; ingredient_id: string }[] | null) ?? [];
         const restrictionMap = new Map<string, string[]>();
-        if (ingredientsRes.data) {
-          (ingredientsRes.data as any[]).forEach(row => {
+
+        if (matchedRows.length > 0) {
+          const matchedIngredientIds = [...new Set(matchedRows.map(r => r.ingredient_id))];
+          const { data: ingredientRows } = await supabase
+            .from('ingredients')
+            .select('ingredient_id, ingredient_name')
+            .in('ingredient_id', matchedIngredientIds);
+
+          const ingredientNameMap = new Map<string, string>();
+          (ingredientRows ?? []).forEach(i => ingredientNameMap.set(i.ingredient_id, i.ingredient_name));
+
+          matchedRows.forEach(row => {
+            const ingName = ingredientNameMap.get(row.ingredient_id) || row.ingredient_id;
             const existing = restrictionMap.get(row.recipe_id) || [];
-            const ingName = row.ingredients?.ingredient_name || '';
-            if (ingName && !existing.includes(ingName)) {
-              existing.push(ingName);
-            }
+            if (!existing.includes(ingName)) existing.push(ingName);
             restrictionMap.set(row.recipe_id, existing);
           });
         }
@@ -652,28 +661,28 @@ const CustomerPackageSelector: React.FC<CustomerPackageSelectorProps> = ({
                     {dishes.map(({ day, name, recipeId }) => {
                       const dayQty = isSelected ? getDayQuantity(day) : 0;
                       const warnings = recipeRestrictions.get(recipeId) || [];
-                      const displayName = name.length > 40 ? `${name.slice(0, 40)}...` : name;
+                      const displayName = name.length > 50 ? `${name.slice(0, 50)}...` : name;
                       return (
                         <div key={day} className="py-1">
                           <div className="flex items-start gap-2">
                             <span className={`text-xs font-semibold uppercase tracking-wide flex-shrink-0 w-10 pt-0.5 ${colors.text}`}>{day.slice(0, 3)}</span>
                             <span className="text-sm text-gray-600 leading-snug flex-1 min-w-0 break-words">{displayName}</span>
                             {isSelected && (
-                              <div className="flex-shrink-0 flex items-center gap-1">
+                              <div className="flex-shrink-0 flex items-center gap-0.5">
                                 <button
                                   onClick={() => adjustDayQuantity(category.key, day, -1)}
                                   disabled={disabled || dayQty <= 0}
-                                  className={`w-6 h-6 rounded-full border flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${colors.border}`}
+                                  className={`w-5 h-5 rounded-full border flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${colors.border}`}
                                 >
-                                  <Minus className="w-3 h-3" />
+                                  <Minus className="w-2.5 h-2.5" />
                                 </button>
-                                <span className={`w-5 text-center text-sm font-bold ${dayQty > 0 ? 'text-gray-900' : 'text-gray-300'}`}>{dayQty}</span>
+                                <span className={`w-4 text-center text-xs font-bold ${dayQty > 0 ? 'text-gray-900' : 'text-gray-300'}`}>{dayQty}</span>
                                 <button
                                   onClick={() => adjustDayQuantity(category.key, day, 1)}
                                   disabled={disabled}
-                                  className={`w-6 h-6 rounded-full border flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${colors.border}`}
+                                  className={`w-5 h-5 rounded-full border flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${colors.border}`}
                                 >
-                                  <Plus className="w-3 h-3" />
+                                  <Plus className="w-2.5 h-2.5" />
                                 </button>
                               </div>
                             )}
