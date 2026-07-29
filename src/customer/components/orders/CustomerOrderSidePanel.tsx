@@ -192,7 +192,7 @@ const CustomerOrderSidePanel: React.FC<CustomerOrderSidePanelProps> = ({
                       <div className="flex items-center space-x-2 flex-shrink-0">
                         {BILLABLE_MEAL_TYPES.includes(item.meal_type as any) ? (
                           <span className="text-xs font-semibold text-gray-800">
-                            {formatCurrency(item.meal_plan_price * item.quantity)}
+                            x{item.quantity}
                           </span>
                         ) : (
                           <span className="text-xs text-green-600 font-medium italic">incluida</span>
