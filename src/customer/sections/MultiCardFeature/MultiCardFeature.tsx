@@ -22,30 +22,44 @@ interface MultiCardFeatureProps {
   backgroundColor?: string;
 }
 
+const parsePercent = (value: string): number => {
+  const n = parseFloat(value);
+  return isNaN(n) ? 0 : Math.max(0, n);
+};
+
 const MacrosBlock: React.FC<{ macros: CardMacros }> = ({ macros }) => {
   if (macros.macrosEnabled === false) return null;
+
+  const columns = macros.columns || [];
+  const total = columns.reduce((sum, c) => sum + parsePercent(c.percentage), 0) || 1;
 
   return (
     <div className="mt-4 w-full">
       <p className="text-xs font-bold text-black text-center uppercase tracking-widest mb-3 opacity-60">
         {macros.title || 'Macros'}
       </p>
-      <div className="grid grid-cols-3 gap-2">
-        {macros.columns?.map((col, i) => (
-          <div key={i} className="flex flex-col items-center gap-1.5">
+      <div className="flex w-full h-12 rounded-lg overflow-hidden border border-black/10">
+        {columns.map((col, i) => {
+          const pct = parsePercent(col.percentage);
+          const width = (pct / total) * 100;
+          return (
             <div
-              className="w-16 h-16 rounded-full border-2 border-black border-opacity-20 flex items-center justify-center"
+              key={i}
+              className="flex flex-col items-center justify-center"
               style={{
+                width: `${width}%`,
                 backgroundColor: col.percentageBgColor || 'rgba(255,255,255,0.4)'
               }}
             >
-              <span className="text-base font-bold text-black leading-none">{col.percentage}</span>
+              <span className="text-[10px] font-semibold text-black text-center leading-tight px-1 truncate w-full">
+                {col.header}
+              </span>
+              <span className="text-sm font-bold text-black leading-none">
+                {col.percentage}
+              </span>
             </div>
-            <span className="text-xs font-medium text-black text-center opacity-70 leading-tight">
-              {col.header}
-            </span>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
