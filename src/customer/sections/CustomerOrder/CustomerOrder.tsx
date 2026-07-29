@@ -839,6 +839,11 @@ export const CustomerOrder: React.FC = () => {
               orderItems={orderItems}
               selectedFamilyMemberId={selectedFamilyMemberId}
               selectedFamilyMemberName={selectedFamilyMember?.family_member_name}
+              customerRestrictions={
+                selectedFamilyMember
+                  ? selectedFamilyMember.family_member_restrictions
+                  : customer?.customer_restrictions || []
+              }
               onConfirmPackage={handleConfirmPackage}
               onRemovePackageMealType={handleRemovePackageMealType}
               onOpenPersonalizedMenu={handleOpenPersonalizedMenu}
