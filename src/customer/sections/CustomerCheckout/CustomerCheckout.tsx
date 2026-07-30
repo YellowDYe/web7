@@ -571,7 +571,7 @@ export const CustomerCheckout: React.FC = () => {
                       <div className="flex items-center justify-between mb-4">
                         <h3 className="font-bold text-gray-900">Comidas Seleccionadas</h3>
                         <span className="font-bold text-gray-900">
-                          ${cart.orderItems.reduce((sum, item) => sum + (BILLABLE_MEAL_TYPES.includes(item.meal_type as any) ? item.meal_plan_price * item.quantity : 0), 0).toFixed(2)}
+                          {cart.orderItems.reduce((sum, item) => sum + (BILLABLE_MEAL_TYPES.includes(item.meal_type as any) ? item.quantity : 0), 0)}
                         </span>
                       </div>
                       <div className="space-y-4">
