@@ -116,12 +116,12 @@ const PlanCardComponent: React.FC<{ card: PlanCard }> = ({ card }) => {
                 href={card.buttonLink}
                 target={card.buttonLink.startsWith('http') ? '_blank' : undefined}
                 rel={card.buttonLink.startsWith('http') ? 'noopener noreferrer' : undefined}
-                className="inline-flex items-center justify-center h-auto bg-[#e9ff93] rounded-[100px] border border-solid border-black text-black text-xl lg:text-2xl [font-family:'Chivo',Helvetica] font-normal px-4 py-2.5 hover:bg-[#d4e87a] active:scale-95 transition-all duration-200 no-underline cursor-pointer select-none"
+                className="inline-flex items-center justify-center h-auto bg-[#e9ff93] rounded-[100px] border border-solid border-black text-black text-base lg:text-lg [font-family:'Chivo',Helvetica] font-normal px-6 py-3 hover:bg-[#d4e87a] active:scale-95 transition-all duration-200 no-underline cursor-pointer select-none"
               >
                 {card.buttonText}
               </a>
             ) : (
-              <Button className="h-auto bg-[#e9ff93] rounded-[100px] border border-solid border-black text-black text-xl lg:text-2xl [font-family:'Chivo',Helvetica] font-normal px-4 py-2.5 hover:bg-[#d4e87a] active:scale-95 transition-all duration-200">
+              <Button className="h-auto bg-[#e9ff93] rounded-[100px] border border-solid border-black text-black text-base lg:text-lg [font-family:'Chivo',Helvetica] font-normal px-6 py-3 hover:bg-[#d4e87a] active:scale-95 transition-all duration-200">
                 {card.buttonText}
               </Button>
             )}
