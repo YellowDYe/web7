@@ -568,7 +568,12 @@ export const CustomerCheckout: React.FC = () => {
                     </div>
 
                     <div className="bg-gray-50 rounded-xl p-6">
-                      <h3 className="font-bold text-gray-900 mb-4">Comidas Seleccionadas</h3>
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="font-bold text-gray-900">Comidas Seleccionadas</h3>
+                        <span className="font-bold text-gray-900">
+                          ${cart.orderItems.reduce((sum, item) => sum + (BILLABLE_MEAL_TYPES.includes(item.meal_type as any) ? item.meal_plan_price * item.quantity : 0), 0).toFixed(2)}
+                        </span>
+                      </div>
                       <div className="space-y-4">
                         {cart.selectedWeeks.map(week => {
                           const weekItems = cart.orderItems.filter(item => item.week_name === week.week.week_name);
@@ -582,8 +587,13 @@ export const CustomerCheckout: React.FC = () => {
                                   const itemPrice = isBillable ? item.meal_plan_price * item.quantity : 0;
                                   return (
                                     <div key={item.tempId} className="flex justify-between text-sm">
-                                      <span className="text-gray-700">
-                                        {item.day_of_week} - {item.meal_type} ({item.quantity}x)
+                                      <span className="flex flex-col text-gray-700">
+                                        <span>{item.day_of_week} - {item.meal_type} ({item.quantity}x)</span>
+                                        {item.meal_plan_name && (
+                                          <span className="inline-block w-fit mt-1 px-2 py-0.5 rounded-full bg-gray-200 text-gray-700 text-xs font-medium">
+                                            {item.meal_plan_name}
+                                          </span>
+                                        )}
                                       </span>
                                       <span className="font-medium text-gray-900">${itemPrice.toFixed(2)}</span>
                                     </div>

@@ -257,7 +257,7 @@ export const CustomerCart: React.FC = () => {
                 <Card className="p-6">
                   <div className="flex items-start justify-between mb-4">
                     <div>
-                      <h3 className="text-xl font-bold text-gray-900 mb-2">Plan Seleccionado</h3>
+                      <h3 className="text-xl font-bold text-gray-900 mb-2">Semanas</h3>
                       <p className="text-gray-600">
                         Duración: <span className="font-medium">{cart.planDuration} {cart.planDuration === 1 ? 'semana' : 'semanas'}</span>
                       </p>
@@ -293,7 +293,12 @@ export const CustomerCart: React.FC = () => {
 
                 {/* Detailed Meals List */}
                 <Card className="p-6">
-                  <h4 className="font-bold text-gray-900 mb-4">Comidas Seleccionadas</h4>
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="font-bold text-gray-900">Comidas Seleccionadas</h4>
+                    <span className="font-bold text-gray-900">
+                      ${cart.orderItems.reduce((sum, item) => sum + (BILLABLE_MEAL_TYPES.includes(item.meal_type as any) ? item.meal_plan_price * item.quantity : 0), 0).toFixed(2)}
+                    </span>
+                  </div>
                   <div className="space-y-4">
                     {cart.selectedWeeks.map(week => {
                       const weekItems = cart.orderItems.filter(item => item.week_name === week.week.week_name);
@@ -318,9 +323,14 @@ export const CustomerCart: React.FC = () => {
                               return (
                                 <div key={item.tempId} className="flex justify-between text-sm gap-2">
                                   <div className="flex-1 min-w-0">
-                                    <span className="text-gray-700">
+                                    <span className="block text-gray-700">
                                       {item.day_of_week} - {item.meal_type} ({item.quantity}x)
                                     </span>
+                                    {item.meal_plan_name && (
+                                      <span className="inline-block mt-1 px-2 py-0.5 rounded-full bg-gray-200 text-gray-700 text-xs font-medium">
+                                        {item.meal_plan_name}
+                                      </span>
+                                    )}
                                     {item.recipe_name && (
                                       <p className="text-xs text-gray-500 italic truncate">
                                         {item.recipe_name}
