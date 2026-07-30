@@ -570,7 +570,7 @@ export const CustomerCheckout: React.FC = () => {
                     <div className="bg-gray-50 rounded-xl p-6">
                       <div className="flex items-center justify-between mb-4">
                         <h3 className="font-bold text-gray-900">Comidas Seleccionadas</h3>
-                        <span className="font-bold text-gray-900">
+                        <span className="inline-flex items-center justify-center min-w-[2.5rem] px-3 py-1 rounded-full bg-red-600 text-white text-xl font-bold leading-none">
                           {cart.orderItems.reduce((sum, item) => sum + (BILLABLE_MEAL_TYPES.includes(item.meal_type as any) ? item.quantity : 0), 0)}
                         </span>
                       </div>
