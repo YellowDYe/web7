@@ -61,13 +61,9 @@ export const CustomerCheckout: React.FC = () => {
   >([]);
   const [loadingDiscounts, setLoadingDiscounts] = useState(false);
   const [brickLoading, setBrickLoading] = useState(false);
-  const [orderData, setOrderData] = useState<{
-    orderId: string;
-    orderNumber: string;
-    totalAmount: number;
-    confirmData: OrderConfirmationData;
-  } | null>(null);
   const [paymentResult, setPaymentResult] = useState<any>(null);
+  const [createdOrderNumber, setCreatedOrderNumber] = useState<string | null>(null);
+  const [paymentTotalAmount, setPaymentTotalAmount] = useState(0);
 
   const brickControllerRef = useRef<any>(null);
   const brickContainerRef = useRef<HTMLDivElement>(null);
@@ -79,6 +75,13 @@ export const CustomerCheckout: React.FC = () => {
   } = useCart();
   const { customer } = useCustomerAuth();
   const navigate = useNavigate();
+
+  // Snapshot cart data at the moment user clicks "Proceed to Payment"
+  // so it stays available inside the brick callback even after React state changes
+  const cartSnapshotRef = useRef<typeof cart>(null);
+  const proteinCartSnapshotRef = useRef<typeof proteinCart>([]);
+  const proteinSubtotalSnapshotRef = useRef(0);
+  const planDiscountsSnapshotRef = useRef<typeof planDiscounts>([]);
 
   const formatDate = (dateString: string) => {
     const [year, month, day] = dateString.split('-').map(Number);
@@ -100,7 +103,7 @@ export const CustomerCheckout: React.FC = () => {
     return parts.join(', ');
   };
 
-  const calculatePlanDiscounts = async () => {
+  const calculatePlanDiscountsAsync = async () => {
     if (!cart) return;
     try {
       setLoadingDiscounts(true);
@@ -147,16 +150,16 @@ export const CustomerCheckout: React.FC = () => {
   };
 
   useEffect(() => {
-    if (cart && cart.orderItems.length > 0) calculatePlanDiscounts();
+    if (cart && cart.orderItems.length > 0) calculatePlanDiscountsAsync();
   }, [cart?.orderItems]);
 
   useEffect(() => {
     if (!hasItems && !hasProteinItems && step === 'review') navigate('/cart');
   }, [hasItems, hasProteinItems, navigate, step]);
 
-  const saveProteinOrders = async (orderId: string) => {
+  const saveProteinOrders = async (orderId: string, proteinItems: typeof proteinCart) => {
     try {
-      const rows = proteinCart.map((item) => ({
+      const rows = proteinItems.map((item) => ({
         order_id: orderId,
         customer_id: customer?.customer_id,
         protein_plan_id: item.proteinPlan.id,
@@ -172,6 +175,91 @@ export const CustomerCheckout: React.FC = () => {
     }
   };
 
+  const createOrderAfterPayment = useCallback(async (mpPaymentId: string, mpStatus: string): Promise<{ orderId: string; orderNumber: string } | null> => {
+    if (!customer) return null;
+
+    const snappedCart = cartSnapshotRef.current;
+    const snappedProteinCart = proteinCartSnapshotRef.current;
+    const snappedProteinSubtotal = proteinSubtotalSnapshotRef.current;
+    const hasSnappedProtein = snappedProteinCart.length > 0;
+
+    try {
+      let orderId = '';
+      let orderNumber = '';
+
+      if (snappedCart && snappedCart.orderItems.length > 0) {
+        const result = await customerOrderSubmissionService.submitOrder({
+          customer,
+          planDuration: snappedCart.planDuration,
+          selectedWeeks: snappedCart.selectedWeeks,
+          orderItems: snappedCart.orderItems,
+          orderNotes: snappedCart.orderNotes,
+          selectedDeliveryOption: snappedCart.selectedDeliveryOption!,
+          appliedCoupon: snappedCart.appliedCoupon,
+          couponDiscountAmount: snappedCart.couponDiscountAmount,
+        });
+
+        if (!result.success || !result.orderId || !result.orderNumber) {
+          console.error('Order creation failed after payment:', result.message);
+          return null;
+        }
+
+        orderId = result.orderId;
+        orderNumber = result.orderNumber;
+
+        if (hasSnappedProtein) await saveProteinOrders(orderId, snappedProteinCart);
+
+        const totals = result.totals!;
+        if (hasSnappedProtein) {
+          totals.subtotal += snappedProteinSubtotal;
+          totals.finalTotal += snappedProteinSubtotal * 1.16;
+        }
+
+        const confirmData: OrderConfirmationData = {
+          orderId, orderNumber, customer,
+          selectedWeeks: snappedCart.selectedWeeks, totals,
+          deliveryOptionName: snappedCart.selectedDeliveryOption?.delivery_options_name ?? '',
+          couponCode: snappedCart.appliedCoupon?.code,
+        };
+
+        if (mpStatus === 'approved') {
+          await customerOrderSubmissionService.markOrderAsPaid(confirmData);
+        }
+      } else if (hasSnappedProtein) {
+        const taxAmount = snappedProteinSubtotal * 0.16;
+        const finalTotal = snappedProteinSubtotal + taxAmount;
+        const totalAmount = Math.round(finalTotal * 100) / 100;
+
+        const { data: orderRow } = await supabase
+          .from('orders')
+          .insert({
+            customer_id: customer.customer_id,
+            order_customer_name: `${customer.customer_name} ${customer.customer_lastname}`.trim(),
+            order_customer_email: customer.customer_email,
+            order_status: mpStatus === 'approved' ? 'completed' : 'pending',
+            order_notes: 'Pedido de proteinas',
+            order_total_price: totalAmount,
+            order_invoice_number: '',
+            stripe_payment_status: mpStatus === 'approved' ? 'succeeded' : 'pending',
+            stripe_paid_at: mpStatus === 'approved' ? new Date().toISOString() : null,
+          })
+          .select('id, order_id')
+          .single();
+
+        if (orderRow) {
+          orderId = orderRow.id;
+          orderNumber = orderRow.order_id;
+          await saveProteinOrders(orderId, snappedProteinCart);
+        }
+      }
+
+      return { orderId, orderNumber };
+    } catch (err) {
+      console.error('Error creating order after payment:', err);
+      return null;
+    }
+  }, [customer]);
+
   const initializeBrick = useCallback(async (amount: number, prefId: string, pubKey: string) => {
     if (brickInitializedRef.current) return;
     brickInitializedRef.current = true;
@@ -179,7 +267,6 @@ export const CustomerCheckout: React.FC = () => {
     try {
       setBrickLoading(true);
       await loadMercadoPagoSdk();
-
       await new Promise((r) => setTimeout(r, 300));
 
       const mp = new window.MercadoPago(pubKey, { locale: 'es-MX' });
@@ -205,9 +292,7 @@ export const CustomerCheckout: React.FC = () => {
         },
         customization: {
           visual: {
-            style: {
-              theme: 'default',
-            },
+            style: { theme: 'default' },
             hideFormTitle: true,
             hidePaymentButton: false,
           },
@@ -227,6 +312,7 @@ export const CustomerCheckout: React.FC = () => {
               const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
               const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
+              // Step 1: Process payment with MercadoPago (no order in DB yet)
               const response = await fetch(`${supabaseUrl}/functions/v1/mercado-pago-checkout`, {
                 method: 'POST',
                 headers: {
@@ -236,7 +322,6 @@ export const CustomerCheckout: React.FC = () => {
                 body: JSON.stringify({
                   action: 'process-payment',
                   payment_data: formData,
-                  order_id: orderData?.orderId,
                 }),
               });
 
@@ -248,11 +333,17 @@ export const CustomerCheckout: React.FC = () => {
 
               setPaymentResult(result);
 
-              if (result.status === 'approved') {
-                clearCart();
-                clearProteinCart();
-                setStep('success');
-              } else if (result.status === 'pending' || result.status === 'in_process') {
+              if (result.status === 'approved' || result.status === 'pending' || result.status === 'in_process') {
+                // Step 2: Payment succeeded/pending -> NOW create the order
+                const orderResult = await createOrderAfterPayment(result.payment_id, result.status);
+
+                if (orderResult) {
+                  setCreatedOrderNumber(orderResult.orderNumber);
+                } else {
+                  setCreatedOrderNumber(`MP-${result.payment_id}`);
+                  console.error('Payment succeeded but order creation failed. Payment ID:', result.payment_id);
+                }
+
                 clearCart();
                 clearProteinCart();
                 setStep('success');
@@ -282,7 +373,7 @@ export const CustomerCheckout: React.FC = () => {
       brickInitializedRef.current = false;
       setBrickLoading(false);
     }
-  }, [orderData, clearCart, clearProteinCart]);
+  }, [createOrderAfterPayment, clearCart, clearProteinCart]);
 
   useEffect(() => {
     return () => {
@@ -302,88 +393,40 @@ export const CustomerCheckout: React.FC = () => {
       setSubmitting(true);
       setSubmitError(null);
 
-      let orderId = '';
-      let orderNumber = '';
+      // Calculate the total amount WITHOUT creating any order in DB
       let totalAmount = 0;
+      let itemLabel = 'Pedido';
 
       if (cart && cart.orderItems.length > 0) {
-        const result = await customerOrderSubmissionService.submitOrder({
-          customer,
-          planDuration: cart.planDuration,
-          selectedWeeks: cart.selectedWeeks,
-          orderItems: cart.orderItems,
-          orderNotes: cart.orderNotes,
-          selectedDeliveryOption: cart.selectedDeliveryOption!,
-          appliedCoupon: cart.appliedCoupon,
-          couponDiscountAmount: cart.couponDiscountAmount,
-        });
+        const itemsTotal = cart.orderItems.reduce((total, item) => {
+          if (BILLABLE_MEAL_TYPES.includes(item.meal_type as any))
+            return total + item.meal_plan_price * item.quantity;
+          return total;
+        }, 0);
 
-        if (!result.success || !result.orderId || !result.orderNumber) {
-          setSubmitError(result.message);
-          return;
-        }
+        const totalPlanDiscount = planDiscounts.reduce((sum, d) => sum + d.amount, 0);
+        const deliveryPrice = cart.selectedDeliveryOption?.delivery_options_price || 0;
+        const couponDiscount = Math.min(cart.couponDiscountAmount || 0, itemsTotal - totalPlanDiscount + deliveryPrice);
 
-        orderId = result.orderId;
-        orderNumber = result.orderNumber;
-
-        const totals = result.totals ?? {
-          subtotal: 0, planDiscount: 0,
-          deliveryPrice: cart.selectedDeliveryOption?.delivery_options_price ?? 0,
-          couponDiscount: cart.couponDiscountAmount, taxAmount: 0, finalTotal: 0,
-        };
-
-        if (hasProteinItems) {
-          totals.subtotal += proteinSubtotal;
-          totals.finalTotal += proteinSubtotal * 1.16;
-        }
-
-        totalAmount = Math.round(totals.finalTotal * 100) / 100;
-
-        const confirmData: OrderConfirmationData = {
-          orderId, orderNumber, customer,
-          selectedWeeks: cart.selectedWeeks, totals,
-          deliveryOptionName: cart.selectedDeliveryOption?.delivery_options_name ?? '',
-          couponCode: cart.appliedCoupon?.code,
-        };
-
-        if (hasProteinItems) await saveProteinOrders(orderId);
-
-        setOrderData({ orderId, orderNumber, totalAmount, confirmData });
+        let subtotalBase = itemsTotal + proteinSubtotal;
+        const subtotalAfterDiscount = subtotalBase - totalPlanDiscount + deliveryPrice - couponDiscount;
+        const taxAmount = subtotalAfterDiscount * 0.16;
+        totalAmount = Math.round((subtotalAfterDiscount + taxAmount) * 100) / 100;
+        itemLabel = `Pedido de comida`;
       } else if (hasProteinItems) {
         const taxAmount = proteinSubtotal * 0.16;
-        const finalTotal = proteinSubtotal + taxAmount;
-        totalAmount = Math.round(finalTotal * 100) / 100;
-
-        const { data: orderRow } = await supabase
-          .from('orders')
-          .insert({
-            customer_id: customer.customer_id,
-            order_customer_name: `${customer.customer_name} ${customer.customer_lastname}`.trim(),
-            order_customer_email: customer.customer_email,
-            order_status: 'pending',
-            order_notes: 'Pedido de proteinas',
-            order_total_price: totalAmount,
-            order_invoice_number: '',
-            stripe_payment_status: 'pending',
-          })
-          .select('id, order_id')
-          .single();
-
-        if (orderRow) {
-          orderId = orderRow.id;
-          orderNumber = orderRow.order_id;
-          await saveProteinOrders(orderId);
-        }
-
-        const confirmData: OrderConfirmationData = {
-          orderId, orderNumber, customer, selectedWeeks: [],
-          totals: { subtotal: proteinSubtotal, planDiscount: 0, deliveryPrice: 0, couponDiscount: 0, taxAmount, finalTotal },
-          deliveryOptionName: 'Por coordinar', couponCode: undefined,
-        };
-
-        setOrderData({ orderId, orderNumber, totalAmount, confirmData });
+        totalAmount = Math.round((proteinSubtotal + taxAmount) * 100) / 100;
+        itemLabel = 'Pedido de proteinas';
       }
 
+      // Snapshot cart data so the brick callback can use it later
+      cartSnapshotRef.current = cart ? { ...cart } : null;
+      proteinCartSnapshotRef.current = [...proteinCart];
+      proteinSubtotalSnapshotRef.current = proteinSubtotal;
+      planDiscountsSnapshotRef.current = [...planDiscounts];
+      setPaymentTotalAmount(totalAmount);
+
+      // Create MercadoPago preference (no DB order)
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
       const currentOrigin = window.location.origin;
@@ -396,12 +439,11 @@ export const CustomerCheckout: React.FC = () => {
         },
         body: JSON.stringify({
           action: 'create-preference',
-          items: [{ title: `Pedido #${orderNumber}`, quantity: 1, unit_price: totalAmount }],
+          items: [{ title: itemLabel, quantity: 1, unit_price: totalAmount }],
           payer: {
             name: customer.customer_name, surname: customer.customer_lastname,
             email: customer.customer_email, phone: customer.customer_phone,
           },
-          external_reference: orderId,
           installments: 6,
           back_url: currentOrigin,
         }),
@@ -421,8 +463,8 @@ export const CustomerCheckout: React.FC = () => {
       }, 100);
 
     } catch (err: any) {
-      console.error('Error creating order:', err);
-      setSubmitError(err.message || 'Error al procesar el pedido. Por favor intenta de nuevo.');
+      console.error('Error preparing payment:', err);
+      setSubmitError(err.message || 'Error al preparar el pago. Por favor intenta de nuevo.');
     } finally {
       setSubmitting(false);
     }
@@ -442,6 +484,7 @@ export const CustomerCheckout: React.FC = () => {
     return calculatePriceBreakdown(mealItemsTotal + proteinSubtotal, totalPlanDiscount, deliveryPrice, couponDiscountAmount, 0, 16);
   }, [cart, hasProteinItems, planDiscounts, proteinSubtotal]);
 
+  // --- SUCCESS SCREEN ---
   if (step === 'success') {
     const isApproved = paymentResult?.status === 'approved';
     return (
@@ -458,8 +501,8 @@ export const CustomerCheckout: React.FC = () => {
               ? 'Tu pago ha sido procesado exitosamente.'
               : 'Tu pago esta siendo procesado. Te notificaremos cuando se confirme.'}
           </p>
-          {orderData && (
-            <p className="text-sm text-gray-500 mb-6">Pedido #{orderData.orderNumber}</p>
+          {createdOrderNumber && (
+            <p className="text-sm text-gray-500 mb-6">Pedido #{createdOrderNumber}</p>
           )}
           <button
             onClick={() => navigate('/')}
@@ -472,6 +515,7 @@ export const CustomerCheckout: React.FC = () => {
     );
   }
 
+  // --- PAYMENT STEP (BRICK) ---
   if (step === 'payment') {
     return (
       <div className="min-h-screen bg-gray-50 py-8 px-4">
@@ -483,6 +527,7 @@ export const CustomerCheckout: React.FC = () => {
                 brickControllerRef.current = null;
                 brickInitializedRef.current = false;
               }
+              setSubmitError(null);
               setStep('review');
             }}
             className="flex items-center text-gray-600 hover:text-gray-900 mb-6 transition-colors"
@@ -500,12 +545,10 @@ export const CustomerCheckout: React.FC = () => {
                     <p className="text-gray-400 text-sm">Procesado por Mercado Pago</p>
                   </div>
                 </div>
-                {orderData && (
-                  <div className="text-right">
-                    <p className="text-gray-400 text-sm">Total a pagar</p>
-                    <p className="text-2xl font-bold text-white">${orderData.totalAmount.toFixed(2)} MXN</p>
-                  </div>
-                )}
+                <div className="text-right">
+                  <p className="text-gray-400 text-sm">Total a pagar</p>
+                  <p className="text-2xl font-bold text-white">${paymentTotalAmount.toFixed(2)} MXN</p>
+                </div>
               </div>
             </div>
 
@@ -535,6 +578,7 @@ export const CustomerCheckout: React.FC = () => {
     );
   }
 
+  // --- REVIEW STEP ---
   if (!hasItems && !hasProteinItems) return null;
 
   return (

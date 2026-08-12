@@ -194,17 +194,6 @@ async function handleProcessPayment(
 
   const payment = await response.json();
 
-  if (order_id && payment.status === "approved") {
-    await supabase
-      .from("orders")
-      .update({
-        stripe_payment_status: "succeeded",
-        stripe_paid_at: new Date().toISOString(),
-        order_status: "completed",
-      })
-      .eq("id", order_id);
-  }
-
   return jsonResponse({
     success: true,
     payment_id: payment.id,
