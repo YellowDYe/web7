@@ -72,7 +72,7 @@ Deno.serve(async (req: Request) => {
 });
 
 async function handleCreatePreference(accessToken: string, body: any, publicKey: string | null) {
-  const { items, payer, external_reference, installments, back_urls } = body;
+  const { items, payer, external_reference, installments } = body;
 
   if (!items || !Array.isArray(items) || items.length === 0) {
     return jsonResponse({ error: "Se requieren items para la preferencia" }, 400);
@@ -102,14 +102,6 @@ async function handleCreatePreference(accessToken: string, body: any, publicKey:
     statement_descriptor: "Pedido Comida",
   };
 
-  if (back_urls) {
-    preferenceBody.back_urls = {
-      success: back_urls.success,
-      failure: back_urls.failure,
-      pending: back_urls.pending,
-    };
-    preferenceBody.auto_return = "approved";
-  }
 
   const response = await fetch(`${MP_API_BASE}/checkout/preferences`, {
     method: "POST",

@@ -352,11 +352,6 @@ export const CustomerCheckout: React.FC = () => {
             },
             external_reference: orderId,
             installments: 6,
-            back_urls: {
-              success: `${window.location.origin}/checkout?payment=success&order=${orderNumber}`,
-              failure: `${window.location.origin}/checkout?payment=failure&order=${orderNumber}`,
-              pending: `${window.location.origin}/checkout?payment=pending&order=${orderNumber}`,
-            },
           }),
         }
       );
@@ -444,7 +439,6 @@ export const CustomerCheckout: React.FC = () => {
       const paymentBrick = await bricksBuilder.create('payment', 'mp-payment-container', {
         initialization: {
           amount: cartTotals.finalTotal,
-          preferenceId: preferenceId,
         },
         customization: {
           paymentMethods: {
