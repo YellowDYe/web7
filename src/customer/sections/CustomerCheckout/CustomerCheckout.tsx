@@ -438,7 +438,8 @@ export const CustomerCheckout: React.FC = () => {
       const bricksBuilder = mp.bricks();
       const paymentBrick = await bricksBuilder.create('payment', 'mp-payment-container', {
         initialization: {
-          amount: cartTotals.finalTotal,
+          amount: Math.round(cartTotals.finalTotal * 100) / 100,
+          preferenceId: preferenceId!,
         },
         customization: {
           paymentMethods: {
@@ -774,7 +775,7 @@ export const CustomerCheckout: React.FC = () => {
               </div>
             )}
 
-            <div id="mp-payment-container" ref={mpContainerRef} className="min-h-[60px]" />
+            <div id="mp-payment-container" ref={mpContainerRef} className="min-h-[200px]" />
 
             {!mpSdkLoaded && (
               <div className="flex items-center justify-center py-8">
