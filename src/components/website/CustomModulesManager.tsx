@@ -316,6 +316,17 @@ export const CustomModulesManager: React.FC = () => {
     }
   };
 
+  const toggleModuleActive = async (moduleId: string, currentState: boolean) => {
+    try {
+      await websiteService.updateModule(moduleId, {
+        is_active: !currentState
+      });
+      setModules(modules.map(m => m.id === moduleId ? { ...m, is_active: !currentState } : m));
+    } catch (error) {
+      console.error('Error toggling module active state:', error);
+    }
+  };
+
   const handleContentChange = (key: string, value: any) => {
     setEditingContent(prev => ({
       ...prev,
@@ -515,46 +526,71 @@ export const CustomModulesManager: React.FC = () => {
             </Card>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {modules.map((module) => (
-                <Card key={module.id} className="hover:shadow-lg transition-shadow">
-                  <CardContent className="p-6">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-gray-900 text-lg mb-1">
-                          {module.name}
-                        </h3>
-                        <p className="text-sm text-gray-600">
-                          {moduleTypes.find(t => t.value === module.type)?.label || module.type}
-                        </p>
+              {modules.map((module) => {
+                const isActive = module.is_active !== false;
+                return (
+                  <Card key={module.id} className={`hover:shadow-lg transition-all ${!isActive ? 'opacity-60' : ''}`}>
+                    <CardContent className="p-6">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3 className="font-semibold text-gray-900 text-lg mb-1 truncate">
+                              {module.name}
+                            </h3>
+                            {!isActive && (
+                              <span className="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full font-medium">
+                                Desactivado
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-sm text-gray-600">
+                            {moduleTypes.find(t => t.value === module.type)?.label || module.type}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => toggleModuleActive(module.id, isActive)}
+                          title={isActive ? 'Desactivar módulo' : 'Activar módulo'}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                            isActive
+                              ? 'bg-green-500 focus:ring-green-400'
+                              : 'bg-gray-300 focus:ring-gray-400'
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                              isActive ? 'translate-x-6' : 'translate-x-1'
+                            }`}
+                          />
+                        </button>
                       </div>
-                    </div>
 
-                    <div className="flex items-center gap-2 pt-4 border-t">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => startEdit(module)}
-                        className="flex-1"
-                      >
-                        <Edit2 className="w-4 h-4 mr-2" />
-                        Edit
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setDeleteConfirm({
-                          show: true,
-                          moduleId: module.id,
-                          moduleName: module.name || 'this module'
-                        })}
-                        className="text-red-600 hover:text-red-700 hover:border-red-300"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                      <div className="flex items-center gap-2 pt-4 border-t">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => startEdit(module)}
+                          className="flex-1"
+                        >
+                          <Edit2 className="w-4 h-4 mr-2" />
+                          Editar
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setDeleteConfirm({
+                            show: true,
+                            moduleId: module.id,
+                            moduleName: module.name || 'this module'
+                          })}
+                          className="text-red-600 hover:text-red-700 hover:border-red-300"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           )}
         </>

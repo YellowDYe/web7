@@ -651,6 +651,22 @@ export const ModuleEditor: React.FC = () => {
     }
   };
 
+  const toggleModuleActive = async (moduleId: string, currentState: boolean) => {
+    try {
+      const updatedModule = await websiteService.updateModule(moduleId, {
+        is_active: !currentState
+      });
+      setModules(modules.map(m => m.id === moduleId ? updatedModule : m));
+      if (selectedModule?.id === moduleId) {
+        setSelectedModule(updatedModule);
+      }
+    } catch (error) {
+      console.error('Error toggling module active state:', error);
+      setSaveStatus({ type: 'error', message: 'Error al cambiar el estado del módulo.' });
+      setTimeout(() => setSaveStatus({ type: null, message: '' }), 3000);
+    }
+  };
+
   const renderContentEditor = () => {
     if (!selectedModule) return null;
 
@@ -771,20 +787,21 @@ export const ModuleEditor: React.FC = () => {
               <div className="space-y-2">
                 {modules.map((module) => {
                   const isSystemModule = systemModuleTypes.includes(module.type);
+                  const isActive = module.is_active !== false;
                   return (
                     <div
                       key={module.id}
-                      className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+                      className={`p-3 border rounded-lg cursor-pointer transition-all ${
                         selectedModule?.id === module.id
                           ? 'border-blue-500 bg-blue-50'
                           : 'border-gray-200 hover:border-gray-300'
-                      } ${module.is_custom ? 'border-l-4 border-l-purple-500' : ''} ${isSystemModule ? 'border-l-4 border-l-orange-500' : ''}`}
+                      } ${module.is_custom ? 'border-l-4 border-l-purple-500' : ''} ${isSystemModule ? 'border-l-4 border-l-orange-500' : ''} ${!isActive ? 'opacity-50' : ''}`}
                       onClick={() => selectModule(module)}
                     >
                       <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <div className="font-medium text-gray-900">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <div className="font-medium text-gray-900 truncate">
                               {module.is_custom ? module.name : module.type}
                             </div>
                             {module.is_custom && (
@@ -797,39 +814,60 @@ export const ModuleEditor: React.FC = () => {
                                 System
                               </span>
                             )}
+                            {!isActive && (
+                              <span className="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full font-medium">
+                                Desactivado
+                              </span>
+                            )}
                           </div>
-                          <div className="text-sm text-gray-500">
+                          <div className="text-sm text-gray-500 truncate">
                             {module.is_custom ? module.type : (module.content.title || module.content.name || 'No title')}
                           </div>
                         </div>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (isSystemModule) {
-                              setSaveStatus({ type: 'error', message: 'No se puede eliminar un módulo del sistema requerido' });
-                              setTimeout(() => setSaveStatus({ type: null, message: '' }), 3000);
-                              return;
+                        <div className="flex items-center gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            onClick={() => toggleModuleActive(module.id, isActive)}
+                            title={isActive ? 'Desactivar módulo' : 'Activar módulo'}
+                            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 ${
+                              isActive
+                                ? 'bg-green-500 focus:ring-green-400'
+                                : 'bg-gray-300 focus:ring-gray-400'
+                            }`}
+                          >
+                            <span
+                              className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
+                                isActive ? 'translate-x-4' : 'translate-x-1'
+                              }`}
+                            />
+                          </button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              if (isSystemModule) {
+                                setSaveStatus({ type: 'error', message: 'No se puede eliminar un módulo del sistema requerido' });
+                                setTimeout(() => setSaveStatus({ type: null, message: '' }), 3000);
+                                return;
+                              }
+                              setDeleteConfirm({
+                                show: true,
+                                moduleId: module.id,
+                                moduleName: module.is_custom ? module.name || module.type : module.type
+                              });
+                            }}
+                            title={
+                              isSystemModule
+                                ? 'Cannot delete system module'
+                                : module.is_custom
+                                  ? 'Remove from page (will not delete the custom module)'
+                                  : 'Delete module'
                             }
-                            setDeleteConfirm({
-                              show: true,
-                              moduleId: module.id,
-                              moduleName: module.is_custom ? module.name || module.type : module.type
-                            });
-                          }}
-                          title={
-                            isSystemModule
-                              ? 'Cannot delete system module'
-                              : module.is_custom
-                                ? 'Remove from page (will not delete the custom module)'
-                                : 'Delete module'
-                          }
-                          disabled={isSystemModule}
-                          className={isSystemModule ? 'opacity-50 cursor-not-allowed' : ''}
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
+                            disabled={isSystemModule}
+                            className={isSystemModule ? 'opacity-50 cursor-not-allowed' : ''}
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   );

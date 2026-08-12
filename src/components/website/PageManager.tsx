@@ -150,6 +150,39 @@ export const PageManager: React.FC = () => {
     }
   };
 
+  const toggleModuleActive = async (moduleId: string, currentState: boolean) => {
+    try {
+      const updatedModule = await websiteService.updateModule(moduleId, {
+        is_active: !currentState
+      });
+      setModules(modules.map(m => m.id === moduleId ? updatedModule : m));
+    } catch (error) {
+      console.error('Error toggling module active state:', error);
+      setActionStatus({ type: 'error', message: 'Error al cambiar el estado del módulo.' });
+      setTimeout(() => setActionStatus({ type: null, message: '' }), 3000);
+    }
+  };
+
+  const removeModuleFromPage = async (moduleId: string) => {
+    if (!selectedPage) return;
+    try {
+      const newModuleOrder = (selectedPage.module_order || []).filter((id: string) => id !== moduleId);
+      await websiteService.updatePage(selectedPage.id, { module_order: newModuleOrder });
+      await websiteService.deleteModule(moduleId);
+      setModules(modules.filter(m => m.id !== moduleId));
+      setPages(pages.map(p =>
+        p.id === selectedPage.id ? { ...p, module_order: newModuleOrder } : p
+      ));
+      setSelectedPage({ ...selectedPage, module_order: newModuleOrder });
+      setActionStatus({ type: 'success', message: '¡Módulo eliminado!' });
+      setTimeout(() => setActionStatus({ type: null, message: '' }), 3000);
+    } catch (error) {
+      console.error('Error removing module:', error);
+      setActionStatus({ type: 'error', message: 'Error al eliminar el módulo.' });
+      setTimeout(() => setActionStatus({ type: null, message: '' }), 3000);
+    }
+  };
+
   const moveModule = async (moduleIndex: number, direction: 'up' | 'down') => {
     if (!selectedPage) return;
 
@@ -389,39 +422,75 @@ export const PageManager: React.FC = () => {
           <CardContent>
             {selectedPage ? (
               <div className="space-y-2">
-                {modules.map((module, index) => (
-                  <div
-                    key={module.id}
-                    className="p-3 border border-gray-200 rounded-lg bg-gray-50"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="font-medium text-gray-900">{module.type}</div>
-                        <div className="text-sm text-gray-500">
-                          {module.content.title || module.content.name || 'Sin título'}
+                {modules.map((module, index) => {
+                  const isActive = module.is_active !== false;
+                  return (
+                    <div
+                      key={module.id}
+                      className={`p-3 border border-gray-200 rounded-lg transition-all ${
+                        isActive ? 'bg-gray-50' : 'bg-gray-100 opacity-60'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <div className="font-medium text-gray-900 truncate">{module.type}</div>
+                            {!isActive && (
+                              <span className="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full font-medium">
+                                Desactivado
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-sm text-gray-500 truncate">
+                            {module.content.title || module.content.name || 'Sin título'}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <button
+                            onClick={() => toggleModuleActive(module.id, isActive)}
+                            title={isActive ? 'Desactivar módulo' : 'Activar módulo'}
+                            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 ${
+                              isActive
+                                ? 'bg-green-500 focus:ring-green-400'
+                                : 'bg-gray-300 focus:ring-gray-400'
+                            }`}
+                          >
+                            <span
+                              className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
+                                isActive ? 'translate-x-4' : 'translate-x-1'
+                              }`}
+                            />
+                          </button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => moveModule(index, 'up')}
+                            disabled={index === 0}
+                          >
+                            <ChevronUp className="w-3 h-3" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => moveModule(index, 'down')}
+                            disabled={index === modules.length - 1}
+                          >
+                            <ChevronDown className="w-3 h-3" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => removeModuleFromPage(module.id)}
+                            title="Eliminar módulo"
+                            className="text-red-500 hover:text-red-700"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
                         </div>
                       </div>
-                      <div className="flex space-x-1">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => moveModule(index, 'up')}
-                          disabled={index === 0}
-                        >
-                          <ChevronUp className="w-3 h-3" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => moveModule(index, 'down')}
-                          disabled={index === modules.length - 1}
-                        >
-                          <ChevronDown className="w-3 h-3" />
-                        </Button>
-                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
                 {modules.length === 0 && (
                   <div className="text-center text-gray-500 py-8">
                     No hay módulos en esta página

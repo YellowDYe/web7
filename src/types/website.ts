@@ -17,6 +17,7 @@ export interface Module {
   content: Record<string, any>;
   name?: string | null;
   is_custom?: boolean;
+  is_active?: boolean;
   created_at: string;
   updated_at: string;
 }

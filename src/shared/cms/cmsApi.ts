@@ -16,6 +16,7 @@ export interface Module {
   page_id: string;
   type: string;
   content: Record<string, any>;
+  is_active: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -165,7 +166,7 @@ export const cmsApi = {
     return data || [];
   },
 
-  async getModulesByIds(moduleIds: string[]): Promise<Module[]> {
+  async getModulesByIds(moduleIds: string[], adminMode = false): Promise<Module[]> {
     console.log('[cmsApi] getModulesByIds called with IDs:', moduleIds);
 
     if (moduleIds.length === 0) {
@@ -179,14 +180,18 @@ export const cmsApi = {
         setTimeout(() => reject(new Error('Query timeout after 10 seconds')), 10000);
       });
 
-      const queryPromise = supabase
+      let query = supabase
         .from('cms_modules')
         .select('*')
         .in('id', moduleIds);
 
+      if (!adminMode) {
+        query = query.eq('is_active', true);
+      }
+
       console.log('[cmsApi] Module query initiated, waiting for response...');
 
-      const { data, error } = await Promise.race([queryPromise, timeoutPromise]);
+      const { data, error } = await Promise.race([query, timeoutPromise]);
 
       console.log('[cmsApi] Module query completed');
 

@@ -64,7 +64,7 @@ export const cmsApiDirect = {
     }
   },
 
-  async getModulesByIds(moduleIds: string[]): Promise<Module[]> {
+  async getModulesByIds(moduleIds: string[], adminMode = false): Promise<Module[]> {
     console.log('[cmsApiDirect] Fetching modules with IDs:', moduleIds);
 
     if (moduleIds.length === 0) {
@@ -72,9 +72,13 @@ export const cmsApiDirect = {
     }
 
     try {
-      // PostgREST format for IN query: id=in.(uuid1,uuid2,uuid3)
       const idsParam = `(${moduleIds.map(id => `"${id}"`).join(',')})`;
-      const url = `${supabaseUrl}/rest/v1/cms_modules?id=in.${idsParam}&select=*`;
+      let url = `${supabaseUrl}/rest/v1/cms_modules?id=in.${idsParam}&select=*`;
+
+      if (!adminMode) {
+        url += '&is_active=eq.true';
+      }
+
       console.log('[cmsApiDirect] URL:', url);
 
       const response = await fetchWithTimeout(url, {
