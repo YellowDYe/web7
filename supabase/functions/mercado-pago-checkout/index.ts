@@ -47,9 +47,11 @@ Deno.serve(async (req: Request) => {
 
     const accessToken = config.access_token;
 
+    const publicKey = config.public_key || null;
+
     switch (action) {
       case "create-preference":
-        return await handleCreatePreference(accessToken, body);
+        return await handleCreatePreference(accessToken, body, publicKey);
 
       case "get-payment-status":
         return await handleGetPaymentStatus(supabase, accessToken, body);
@@ -69,7 +71,7 @@ Deno.serve(async (req: Request) => {
   }
 });
 
-async function handleCreatePreference(accessToken: string, body: any) {
+async function handleCreatePreference(accessToken: string, body: any, publicKey: string | null) {
   const { items, payer, external_reference, installments, back_urls } = body;
 
   if (!items || !Array.isArray(items) || items.length === 0) {
@@ -137,6 +139,7 @@ async function handleCreatePreference(accessToken: string, body: any) {
     preference_id: preference.id,
     init_point: preference.init_point,
     sandbox_init_point: preference.sandbox_init_point,
+    public_key: publicKey,
   });
 }
 

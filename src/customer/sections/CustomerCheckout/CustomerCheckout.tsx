@@ -50,7 +50,6 @@ export const CustomerCheckout: React.FC = () => {
   const [selectedPaymentMethod, setSelectedPaymentMethod] =
     useState<PaymentMethod>('card');
   const [mpPublicKey, setMpPublicKey] = useState<string | null>(null);
-  const [loadingMpConfig, setLoadingMpConfig] = useState(true);
   const [preferenceId, setPreferenceId] = useState<string | null>(null);
   const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
   const [mpSdkLoaded, setMpSdkLoaded] = useState(false);
@@ -180,26 +179,6 @@ export const CustomerCheckout: React.FC = () => {
       navigate('/cart');
     }
   }, [hasItems, hasProteinItems, navigate, step]);
-
-  useEffect(() => {
-    const loadMpConfig = async () => {
-      try {
-        const { data } = await supabase
-          .from('mercado_pago_config')
-          .select('public_key, is_active')
-          .maybeSingle();
-
-        if (data?.public_key && data?.is_active) {
-          setMpPublicKey(data.public_key);
-        }
-      } catch (err) {
-        console.error('Error loading MP config:', err);
-      } finally {
-        setLoadingMpConfig(false);
-      }
-    };
-    loadMpConfig();
-  }, []);
 
   useEffect(() => {
     if (!mpPublicKey) return;
@@ -398,6 +377,9 @@ export const CustomerCheckout: React.FC = () => {
       }
 
       setPreferenceId(prefData.preference_id);
+      if (prefData.public_key) {
+        setMpPublicKey(prefData.public_key);
+      }
       setStep('payment');
     } catch (err: any) {
       console.error('Error creating order:', err);
@@ -1298,7 +1280,7 @@ export const CustomerCheckout: React.FC = () => {
                 <div className="space-y-3">
                   <button
                     onClick={createOrderAndPreference}
-                    disabled={submitting || loadingDiscounts || loadingMpConfig}
+                    disabled={submitting || loadingDiscounts}
                     className="w-full bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-xl font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                   >
                     {submitting ? (
