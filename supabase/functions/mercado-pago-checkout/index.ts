@@ -70,7 +70,7 @@ Deno.serve(async (req: Request) => {
 });
 
 async function handleCreatePreference(accessToken: string, body: any) {
-  const { items, payer, external_reference, installments } = body;
+  const { items, payer, external_reference, installments, back_urls } = body;
 
   if (!items || !Array.isArray(items) || items.length === 0) {
     return jsonResponse({ error: "Se requieren items para la preferencia" }, 400);
@@ -80,7 +80,7 @@ async function handleCreatePreference(accessToken: string, body: any) {
     items: items.map((item: any) => ({
       title: item.title || "Pedido",
       quantity: item.quantity || 1,
-      unit_price: item.unit_price,
+      unit_price: Number(item.unit_price),
       currency_id: "MXN",
     })),
     payer: payer
@@ -98,8 +98,16 @@ async function handleCreatePreference(accessToken: string, body: any) {
     },
     external_reference: external_reference || undefined,
     statement_descriptor: "Pedido Comida",
-    auto_return: "approved",
   };
+
+  if (back_urls) {
+    preferenceBody.back_urls = {
+      success: back_urls.success,
+      failure: back_urls.failure,
+      pending: back_urls.pending,
+    };
+    preferenceBody.auto_return = "approved";
+  }
 
   const response = await fetch(`${MP_API_BASE}/checkout/preferences`, {
     method: "POST",

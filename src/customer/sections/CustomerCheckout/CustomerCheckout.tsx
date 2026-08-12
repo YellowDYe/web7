@@ -368,7 +368,7 @@ export const CustomerCheckout: React.FC = () => {
               {
                 title: `Pedido #${orderNumber}`,
                 quantity: 1,
-                unit_price: totalAmount,
+                unit_price: Math.round(totalAmount * 100) / 100,
               },
             ],
             payer: {
@@ -379,6 +379,11 @@ export const CustomerCheckout: React.FC = () => {
             },
             external_reference: orderId,
             installments: 6,
+            back_urls: {
+              success: `${window.location.origin}/checkout?payment=success&order=${orderNumber}`,
+              failure: `${window.location.origin}/checkout?payment=failure&order=${orderNumber}`,
+              pending: `${window.location.origin}/checkout?payment=pending&order=${orderNumber}`,
+            },
           }),
         }
       );
