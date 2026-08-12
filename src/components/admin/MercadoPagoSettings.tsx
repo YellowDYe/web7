@@ -5,6 +5,7 @@ import { mercadoPagoConfigService, MercadoPagoConfigForm } from '../../services/
 const MercadoPagoSettings: React.FC = () => {
   const [config, setConfig] = useState<MercadoPagoConfigForm>({
     access_token: '',
+    public_key: '',
     is_active: false,
   });
   const [isEditing, setIsEditing] = useState(false);
@@ -27,7 +28,7 @@ const MercadoPagoSettings: React.FC = () => {
       setConfigError(null);
       const fullConfig = await mercadoPagoConfigService.getConfig();
       if (fullConfig) {
-        setConfig({ access_token: fullConfig.access_token, is_active: fullConfig.is_active });
+        setConfig({ access_token: fullConfig.access_token, public_key: fullConfig.public_key || '', is_active: fullConfig.is_active });
         setLastSync(fullConfig.last_sync_at);
       }
     } catch (err: any) {
@@ -44,6 +45,11 @@ const MercadoPagoSettings: React.FC = () => {
 
       if (config.is_active && !config.access_token) {
         setConfigError('Ingresa el Access Token de Mercado Pago para activar la integracion');
+        return;
+      }
+
+      if (config.is_active && !config.public_key) {
+        setConfigError('Ingresa la Public Key de Mercado Pago para activar la integracion');
         return;
       }
 
@@ -111,8 +117,8 @@ const MercadoPagoSettings: React.FC = () => {
         <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
           <li>Ingresa a <span className="font-medium">Mercado Pago Developers</span> (mercadopago.com.mx/developers)</li>
           <li>Ve a <span className="font-medium">Tus integraciones</span> y selecciona tu aplicacion</li>
-          <li>En la seccion <span className="font-medium">Credenciales de produccion</span>, copia el Access Token</li>
-          <li>Pega el token aqui y activa la integracion</li>
+          <li>En la seccion <span className="font-medium">Credenciales de prueba</span>, copia el Access Token y la Public Key</li>
+          <li>Pega ambas credenciales aqui y activa la integracion</li>
         </ol>
       </div>
 
@@ -148,6 +154,24 @@ const MercadoPagoSettings: React.FC = () => {
               {showToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
           </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">
+            <Key className="w-3.5 h-3.5 inline-block mr-1" />
+            Public Key
+          </label>
+          <div className="relative">
+            <input
+              type={showToken ? 'text' : 'password'}
+              value={config.public_key}
+              onChange={(e) => setConfig({ ...config, public_key: e.target.value })}
+              disabled={!isEditing}
+              placeholder="APP_USR-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+              className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg text-sm disabled:bg-gray-50 disabled:text-gray-500 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-none transition-all"
+            />
+          </div>
+          <p className="mt-1 text-xs text-gray-500">La Public Key se usa para el formulario de pago embebido en el checkout.</p>
         </div>
 
         <div className="flex items-center gap-3">

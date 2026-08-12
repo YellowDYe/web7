@@ -3,6 +3,7 @@ import { supabase } from '../config/supabase';
 export interface MercadoPagoConfig {
   id: string;
   access_token: string;
+  public_key: string | null;
   user_id: string | null;
   is_active: boolean;
   last_sync_at: string | null;
@@ -12,6 +13,7 @@ export interface MercadoPagoConfig {
 
 export interface MercadoPagoConfigForm {
   access_token: string;
+  public_key: string;
   is_active: boolean;
 }
 
@@ -41,9 +43,9 @@ class MercadoPagoConfigService {
   async getConfigForm(): Promise<MercadoPagoConfigForm> {
     const config = await this.getConfig();
     if (!config) {
-      return { access_token: '', is_active: false };
+      return { access_token: '', public_key: '', is_active: false };
     }
-    return { access_token: config.access_token, is_active: config.is_active };
+    return { access_token: config.access_token, public_key: config.public_key || '', is_active: config.is_active };
   }
 
   async updateConfig(form: MercadoPagoConfigForm): Promise<void> {
@@ -54,6 +56,7 @@ class MercadoPagoConfigService {
         .from('mercado_pago_config')
         .update({
           access_token: form.access_token,
+          public_key: form.public_key,
           is_active: form.is_active,
           updated_at: new Date().toISOString(),
         })
@@ -65,6 +68,7 @@ class MercadoPagoConfigService {
         .from('mercado_pago_config')
         .insert({
           access_token: form.access_token,
+          public_key: form.public_key,
           is_active: form.is_active,
         });
 
