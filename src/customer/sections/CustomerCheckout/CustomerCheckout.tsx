@@ -470,6 +470,41 @@ export const CustomerCheckout: React.FC = () => {
     }
   };
 
+  const handleSimulatePayment = async (simulatedStatus: 'approved' | 'pending' | 'rejected') => {
+    try {
+      setSubmitting(true);
+      setSubmitError(null);
+
+      const fakePaymentId = `TEST-${Date.now()}`;
+
+      if (simulatedStatus === 'rejected') {
+        setSubmitError('Pago rechazado (simulado). Intenta con otro metodo de pago.');
+        setSubmitting(false);
+        return;
+      }
+
+      setPaymentResult({ status: simulatedStatus, payment_id: fakePaymentId });
+
+      const orderResult = await createOrderAfterPayment(fakePaymentId, simulatedStatus);
+
+      if (orderResult) {
+        setCreatedOrderNumber(orderResult.orderNumber);
+      } else {
+        setCreatedOrderNumber(fakePaymentId);
+        console.error('Simulated payment succeeded but order creation failed.');
+      }
+
+      clearCart();
+      clearProteinCart();
+      setStep('success');
+    } catch (err: any) {
+      console.error('Simulate payment error:', err);
+      setSubmitError(err.message || 'Error en la simulacion de pago');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const cartTotals = useMemo(() => {
     if (!cart && !hasProteinItems) return null;
     const mealItemsTotal = cart
@@ -571,6 +606,43 @@ export const CustomerCheckout: React.FC = () => {
                 ref={brickContainerRef}
                 style={{ minHeight: brickLoading ? 0 : 200 }}
               />
+
+              {/* TEST ONLY - Simulate Payment Block */}
+              <div className="mt-6 border-2 border-dashed border-yellow-400 bg-yellow-50 rounded-xl p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <Zap className="w-5 h-5 text-yellow-600" />
+                  <span className="text-sm font-bold text-yellow-800 uppercase tracking-wide">Modo de Prueba - Simular Pago</span>
+                </div>
+                <p className="text-xs text-yellow-700 mb-4">
+                  Estos botones simulan resultados de pago sin procesar una transaccion real. Solo para pruebas.
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    onClick={() => handleSimulatePayment('approved')}
+                    disabled={submitting}
+                    className="flex-1 min-w-[140px] bg-green-600 hover:bg-green-700 text-white px-4 py-2.5 rounded-lg font-semibold text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                    Aprobado
+                  </button>
+                  <button
+                    onClick={() => handleSimulatePayment('pending')}
+                    disabled={submitting}
+                    className="flex-1 min-w-[140px] bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2.5 rounded-lg font-semibold text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Calendar className="w-4 h-4" />}
+                    Pendiente (OXXO)
+                  </button>
+                  <button
+                    onClick={() => handleSimulatePayment('rejected')}
+                    disabled={submitting}
+                    className="flex-1 min-w-[140px] bg-red-500 hover:bg-red-600 text-white px-4 py-2.5 rounded-lg font-semibold text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
+                    Rechazado
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
