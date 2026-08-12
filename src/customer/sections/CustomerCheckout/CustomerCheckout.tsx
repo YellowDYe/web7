@@ -47,10 +47,10 @@ export const CustomerCheckout: React.FC = () => {
   const [preferenceId, setPreferenceId] = useState<string | null>(null);
   const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
   const [mpSdkLoaded, setMpSdkLoaded] = useState(false);
+  const [mpAmount, setMpAmount] = useState<number>(0);
   const mpContainerRef = useRef<HTMLDivElement>(null);
   const mpInstanceRef = useRef<any>(null);
   const walletBrickRef = useRef<any>(null);
-  const brickAmountRef = useRef<number>(0);
 
   const {
     cart,
@@ -367,6 +367,7 @@ export const CustomerCheckout: React.FC = () => {
       }
 
       setPreferenceId(prefData.preference_id);
+      setMpAmount(totalAmount);
       if (prefData.public_key) {
         setMpPublicKey(prefData.public_key);
       }
@@ -410,7 +411,6 @@ export const CustomerCheckout: React.FC = () => {
       0,
       taxRate
     );
-    if (result) brickAmountRef.current = Math.round(result.finalTotal * 100) / 100;
     return result;
   }, [cart, hasProteinItems, planDiscounts, proteinSubtotal]);
 
@@ -420,7 +420,7 @@ export const CustomerCheckout: React.FC = () => {
       !mpSdkLoaded ||
       !preferenceId ||
       !mpContainerRef.current ||
-      !brickAmountRef.current
+      !mpAmount
     )
       return;
 
@@ -440,7 +440,7 @@ export const CustomerCheckout: React.FC = () => {
       const bricksBuilder = mp.bricks();
       const paymentBrick = await bricksBuilder.create('payment', 'mp-payment-container', {
         initialization: {
-          amount: brickAmountRef.current,
+          amount: mpAmount,
           preferenceId: preferenceId!,
         },
         customization: {
@@ -518,7 +518,7 @@ export const CustomerCheckout: React.FC = () => {
       console.error('Error rendering payment brick:', err);
       setSubmitError('Error al cargar el formulario de pago. Intenta de nuevo.');
     }
-  }, [mpPublicKey, mpSdkLoaded, preferenceId, createdOrderId, confirmationData, clearCart, clearProteinCart]);
+  }, [mpPublicKey, mpSdkLoaded, preferenceId, mpAmount, createdOrderId, confirmationData, clearCart, clearProteinCart]);
 
   useEffect(() => {
     if (step === 'payment' && preferenceId && mpSdkLoaded && !walletBrickRef.current) {
