@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   CircleCheck as CheckCircle,
@@ -14,7 +14,7 @@ import {
   Package,
   Chrome as Home,
   Zap,
-  AlertTriangle,
+  ExternalLink,
 } from 'lucide-react';
 import { useCart } from '../../contexts/CartContext';
 import { useCustomerAuth } from '../../contexts/CustomerAuthContext';
@@ -26,53 +26,13 @@ import { BILLABLE_MEAL_TYPES } from '../../../types/orderMenu';
 import { calculatePriceBreakdown } from '../../../utils/priceCalculations';
 import { supabase } from '../../../config/supabase';
 
-type CheckoutStep = 'review' | 'payment' | 'processing' | 'success';
-
-declare global {
-  interface Window {
-    MercadoPago: any;
-  }
-}
-
-function loadMercadoPagoSdk(): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (window.MercadoPago) { resolve(); return; }
-    const existing = document.getElementById('mercadopago-sdk') as HTMLScriptElement | null;
-    if (existing) {
-      if (window.MercadoPago) { resolve(); return; }
-      existing.addEventListener('load', () => resolve());
-      existing.addEventListener('error', () => reject(new Error('SDK load failed')));
-      return;
-    }
-    const script = document.createElement('script');
-    script.id = 'mercadopago-sdk';
-    script.src = 'https://sdk.mercadopago.com/js/v2';
-    script.async = true;
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error('No se pudo cargar el SDK de MercadoPago'));
-    document.head.appendChild(script);
-  });
-}
-
 export const CustomerCheckout: React.FC = () => {
-  const [step, setStep] = useState<CheckoutStep>('review');
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [confirmationData, setConfirmationData] = useState<OrderConfirmationData | null>(null);
   const [planDiscounts, setPlanDiscounts] = useState<
     { planId: string; planName: string; percentage: number; amount: number }[]
   >([]);
   const [loadingDiscounts, setLoadingDiscounts] = useState(false);
-
-  const [preferenceId, setPreferenceId] = useState<string | null>(null);
-  const [mpPublicKey, setMpPublicKey] = useState<string | null>(null);
-  const [mpAmount, setMpAmount] = useState<number>(0);
-  const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
-  const [brickReady, setBrickReady] = useState(false);
-  const [brickError, setBrickError] = useState<string | null>(null);
-
-  const brickContainerRef = useRef<HTMLDivElement>(null);
-  const brickControllerRef = useRef<any>(null);
 
   const {
     cart, clearCart, hasItems,
@@ -152,8 +112,8 @@ export const CustomerCheckout: React.FC = () => {
   }, [cart?.orderItems]);
 
   useEffect(() => {
-    if (!hasItems && !hasProteinItems && step !== 'success') navigate('/cart');
-  }, [hasItems, hasProteinItems, navigate, step]);
+    if (!hasItems && !hasProteinItems) navigate('/cart');
+  }, [hasItems, hasProteinItems, navigate]);
 
   const saveProteinOrders = async (orderId: string) => {
     try {
@@ -173,7 +133,7 @@ export const CustomerCheckout: React.FC = () => {
     }
   };
 
-  const createOrderAndPreference = async () => {
+  const handlePayWithMercadoPago = async () => {
     if (!customer) { setSubmitError('Informacion del cliente incompleta'); return; }
     if (!cart && !hasProteinItems) { setSubmitError('El carrito esta vacio'); return; }
 
@@ -226,7 +186,8 @@ export const CustomerCheckout: React.FC = () => {
         };
 
         if (hasProteinItems) await saveProteinOrders(orderId);
-        setConfirmationData(confirmData);
+
+        localStorage.setItem('mp_pending_order', JSON.stringify(confirmData));
       } else if (hasProteinItems) {
         const taxAmount = proteinSubtotal * 0.16;
         const finalTotal = proteinSubtotal + taxAmount;
@@ -253,17 +214,17 @@ export const CustomerCheckout: React.FC = () => {
           await saveProteinOrders(orderId);
         }
 
-        setConfirmationData({
+        const confirmData: OrderConfirmationData = {
           orderId, orderNumber, customer, selectedWeeks: [],
           totals: { subtotal: proteinSubtotal, planDiscount: 0, deliveryPrice: 0, couponDiscount: 0, taxAmount, finalTotal },
           deliveryOptionName: 'Por coordinar', couponCode: undefined,
-        });
+        };
+        localStorage.setItem('mp_pending_order', JSON.stringify(confirmData));
       }
-
-      setCreatedOrderId(orderId);
 
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const currentOrigin = window.location.origin;
 
       const response = await fetch(`${supabaseUrl}/functions/v1/mercado-pago-checkout`, {
         method: 'POST',
@@ -280,20 +241,21 @@ export const CustomerCheckout: React.FC = () => {
           },
           external_reference: orderId,
           installments: 6,
+          back_url: currentOrigin,
         }),
       });
 
       if (!response.ok) throw new Error(`Error al crear preferencia de pago (${response.status})`);
 
       const prefData = await response.json();
-      if (!prefData.success || !prefData.preference_id) {
+      if (!prefData.success || !prefData.init_point) {
         throw new Error(prefData.error || 'No se pudo crear la preferencia de pago');
       }
 
-      setPreferenceId(prefData.preference_id);
-      setMpAmount(totalAmount);
-      if (prefData.public_key) setMpPublicKey(prefData.public_key);
-      setStep('payment');
+      clearCart();
+      clearProteinCart();
+
+      window.location.href = prefData.init_point;
     } catch (err: any) {
       console.error('Error creating order:', err);
       setSubmitError(err.message || 'Error al procesar el pedido. Por favor intenta de nuevo.');
@@ -316,601 +278,260 @@ export const CustomerCheckout: React.FC = () => {
     return calculatePriceBreakdown(mealItemsTotal + proteinSubtotal, totalPlanDiscount, deliveryPrice, couponDiscountAmount, 0, 16);
   }, [cart, hasProteinItems, planDiscounts, proteinSubtotal]);
 
-  /* ── Render the MercadoPago Payment Brick ──────────────────────────────── */
-  const renderBrick = useCallback(async () => {
-    if (!mpPublicKey || !preferenceId || !mpAmount || !brickContainerRef.current) return;
+  if (!hasItems && !hasProteinItems) return null;
 
-    if (brickControllerRef.current) {
-      try { brickControllerRef.current.unmount(); } catch (_) {}
-      brickControllerRef.current = null;
-    }
-    brickContainerRef.current.innerHTML = '';
-    setBrickReady(false);
-    setBrickError(null);
-
-    try {
-      await loadMercadoPagoSdk();
-      const mp = new window.MercadoPago(mpPublicKey, { locale: 'es-MX' });
-
-      const controller = await mp.bricks().create('payment', 'paymentBrick_container', {
-        initialization: {
-          amount: mpAmount,
-          preferenceId: preferenceId,
-        },
-        customization: {
-          paymentMethods: {
-            creditCard: 'all',
-            debitCard: 'all',
-            prepaidCard: 'all',
-            ticket: 'all',
-            bankTransfer: 'all',
-            mercadoPago: 'all',
-            atm: 'all',
-          },
-          visual: {
-            style: {
-              customVariables: {
-                borderRadiusMedium: '12px',
-                borderRadiusLarge: '16px',
-              },
-            },
-          },
-        },
-        callbacks: {
-          onReady: () => {
-            setBrickReady(true);
-            setBrickError(null);
-          },
-          onSubmit: ({ selectedPaymentMethod, formData }: any) => {
-            setStep('processing');
-            setSubmitError(null);
-            return new Promise<void>((resolve, reject) => {
-              const url = import.meta.env.VITE_SUPABASE_URL;
-              fetch(`${url}/functions/v1/mercado-pago-checkout`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  action: 'process-payment',
-                  payment_data: formData,
-                  order_id: createdOrderId,
-                }),
-              })
-                .then((res) => res.json())
-                .then(async (result) => {
-                  if (result.success && result.status === 'approved') {
-                    if (confirmationData) {
-                      await customerOrderSubmissionService.markOrderAsPaid(confirmationData);
-                    }
-                    clearCart();
-                    clearProteinCart();
-                    setStep('success');
-                    resolve();
-                  } else if (result.status === 'in_process' || result.status === 'pending') {
-                    setSubmitError('Tu pago esta siendo procesado. Te notificaremos cuando se confirme.');
-                    setStep('payment');
-                    resolve();
-                  } else {
-                    setSubmitError(
-                      result.status_detail
-                        ? `Pago rechazado: ${result.status_detail}`
-                        : 'No se pudo procesar el pago. Intenta con otro metodo.'
-                    );
-                    setStep('payment');
-                    reject();
-                  }
-                })
-                .catch((err) => {
-                  console.error('Payment processing error:', err);
-                  setSubmitError('Error al procesar el pago. Intenta de nuevo.');
-                  setStep('payment');
-                  reject();
-                });
-            });
-          },
-          onError: (error: any) => {
-            console.error('Payment Brick error:', error);
-            setBrickError('Error al cargar el formulario de pago. Recarga la pagina e intenta de nuevo.');
-          },
-        },
-      });
-
-      brickControllerRef.current = controller;
-    } catch (err: any) {
-      console.error('Error rendering payment brick:', err);
-      setBrickError(err.message || 'Error al cargar el formulario de pago.');
-    }
-  }, [mpPublicKey, preferenceId, mpAmount, createdOrderId, confirmationData, clearCart, clearProteinCart]);
-
-  useEffect(() => {
-    if (step === 'payment' && mpPublicKey && preferenceId && mpAmount > 0) {
-      const timer = setTimeout(() => renderBrick(), 200);
-      return () => clearTimeout(timer);
-    }
-  }, [step, mpPublicKey, preferenceId, mpAmount, renderBrick]);
-
-  useEffect(() => {
-    return () => {
-      if (brickControllerRef.current) {
-        try { brickControllerRef.current.unmount(); } catch (_) {}
-      }
-    };
-  }, []);
-
-  if (!hasItems && !hasProteinItems && step !== 'success') return null;
-
-  /* ═══════════════════════════════════════════════════════════════════════ */
-  /*  SUCCESS                                                               */
-  /* ═══════════════════════════════════════════════════════════════════════ */
-  if (step === 'success' && confirmationData) {
-    return <SuccessScreen data={confirmationData} formatDate={formatDate} navigate={navigate} />;
-  }
-
-  /* ═══════════════════════════════════════════════════════════════════════ */
-  /*  PROCESSING                                                            */
-  /* ═══════════════════════════════════════════════════════════════════════ */
-  if (step === 'processing') {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-        <div className="text-center">
-          <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
-          </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Procesando tu pago...</h2>
-          <p className="text-gray-500">Por favor no cierres esta pagina</p>
-        </div>
-      </div>
-    );
-  }
-
-  /* ═══════════════════════════════════════════════════════════════════════ */
-  /*  PAYMENT — MercadoPago Payment Brick                                   */
-  /* ═══════════════════════════════════════════════════════════════════════ */
-  if (step === 'payment') {
-    return (
-      <div className="min-h-screen bg-gray-50 py-8 px-4">
-        <div className="max-w-2xl mx-auto">
-          <button onClick={() => setStep('review')} className="flex items-center text-gray-600 hover:text-gray-900 mb-6 transition-colors">
-            <ArrowLeft className="h-5 w-5 mr-2" /> Volver al resumen
+  return (
+    <div className="min-h-screen bg-gray-50 py-8 px-4">
+      <div className="max-w-6xl mx-auto">
+        <div className="mb-8">
+          <button onClick={() => navigate('/cart')} className="flex items-center text-gray-600 hover:text-gray-900 mb-4 transition-colors">
+            <ArrowLeft className="h-5 w-5 mr-2" /> Volver al carrito
           </button>
-
-          <h1 className="text-3xl font-bold font-antonio text-gray-900 mb-2">Metodo de Pago</h1>
-          <p className="text-gray-600 mb-8">Selecciona como deseas pagar tu pedido</p>
-
-          {(submitError || brickError) && (
-            <div className="mb-6 bg-red-50 border border-red-200 rounded-xl p-4 flex items-start space-x-3">
-              <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-              <div>
-                <span className="text-red-800 block">{submitError || brickError}</span>
-                {brickError && (
-                  <button onClick={() => { setBrickError(null); renderBrick(); }} className="mt-2 text-sm font-medium text-red-700 underline hover:text-red-900">
-                    Reintentar
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
-
-          <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
-            {cartTotals && (
-              <div className="flex justify-between items-center">
-                <span className="font-semibold text-gray-900">Total a pagar</span>
-                <span className="text-2xl font-bold text-red-600">${cartTotals.finalTotal.toFixed(0)} MXN</span>
-              </div>
-            )}
-          </div>
-
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden mb-6">
-            {!brickReady && !brickError && (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-6 h-6 text-gray-400 animate-spin mr-3" />
-                <span className="text-gray-500">Cargando opciones de pago...</span>
-              </div>
-            )}
-            <div
-              id="paymentBrick_container"
-              ref={brickContainerRef}
-              className={!brickReady && !brickError ? 'h-0 overflow-hidden' : ''}
-            />
-          </div>
+          <h1 className="text-3xl font-bold font-antonio text-gray-900">Revisar Pedido</h1>
+          <p className="text-gray-600 mt-2">Revisa y confirma tu pedido antes de pagar</p>
         </div>
-      </div>
-    );
-  }
 
-  /* ═══════════════════════════════════════════════════════════════════════ */
-  /*  REVIEW (default)                                                      */
-  /* ═══════════════════════════════════════════════════════════════════════ */
-  return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
-      {(hasItems || hasProteinItems) && step === 'review' && (
-        <div className="max-w-6xl mx-auto">
-          <div className="mb-8">
-            <button onClick={() => navigate('/cart')} className="flex items-center text-gray-600 hover:text-gray-900 mb-4 transition-colors">
-              <ArrowLeft className="h-5 w-5 mr-2" /> Volver al carrito
-            </button>
-            <h1 className="text-3xl font-bold font-antonio text-gray-900">Revisar Pedido</h1>
-            <p className="text-gray-600 mt-2">Revisa y confirma tu pedido antes de finalizar</p>
+        {submitError && (
+          <div className="mb-6 bg-red-50 border border-red-200 rounded-xl p-4 flex items-center space-x-3">
+            <XCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+            <span className="text-red-800">{submitError}</span>
           </div>
+        )}
 
-          {submitError && (
-            <div className="mb-6 bg-red-50 border border-red-200 rounded-xl p-4 flex items-center space-x-3">
-              <XCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
-              <span className="text-red-800">{submitError}</span>
+        {cart && cart.selectedWeeks && cart.selectedWeeks.length > 0 && (
+          <div className="mb-6 bg-gradient-to-r from-green-50 to-green-100 border-2 border-green-300 rounded-xl p-6">
+            <div className="flex items-center mb-4">
+              <Calendar className="w-6 h-6 text-green-700 mr-3" />
+              <h3 className="text-2xl font-bold text-green-900">Fechas de Entrega</h3>
             </div>
-          )}
-
-          {cart && cart.selectedWeeks && cart.selectedWeeks.length > 0 && (
-            <div className="mb-6 bg-gradient-to-r from-green-50 to-green-100 border-2 border-green-300 rounded-xl p-6">
-              <div className="flex items-center mb-4">
-                <Calendar className="w-6 h-6 text-green-700 mr-3" />
-                <h3 className="text-2xl font-bold text-green-900">Fechas de Entrega</h3>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {cart.selectedWeeks.map((week, index) => (
-                  <div key={`delivery-${week.week.week_id}-${index}`} className="bg-white rounded-lg p-4 shadow-sm border border-green-200">
-                    <p className="text-sm text-gray-600 mb-1">Semana {index + 1}</p>
-                    <p className="font-bold text-gray-900 mb-2">{week.week.week_name}</p>
-                    {week.week.week_date && (
-                      <p className="text-lg font-bold text-green-700">{formatDate(week.week.week_date)}</p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-4">
-              {customer && (
-                <div className="bg-white rounded-xl p-6 border-2 border-gray-200 shadow-sm">
-                  <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
-                    <MapPin className="w-5 h-5 mr-2 text-green-600" /> Informacion de Entrega
-                  </h3>
-                  <div className="space-y-3">
-                    <div className="flex items-start">
-                      <User className="w-5 h-5 text-gray-500 mr-3 mt-0.5" />
-                      <div>
-                        <p className="text-sm text-gray-600">Nombre</p>
-                        <p className="font-semibold text-gray-900">{customer.customer_name} {customer.customer_lastname}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start">
-                      <MapPin className="w-5 h-5 text-gray-500 mr-3 mt-0.5" />
-                      <div>
-                        <p className="text-sm text-gray-600">Direccion de Entrega</p>
-                        <p className="font-semibold text-gray-900">{formatCustomerAddress() || 'Sin direccion registrada'}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start">
-                      <Phone className="w-5 h-5 text-gray-500 mr-3 mt-0.5" />
-                      <div>
-                        <p className="text-sm text-gray-600">Telefono</p>
-                        <p className="font-semibold text-gray-900">{customer.customer_phone}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {hasProteinItems && (
-                <div className="bg-gray-50 rounded-xl p-6">
-                  <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-                    <Zap className="w-4 h-4 text-red-500" /> Planes de Proteina
-                  </h3>
-                  <div className="space-y-2">
-                    {proteinCart.map((item) => (
-                      <div key={item.proteinPlan.id} className="flex justify-between text-sm">
-                        <span className="text-gray-700">{item.proteinPlan.protein_plans_name} ({item.quantity}x)</span>
-                        <span className="font-medium text-gray-900">${(item.proteinPlan.protein_plans_price * item.quantity).toFixed(2)}</span>
-                      </div>
-                    ))}
-                    <div className="pt-2 border-t border-gray-200 flex justify-between text-sm font-semibold">
-                      <span className="text-gray-700">Subtotal proteinas</span>
-                      <span className="text-gray-900">${proteinSubtotal.toFixed(2)}</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {cart && cart.orderItems.length > 0 && (
-                <>
-                  <div className="bg-gray-50 rounded-xl p-6">
-                    <h3 className="font-bold text-gray-900 mb-4">Detalles del Pedido</h3>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Duracion:</span>
-                        <span className="font-medium">{cart.planDuration} {cart.planDuration === 1 ? 'semana' : 'semanas'}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Semanas:</span>
-                        <span className="font-medium">{cart.selectedWeeks.map((w) => w.week.week_name).join(', ')}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Total de comidas:</span>
-                        <span className="font-medium">{cart.orderItems.filter((i) => BILLABLE_MEAL_TYPES.includes(i.meal_type as any)).length}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Envio:</span>
-                        <span className="font-medium">{cart.selectedDeliveryOption?.delivery_options_name}</span>
-                      </div>
-                      {cart.appliedCoupon && (
-                        <div className="flex justify-between text-green-600">
-                          <span>Cupon aplicado:</span>
-                          <span className="font-medium">{cart.appliedCoupon.code}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="bg-gray-50 rounded-xl p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="font-bold text-gray-900">Comidas Seleccionadas</h3>
-                      <span className="inline-flex items-center justify-center min-w-[2.5rem] px-3 py-1 rounded-full bg-red-600 text-white text-xl font-bold leading-none">
-                        {cart.orderItems.reduce((sum, i) => sum + (BILLABLE_MEAL_TYPES.includes(i.meal_type as any) ? i.quantity : 0), 0)}
-                      </span>
-                    </div>
-                    <div className="space-y-4">
-                      {cart.selectedWeeks.map((week) => {
-                        const weekItems = cart.orderItems.filter((i) => i.week_name === week.week.week_name);
-                        if (weekItems.length === 0) return null;
-                        return (
-                          <div key={week.tempId} className="border border-gray-200 rounded-lg p-4">
-                            <h4 className="font-medium text-gray-900 mb-3">{week.week.week_name}</h4>
-                            <div className="space-y-2">
-                              {weekItems.map((item) => {
-                                const isBillable = BILLABLE_MEAL_TYPES.includes(item.meal_type as any);
-                                const itemPrice = isBillable ? item.meal_plan_price * item.quantity : 0;
-                                return (
-                                  <div key={item.tempId} className="flex justify-between text-sm">
-                                    <span className="flex flex-col text-gray-700">
-                                      <span>{item.day_of_week} - {item.meal_type} ({item.quantity}x)</span>
-                                      {item.meal_plan_name && (
-                                        <span className="inline-block w-fit mt-1 px-2 py-0.5 rounded-full bg-gray-200 text-gray-700 text-xs font-medium">
-                                          {item.meal_plan_name}
-                                        </span>
-                                      )}
-                                    </span>
-                                    <span className="font-medium text-gray-900">${itemPrice.toFixed(2)}</span>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {cart.orderNotes && (
-                    <div className="bg-gray-50 rounded-xl p-6">
-                      <h3 className="font-bold text-gray-900 mb-2">Notas del Pedido</h3>
-                      <p className="text-sm text-gray-700">{cart.orderNotes}</p>
-                    </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {cart.selectedWeeks.map((week, index) => (
+                <div key={`delivery-${week.week.week_id}-${index}`} className="bg-white rounded-lg p-4 shadow-sm border border-green-200">
+                  <p className="text-sm text-gray-600 mb-1">Semana {index + 1}</p>
+                  <p className="font-bold text-gray-900 mb-2">{week.week.week_name}</p>
+                  {week.week.week_date && (
+                    <p className="text-lg font-bold text-green-700">{formatDate(week.week.week_date)}</p>
                   )}
-                </>
-              )}
-            </div>
-
-            {/* Sidebar */}
-            <div className="lg:col-span-1">
-              <div className="bg-gray-50 rounded-xl p-6 sticky top-6">
-                <h3 className="font-bold text-gray-900 mb-4">Resumen</h3>
-                {cartTotals && (
-                  <div className="space-y-3 text-sm mb-6">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Subtotal:</span>
-                      <span className="font-medium">${Math.round(cartTotals.itemsSubtotal).toFixed(0)}</span>
-                    </div>
-                    {planDiscounts.length > 0 && (
-                      <div className="border-t border-gray-200 pt-2">
-                        {planDiscounts.map((d, i) => (
-                          <div key={i} className="flex justify-between text-green-600">
-                            <span>Descuento {d.planName} ({d.percentage}%):</span>
-                            <span>-${Math.round(d.amount).toFixed(0)}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Envio:</span>
-                      <span className="font-medium">${Math.round(cartTotals.deliveryPrice).toFixed(0)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">IVA (16%):</span>
-                      <span className="font-medium">${Math.round(cartTotals.taxAmount).toFixed(0)}</span>
-                    </div>
-                    <div className="flex justify-between text-xs text-gray-500">
-                      <span>IVA Envio:</span>
-                      <span>${Math.round(cartTotals.deliveryTaxAmount).toFixed(0)}</span>
-                    </div>
-                    {cart?.appliedCoupon && (cart?.couponDiscountAmount ?? 0) > 0 && (
-                      <div className="flex justify-between text-green-600 border-t border-gray-200 pt-2">
-                        <span>Cupon {cart.appliedCoupon.code}:</span>
-                        <span>-${Math.round(cart.couponDiscountAmount).toFixed(0)}</span>
-                      </div>
-                    )}
-                    <div className="pt-3 border-t border-gray-300 flex justify-between">
-                      <span className="font-bold text-gray-900">Total:</span>
-                      <span className="font-bold text-xl text-red-600">${cartTotals.finalTotal.toFixed(0)}</span>
-                    </div>
-                  </div>
-                )}
-
-                <div className="mb-4 pb-4 border-b border-gray-200">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Metodos de pago aceptados</p>
-                  <div className="flex flex-wrap gap-2">
-                    <span className="text-xs bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full font-medium">Tarjeta</span>
-                    <span className="text-xs bg-orange-50 text-orange-700 px-2.5 py-1 rounded-full font-medium">OXXO</span>
-                    <span className="text-xs bg-green-50 text-green-700 px-2.5 py-1 rounded-full font-medium">Vales</span>
-                    <span className="text-xs bg-teal-50 text-teal-700 px-2.5 py-1 rounded-full font-medium">MSI</span>
-                    <span className="text-xs bg-sky-50 text-sky-700 px-2.5 py-1 rounded-full font-medium">Mercado Pago</span>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <button
-                    onClick={createOrderAndPreference}
-                    disabled={submitting || loadingDiscounts}
-                    className="w-full bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-xl font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-                  >
-                    {submitting ? (
-                      <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Procesando...</>
-                    ) : (
-                      <><CreditCard className="w-5 h-5 mr-2" /> Continuar al Pago</>
-                    )}
-                  </button>
-                  <button
-                    onClick={() => { clearCart(); clearProteinCart(); }}
-                    disabled={submitting}
-                    className="w-full bg-red-50 hover:bg-red-100 text-red-600 px-6 py-3 rounded-xl font-medium transition-colors flex items-center justify-center"
-                  >
-                    <Trash2 className="w-5 h-5 mr-2" /> Cancelar Pedido
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-/* ═══════════════════════════════════════════════════════════════════════ */
-/*  Success Screen (extracted to keep the main component readable)       */
-/* ═══════════════════════════════════════════════════════════════════════ */
-function SuccessScreen({
-  data,
-  formatDate,
-  navigate,
-}: {
-  data: OrderConfirmationData;
-  formatDate: (d: string) => string;
-  navigate: ReturnType<typeof useNavigate>;
-}) {
-  const { orderNumber, customer: c, selectedWeeks, totals, deliveryOptionName, couponCode } = data;
-  const address = (() => {
-    const parts: string[] = [];
-    if (c.customer_street && c.customer_street_number) parts.push(`${c.customer_street} ${c.customer_street_number}`);
-    if (c.customer_interior_number) parts.push(`Int. ${c.customer_interior_number}`);
-    if (c.customer_colonia) parts.push(c.customer_colonia);
-    if (c.customer_delegacion) parts.push(c.customer_delegacion);
-    if (c.customer_postal_code) parts.push(`CP ${c.customer_postal_code}`);
-    return parts.join(', ');
-  })();
-
-  return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-2xl mx-auto">
-        <div className="text-center mb-8">
-          <div className="relative inline-flex items-center justify-center mb-6">
-            <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center">
-              <CheckCircle className="w-14 h-14 text-green-600" />
-            </div>
-          </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">!Pedido Confirmado!</h1>
-          <p className="text-gray-500 text-base">
-            Te hemos enviado una confirmacion a{' '}
-            <span className="font-medium text-gray-700">{c.customer_email}</span>
-          </p>
-        </div>
-
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 mb-5 text-center">
-          <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-1">Numero de Orden</p>
-          <p className="text-4xl font-bold text-red-600 tracking-wide">#{orderNumber}</p>
-        </div>
-
-        {selectedWeeks.length > 0 && (
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 mb-5">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 mb-4 flex items-center gap-2">
-              <Calendar className="w-4 h-4" /> Fechas de Entrega
-            </h2>
-            <div className="space-y-3">
-              {selectedWeeks.map((week, index) => (
-                <div key={week.tempId} className="flex items-start justify-between py-3 border-b border-gray-100 last:border-0">
-                  <div>
-                    <p className="text-xs text-gray-400 mb-0.5">Semana {index + 1}</p>
-                    <p className="font-semibold text-gray-800">{week.week.week_name}</p>
-                  </div>
-                  <div className="text-right">
-                    {week.week.week_date ? (
-                      <p className="text-sm font-bold text-green-700 bg-green-50 px-3 py-1.5 rounded-lg">{formatDate(week.week.week_date)}</p>
-                    ) : (
-                      <p className="text-sm text-gray-400 italic">Por confirmar</p>
-                    )}
-                  </div>
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 mb-5">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 mb-4 flex items-center gap-2">
-            <MapPin className="w-4 h-4" /> Direccion de Entrega
-          </h2>
-          <div className="flex items-start gap-3">
-            <div className="w-9 h-9 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
-              <User className="w-4 h-4 text-gray-500" />
-            </div>
-            <div>
-              <p className="font-semibold text-gray-900">{c.customer_name} {c.customer_lastname}</p>
-              <p className="text-sm text-gray-500 mt-0.5">{address || 'Direccion registrada en tu cuenta'}</p>
-              {c.customer_phone && (
-                <p className="text-sm text-gray-500 mt-1 flex items-center gap-1.5">
-                  <Phone className="w-3.5 h-3.5" /> {c.customer_phone}
-                </p>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-4">
+            {customer && (
+              <div className="bg-white rounded-xl p-6 border-2 border-gray-200 shadow-sm">
+                <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
+                  <MapPin className="w-5 h-5 mr-2 text-green-600" /> Informacion de Entrega
+                </h3>
+                <div className="space-y-3">
+                  <div className="flex items-start">
+                    <User className="w-5 h-5 text-gray-500 mr-3 mt-0.5" />
+                    <div>
+                      <p className="text-sm text-gray-600">Nombre</p>
+                      <p className="font-semibold text-gray-900">{customer.customer_name} {customer.customer_lastname}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start">
+                    <MapPin className="w-5 h-5 text-gray-500 mr-3 mt-0.5" />
+                    <div>
+                      <p className="text-sm text-gray-600">Direccion de Entrega</p>
+                      <p className="font-semibold text-gray-900">{formatCustomerAddress() || 'Sin direccion registrada'}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start">
+                    <Phone className="w-5 h-5 text-gray-500 mr-3 mt-0.5" />
+                    <div>
+                      <p className="text-sm text-gray-600">Telefono</p>
+                      <p className="font-semibold text-gray-900">{customer.customer_phone}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {hasProteinItems && (
+              <div className="bg-gray-50 rounded-xl p-6">
+                <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-red-500" /> Planes de Proteina
+                </h3>
+                <div className="space-y-2">
+                  {proteinCart.map((item) => (
+                    <div key={item.proteinPlan.id} className="flex justify-between text-sm">
+                      <span className="text-gray-700">{item.proteinPlan.protein_plans_name} ({item.quantity}x)</span>
+                      <span className="font-medium text-gray-900">${(item.proteinPlan.protein_plans_price * item.quantity).toFixed(2)}</span>
+                    </div>
+                  ))}
+                  <div className="pt-2 border-t border-gray-200 flex justify-between text-sm font-semibold">
+                    <span className="text-gray-700">Subtotal proteinas</span>
+                    <span className="text-gray-900">${proteinSubtotal.toFixed(2)}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {cart && cart.orderItems.length > 0 && (
+              <>
+                <div className="bg-gray-50 rounded-xl p-6">
+                  <h3 className="font-bold text-gray-900 mb-4">Detalles del Pedido</h3>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Duracion:</span>
+                      <span className="font-medium">{cart.planDuration} {cart.planDuration === 1 ? 'semana' : 'semanas'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Semanas:</span>
+                      <span className="font-medium">{cart.selectedWeeks.map((w) => w.week.week_name).join(', ')}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Total de comidas:</span>
+                      <span className="font-medium">{cart.orderItems.filter((i) => BILLABLE_MEAL_TYPES.includes(i.meal_type as any)).length}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Envio:</span>
+                      <span className="font-medium">{cart.selectedDeliveryOption?.delivery_options_name}</span>
+                    </div>
+                    {cart.appliedCoupon && (
+                      <div className="flex justify-between text-green-600">
+                        <span>Cupon aplicado:</span>
+                        <span className="font-medium">{cart.appliedCoupon.code}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="bg-gray-50 rounded-xl p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-bold text-gray-900">Comidas Seleccionadas</h3>
+                    <span className="inline-flex items-center justify-center min-w-[2.5rem] px-3 py-1 rounded-full bg-red-600 text-white text-xl font-bold leading-none">
+                      {cart.orderItems.reduce((sum, i) => sum + (BILLABLE_MEAL_TYPES.includes(i.meal_type as any) ? i.quantity : 0), 0)}
+                    </span>
+                  </div>
+                  <div className="space-y-4">
+                    {cart.selectedWeeks.map((week) => {
+                      const weekItems = cart.orderItems.filter((i) => i.week_name === week.week.week_name);
+                      if (weekItems.length === 0) return null;
+                      return (
+                        <div key={week.tempId} className="border border-gray-200 rounded-lg p-4">
+                          <h4 className="font-medium text-gray-900 mb-3">{week.week.week_name}</h4>
+                          <div className="space-y-2">
+                            {weekItems.map((item) => {
+                              const isBillable = BILLABLE_MEAL_TYPES.includes(item.meal_type as any);
+                              const itemPrice = isBillable ? item.meal_plan_price * item.quantity : 0;
+                              return (
+                                <div key={item.tempId} className="flex justify-between text-sm">
+                                  <span className="flex flex-col text-gray-700">
+                                    <span>{item.day_of_week} - {item.meal_type} ({item.quantity}x)</span>
+                                    {item.meal_plan_name && (
+                                      <span className="inline-block w-fit mt-1 px-2 py-0.5 rounded-full bg-gray-200 text-gray-700 text-xs font-medium">
+                                        {item.meal_plan_name}
+                                      </span>
+                                    )}
+                                  </span>
+                                  <span className="font-medium text-gray-900">${itemPrice.toFixed(2)}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {cart.orderNotes && (
+                  <div className="bg-gray-50 rounded-xl p-6">
+                    <h3 className="font-bold text-gray-900 mb-2">Notas del Pedido</h3>
+                    <p className="text-sm text-gray-700">{cart.orderNotes}</p>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* Sidebar */}
+          <div className="lg:col-span-1">
+            <div className="bg-gray-50 rounded-xl p-6 sticky top-6">
+              <h3 className="font-bold text-gray-900 mb-4">Resumen</h3>
+              {cartTotals && (
+                <div className="space-y-3 text-sm mb-6">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Subtotal:</span>
+                    <span className="font-medium">${Math.round(cartTotals.itemsSubtotal).toFixed(0)}</span>
+                  </div>
+                  {planDiscounts.length > 0 && (
+                    <div className="border-t border-gray-200 pt-2">
+                      {planDiscounts.map((d, i) => (
+                        <div key={i} className="flex justify-between text-green-600">
+                          <span>Descuento {d.planName} ({d.percentage}%):</span>
+                          <span>-${Math.round(d.amount).toFixed(0)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Envio:</span>
+                    <span className="font-medium">${Math.round(cartTotals.deliveryPrice).toFixed(0)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">IVA (16%):</span>
+                    <span className="font-medium">${Math.round(cartTotals.taxAmount).toFixed(0)}</span>
+                  </div>
+                  <div className="flex justify-between text-xs text-gray-500">
+                    <span>IVA Envio:</span>
+                    <span>${Math.round(cartTotals.deliveryTaxAmount).toFixed(0)}</span>
+                  </div>
+                  {cart?.appliedCoupon && (cart?.couponDiscountAmount ?? 0) > 0 && (
+                    <div className="flex justify-between text-green-600 border-t border-gray-200 pt-2">
+                      <span>Cupon {cart.appliedCoupon.code}:</span>
+                      <span>-${Math.round(cart.couponDiscountAmount).toFixed(0)}</span>
+                    </div>
+                  )}
+                  <div className="pt-3 border-t border-gray-300 flex justify-between">
+                    <span className="font-bold text-gray-900">Total:</span>
+                    <span className="font-bold text-xl text-red-600">${cartTotals.finalTotal.toFixed(0)}</span>
+                  </div>
+                </div>
               )}
-              <p className="text-xs text-gray-400 mt-2 bg-gray-50 inline-block px-2 py-1 rounded">Metodo: {deliveryOptionName}</p>
+
+              <div className="mb-4 pb-4 border-b border-gray-200">
+                <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Metodos de pago aceptados</p>
+                <div className="flex flex-wrap gap-2">
+                  <span className="text-xs bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full font-medium">Tarjeta credito/debito</span>
+                  <span className="text-xs bg-orange-50 text-orange-700 px-2.5 py-1 rounded-full font-medium">OXXO</span>
+                  <span className="text-xs bg-teal-50 text-teal-700 px-2.5 py-1 rounded-full font-medium">MSI</span>
+                  <span className="text-xs bg-sky-50 text-sky-700 px-2.5 py-1 rounded-full font-medium">Mercado Pago</span>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <button
+                  onClick={handlePayWithMercadoPago}
+                  disabled={submitting || loadingDiscounts}
+                  className="w-full bg-[#009ee3] hover:bg-[#007eb5] text-white px-6 py-3.5 rounded-xl font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {submitting ? (
+                    <><Loader2 className="w-5 h-5 animate-spin" /> Procesando...</>
+                  ) : (
+                    <><CreditCard className="w-5 h-5" /> Pagar con Mercado Pago <ExternalLink className="w-4 h-4 ml-1" /></>
+                  )}
+                </button>
+                <p className="text-xs text-center text-gray-500">
+                  Seras redirigido a Mercado Pago para completar tu pago de forma segura
+                </p>
+                <button
+                  onClick={() => { clearCart(); clearProteinCart(); }}
+                  disabled={submitting}
+                  className="w-full bg-red-50 hover:bg-red-100 text-red-600 px-6 py-3 rounded-xl font-medium transition-colors flex items-center justify-center"
+                >
+                  <Trash2 className="w-5 h-5 mr-2" /> Cancelar Pedido
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 mb-6">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 mb-4 flex items-center gap-2">
-            <Package className="w-4 h-4" /> Resumen del Pedido
-          </h2>
-          <div className="space-y-2.5 text-sm">
-            <div className="flex justify-between text-gray-600">
-              <span>Subtotal</span>
-              <span className="font-medium text-gray-800">${Math.round(totals.subtotal).toFixed(0)} MXN</span>
-            </div>
-            {totals.planDiscount > 0 && (
-              <div className="flex justify-between text-green-600">
-                <span>Descuento por volumen</span>
-                <span className="font-medium">-${Math.round(totals.planDiscount).toFixed(0)} MXN</span>
-              </div>
-            )}
-            <div className="flex justify-between text-gray-600">
-              <span>Envio ({deliveryOptionName})</span>
-              <span className="font-medium text-gray-800">${Math.round(totals.deliveryPrice).toFixed(0)} MXN</span>
-            </div>
-            {totals.couponDiscount > 0 && couponCode && (
-              <div className="flex justify-between text-green-600">
-                <span>Cupon {couponCode}</span>
-                <span className="font-medium">-${Math.round(totals.couponDiscount).toFixed(0)} MXN</span>
-              </div>
-            )}
-            <div className="flex justify-between text-gray-600">
-              <span>IVA (16%)</span>
-              <span className="font-medium text-gray-800">${Math.round(totals.taxAmount).toFixed(0)} MXN</span>
-            </div>
-            <div className="pt-3 mt-1 border-t border-gray-200 flex justify-between">
-              <span className="font-bold text-gray-900 text-base">Total</span>
-              <span className="font-bold text-xl text-red-600">${Math.round(totals.finalTotal).toFixed(0)} MXN</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex flex-col sm:flex-row gap-3">
-          <button onClick={() => navigate('/account?tab=orders')} className="flex-1 bg-red-600 hover:bg-red-700 text-white px-6 py-3.5 rounded-xl font-semibold text-sm transition-colors flex items-center justify-center gap-2">
-            <Package className="w-4 h-4" /> Ver mis pedidos
-          </button>
-          <button onClick={() => navigate('/')} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3.5 rounded-xl font-semibold text-sm transition-colors flex items-center justify-center gap-2">
-            <Home className="w-4 h-4" /> Volver al inicio
-          </button>
         </div>
       </div>
     </div>
   );
-}
+};

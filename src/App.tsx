@@ -12,6 +12,7 @@ import CustomerLoginPage from './customer/pages/CustomerLoginPage';
 import CustomerSignupPage from './customer/pages/CustomerSignupPage';
 import CustomerAccountPage from './customer/pages/CustomerAccountPage';
 import CustomerCheckoutPage from './customer/pages/CustomerCheckoutPage';
+import { CheckoutReturn } from './customer/pages/CheckoutReturnPage';
 import CustomerForgotPasswordPage from './customer/pages/CustomerForgotPasswordPage';
 import CustomerOrderPage from './customer/pages/CustomerOrderPage';
 import CustomerCartPage from './customer/pages/CustomerCartPage';
@@ -132,6 +133,7 @@ function App() {
                       </ProtectedCustomerRoute>
                     }
                   />
+                  <Route path="/checkout/return" element={<CheckoutReturn />} />
                   <Route path="*" element={<CustomerHomePage />} />
                 </Routes>
               </CartProvider>

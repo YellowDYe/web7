@@ -72,11 +72,16 @@ Deno.serve(async (req: Request) => {
 });
 
 async function handleCreatePreference(accessToken: string, body: any, publicKey: string | null) {
-  const { items, payer, external_reference, installments } = body;
+  const { items, payer, external_reference, installments, back_url } = body;
 
   if (!items || !Array.isArray(items) || items.length === 0) {
     return jsonResponse({ error: "Se requieren items para la preferencia" }, 400);
   }
+
+  const baseUrl = back_url || "https://example.com";
+  const successUrl = `${baseUrl}/checkout/return?status=approved&order_id=${external_reference || ""}`;
+  const failureUrl = `${baseUrl}/checkout/return?status=failure&order_id=${external_reference || ""}`;
+  const pendingUrl = `${baseUrl}/checkout/return?status=pending&order_id=${external_reference || ""}`;
 
   const preferenceBody: any = {
     items: items.map((item: any) => ({
@@ -93,6 +98,12 @@ async function handleCreatePreference(accessToken: string, body: any, publicKey:
           phone: payer.phone ? { number: payer.phone } : undefined,
         }
       : undefined,
+    back_urls: {
+      success: successUrl,
+      failure: failureUrl,
+      pending: pendingUrl,
+    },
+    auto_return: "approved",
     payment_methods: {
       excluded_payment_types: [],
       installments: installments || 6,
