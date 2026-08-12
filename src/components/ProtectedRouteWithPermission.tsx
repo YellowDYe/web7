@@ -1,9 +1,8 @@
 import React from 'react';
-import { Navigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import LoadingSpinner from './common/LoadingSpinner';
 import Auth from '../pages/Auth';
-import { Lock, AlertCircle } from 'lucide-react';
+import { Lock, CircleAlert as AlertCircle } from 'lucide-react';
 
 interface ProtectedRouteWithPermissionProps {
   children: React.ReactNode;
@@ -16,9 +15,9 @@ const ProtectedRouteWithPermission: React.FC<ProtectedRouteWithPermissionProps> 
   permission,
   requireAll = false
 }) => {
-  const { user, loading, hasPermission, hasAnyPermission, hasAllPermissions } = useAuth();
+  const { user, loading, permissionsLoading, hasPermission, hasAnyPermission, hasAllPermissions } = useAuth();
 
-  if (loading) {
+  if (loading || permissionsLoading) {
     return <LoadingSpinner />;
   }
 

@@ -7,8 +7,11 @@ import { User, UserRole } from '../types';
 interface AuthContextType {
   user: User | null;
   loading: boolean;
+  permissionsLoading: boolean;
   permissions: string[];
   passwordChangeRequired: boolean;
+  noAdminAccess: boolean;
+  noAdminAccessEmail: string | null;
   hasPermission: (permission: string) => boolean;
   hasAnyPermission: (permissions: string[]) => boolean;
   hasAllPermissions: (permissions: string[]) => boolean;
@@ -25,8 +28,11 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [permissionsLoading, setPermissionsLoading] = useState(false);
   const [permissions, setPermissions] = useState<string[]>([]);
   const [passwordChangeRequired, setPasswordChangeRequired] = useState(false);
+  const [noAdminAccess, setNoAdminAccess] = useState(false);
+  const [noAdminAccessEmail, setNoAdminAccessEmail] = useState<string | null>(null);
 
   useEffect(() => {
     console.log('Setting up Supabase auth state listener...');
@@ -59,12 +65,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const handleAuthChange = async (session: Session | null) => {
     if (session?.user) {
       try {
-        console.log('Supabase user authenticated:', session.user.id);
-        console.log('User email:', session.user.email);
+        const userType = session.user.user_metadata?.user_type;
 
-        // Try to fetch user with retry logic for trigger-based creation
-        // The database trigger (handle_new_auth_user) creates the app_users record automatically
-        // after Supabase Auth creates the auth.users record. This may take a moment.
+        // Customer accounts don't have admin access -- skip retries entirely
+        if (userType === 'customer') {
+          setNoAdminAccess(true);
+          setNoAdminAccessEmail(session.user.email || null);
+          setUser(null);
+          setPermissions([]);
+          setLoading(false);
+          return;
+        }
+
+        // Try to fetch admin user with retry logic for trigger-based creation
         let appUser = null;
         let retries = 0;
         const maxRetries = 3;
@@ -92,22 +105,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           if (data) {
             appUser = data;
           } else if (retries < maxRetries - 1) {
-            // Wait before retry (trigger might still be processing)
-            console.log(`User not found, waiting for trigger... (attempt ${retries + 1}/${maxRetries})`);
             await new Promise(resolve => setTimeout(resolve, 1000));
           }
 
           retries++;
         }
 
-        console.log('App user query result:', { appUser, retries });
-
         if (appUser) {
-          console.log('User found in database:', appUser.email);
-          console.log('User role:', appUser.user_roles?.role_name);
-
           const passwordRequired = appUser.password_change_required || false;
           setPasswordChangeRequired(passwordRequired);
+          setPermissionsLoading(true);
 
           const user: User = {
             id: session.user.id,
@@ -119,10 +126,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           };
 
           setUser(user);
+          setLoading(false);
           await loadUserPermissions(session.user.id);
+          setPermissionsLoading(false);
         } else {
-          console.log('User not found in app_users, checking for linking...');
-
+          // Check for orphaned app_user that can be linked
           const { data: unmappedUser } = await supabase
             .from('app_users')
             .select(`
@@ -134,8 +142,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             .maybeSingle();
 
           if (unmappedUser) {
-            console.log('Found existing user by email, linking to Supabase auth...');
-
             const { error: updateError } = await supabase
               .from('app_users')
               .update({
@@ -146,10 +152,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               })
               .eq('id', unmappedUser.id);
 
-            if (updateError) {
-              console.error('Error linking user:', updateError);
-            } else {
-              console.log('User linked successfully');
+            if (!updateError) {
+              setPermissionsLoading(true);
               const user: User = {
                 id: session.user.id,
                 email: unmappedUser.email,
@@ -160,39 +164,39 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               };
 
               setUser(user);
+              setLoading(false);
               await loadUserPermissions(session.user.id);
+              setPermissionsLoading(false);
+            } else {
+              console.error('Error linking user:', updateError);
+              setNoAdminAccess(true);
+              setNoAdminAccessEmail(session.user.email || null);
+              setUser(null);
+              setPermissions([]);
+              setLoading(false);
             }
           } else {
-            console.log('User creation by trigger failed or is taking too long');
-            console.warn('Please try logging out and logging in again, or contact support');
-
-            // Show user-friendly error message
-            alert(
-              'Tu cuenta de autenticación se creó correctamente, pero hubo un problema al configurar tu perfil de usuario.\n\n' +
-              'Por favor:\n' +
-              '1. Cierra sesión\n' +
-              '2. Vuelve a iniciar sesión\n' +
-              '3. Si el problema persiste, contacta al administrador\n\n' +
-              `Email: ${session.user.email}`
-            );
-
+            // No admin profile exists for this user
+            setNoAdminAccess(true);
+            setNoAdminAccessEmail(session.user.email || null);
             setUser(null);
             setPermissions([]);
+            setLoading(false);
           }
         }
       } catch (error) {
         console.error('Error in auth state change:', error);
         setUser(null);
         setPermissions([]);
+        setLoading(false);
       }
     } else {
-      console.log('No Supabase session, clearing state');
       setUser(null);
       setPermissions([]);
+      setNoAdminAccess(false);
+      setNoAdminAccessEmail(null);
+      setLoading(false);
     }
-
-    console.log('Setting loading to false');
-    setLoading(false);
   };
 
   const loadUserPermissions = async (authUserId: string) => {
@@ -292,11 +296,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(null);
       setPermissions([]);
       setPasswordChangeRequired(false);
+      setNoAdminAccess(false);
+      setNoAdminAccessEmail(null);
     } catch (error) {
       console.error('Logout error:', error);
       setUser(null);
       setPermissions([]);
       setPasswordChangeRequired(false);
+      setNoAdminAccess(false);
+      setNoAdminAccessEmail(null);
       throw error;
     }
   };
@@ -320,8 +328,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     <AuthContext.Provider value={{
       user,
       loading,
+      permissionsLoading,
       permissions,
       passwordChangeRequired,
+      noAdminAccess,
+      noAdminAccessEmail,
       hasPermission,
       hasAnyPermission,
       hasAllPermissions,
