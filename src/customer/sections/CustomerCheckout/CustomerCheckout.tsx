@@ -44,7 +44,7 @@ export const CustomerCheckout: React.FC = () => {
   >([]);
   const [loadingDiscounts, setLoadingDiscounts] = useState(false);
   const [mpPublicKey, setMpPublicKey] = useState<string | null>(null);
-  const [preferenceId, setPreferenceId] = useState<string | null>(null);
+  const [mpInitPoint, setMpInitPoint] = useState<string | null>(null);
   const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
   const [mpSdkLoaded, setMpSdkLoaded] = useState(false);
   const [mpAmount, setMpAmount] = useState<number>(0);
@@ -366,7 +366,7 @@ export const CustomerCheckout: React.FC = () => {
         throw new Error(prefData.error || 'No se pudo crear la preferencia de pago');
       }
 
-      setPreferenceId(prefData.preference_id);
+      setMpInitPoint(prefData.init_point || null);
       setMpAmount(totalAmount);
       if (prefData.public_key) {
         setMpPublicKey(prefData.public_key);
@@ -418,7 +418,6 @@ export const CustomerCheckout: React.FC = () => {
     if (
       !mpPublicKey ||
       !mpSdkLoaded ||
-      !preferenceId ||
       !mpContainerRef.current ||
       !mpAmount
     )
@@ -441,15 +440,15 @@ export const CustomerCheckout: React.FC = () => {
       const paymentBrick = await bricksBuilder.create('payment', 'mp-payment-container', {
         initialization: {
           amount: mpAmount,
-          preferenceId: preferenceId!,
         },
         customization: {
           paymentMethods: {
             creditCard: 'all',
             debitCard: 'all',
+            prepaidCard: 'all',
             ticket: 'all',
             bankTransfer: 'all',
-            mercadoPago: 'all',
+            atm: 'all',
           },
           visual: {
             style: {
@@ -462,12 +461,12 @@ export const CustomerCheckout: React.FC = () => {
         },
         callbacks: {
           onReady: () => {},
-          onSubmit: async ({ selectedPaymentMethod, formData }: any) => {
+          onSubmit: ({ selectedPaymentMethod, formData }: any) => {
             setStep('processing');
             setSubmitError(null);
-            try {
+            return new Promise<void>((resolve, reject) => {
               const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-              const response = await fetch(
+              fetch(
                 `${supabaseUrl}/functions/v1/mercado-pago-checkout`,
                 {
                   method: 'POST',
@@ -478,33 +477,40 @@ export const CustomerCheckout: React.FC = () => {
                     order_id: createdOrderId,
                   }),
                 }
-              );
-              const result = await response.json();
-              if (result.success && result.status === 'approved') {
-                if (confirmationData) {
-                  await customerOrderSubmissionService.markOrderAsPaid(confirmationData);
-                }
-                clearCart();
-                clearProteinCart();
-                setStep('success');
-              } else if (result.status === 'in_process' || result.status === 'pending') {
-                setSubmitError(
-                  'Tu pago esta siendo procesado. Te notificaremos cuando se confirme.'
-                );
-                setStep('payment');
-              } else {
-                setSubmitError(
-                  result.status_detail
-                    ? `Pago rechazado: ${result.status_detail}`
-                    : 'No se pudo procesar el pago. Intenta con otro metodo.'
-                );
-                setStep('payment');
-              }
-            } catch (err) {
-              console.error('Payment processing error:', err);
-              setSubmitError('Error al procesar el pago. Intenta de nuevo.');
-              setStep('payment');
-            }
+              )
+                .then((response) => response.json())
+                .then(async (result) => {
+                  if (result.success && result.status === 'approved') {
+                    if (confirmationData) {
+                      await customerOrderSubmissionService.markOrderAsPaid(confirmationData);
+                    }
+                    clearCart();
+                    clearProteinCart();
+                    setStep('success');
+                    resolve();
+                  } else if (result.status === 'in_process' || result.status === 'pending') {
+                    setSubmitError(
+                      'Tu pago esta siendo procesado. Te notificaremos cuando se confirme.'
+                    );
+                    setStep('payment');
+                    resolve();
+                  } else {
+                    setSubmitError(
+                      result.status_detail
+                        ? `Pago rechazado: ${result.status_detail}`
+                        : 'No se pudo procesar el pago. Intenta con otro metodo.'
+                    );
+                    setStep('payment');
+                    reject();
+                  }
+                })
+                .catch((err) => {
+                  console.error('Payment processing error:', err);
+                  setSubmitError('Error al procesar el pago. Intenta de nuevo.');
+                  setStep('payment');
+                  reject();
+                });
+            });
           },
           onError: (error: any) => {
             console.error('Payment Brick error:', error);
@@ -518,14 +524,14 @@ export const CustomerCheckout: React.FC = () => {
       console.error('Error rendering payment brick:', err);
       setSubmitError('Error al cargar el formulario de pago. Intenta de nuevo.');
     }
-  }, [mpPublicKey, mpSdkLoaded, preferenceId, mpAmount, createdOrderId, confirmationData, clearCart, clearProteinCart]);
+  }, [mpPublicKey, mpSdkLoaded, mpAmount, createdOrderId, confirmationData, clearCart, clearProteinCart]);
 
   useEffect(() => {
-    if (step === 'payment' && preferenceId && mpSdkLoaded && !walletBrickRef.current) {
+    if (step === 'payment' && mpSdkLoaded && mpAmount > 0 && !walletBrickRef.current) {
       const timer = setTimeout(() => renderPaymentBrick(), 300);
       return () => clearTimeout(timer);
     }
-  }, [step, preferenceId, mpSdkLoaded, renderPaymentBrick]);
+  }, [step, mpSdkLoaded, mpAmount, renderPaymentBrick]);
 
   if (!hasItems && !hasProteinItems && step !== 'success') {
     return null;
@@ -778,6 +784,20 @@ export const CustomerCheckout: React.FC = () => {
             )}
 
             <div id="mp-payment-container" ref={mpContainerRef} className="min-h-[200px]" />
+
+            {mpInitPoint && mpSdkLoaded && (
+              <div className="mt-6 pt-6 border-t border-gray-200">
+                <p className="text-sm text-gray-500 text-center mb-3">
+                  O paga con tu cuenta de Mercado Pago
+                </p>
+                <a
+                  href={mpInitPoint}
+                  className="flex items-center justify-center w-full px-4 py-3 bg-[#009ee3] hover:bg-[#0087c9] text-white font-medium rounded-xl transition-colors"
+                >
+                  Pagar con Mercado Pago
+                </a>
+              </div>
+            )}
 
             {!mpSdkLoaded && (
               <div className="flex items-center justify-center py-8">
