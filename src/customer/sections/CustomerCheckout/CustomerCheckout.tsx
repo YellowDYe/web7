@@ -14,9 +14,6 @@ import {
   Package,
   Chrome as Home,
   Zap,
-  Store,
-  Wallet,
-  Clock,
 } from 'lucide-react';
 import { useCart } from '../../contexts/CartContext';
 import { useCustomerAuth } from '../../contexts/CustomerAuthContext';
@@ -28,7 +25,6 @@ import { BILLABLE_MEAL_TYPES } from '../../../types/orderMenu';
 import { calculatePriceBreakdown } from '../../../utils/priceCalculations';
 import { supabase } from '../../../config/supabase';
 
-type PaymentMethod = 'card' | 'oxxo' | 'vales' | 'msi';
 type CheckoutStep = 'review' | 'payment' | 'processing' | 'success';
 
 declare global {
@@ -47,8 +43,6 @@ export const CustomerCheckout: React.FC = () => {
     { planId: string; planName: string; percentage: number; amount: number }[]
   >([]);
   const [loadingDiscounts, setLoadingDiscounts] = useState(false);
-  const [selectedPaymentMethod, setSelectedPaymentMethod] =
-    useState<PaymentMethod>('card');
   const [mpPublicKey, setMpPublicKey] = useState<string | null>(null);
   const [preferenceId, setPreferenceId] = useState<string | null>(null);
   const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
@@ -391,87 +385,6 @@ export const CustomerCheckout: React.FC = () => {
     }
   };
 
-  const renderWalletBrick = useCallback(async () => {
-    if (
-      !mpPublicKey ||
-      !mpSdkLoaded ||
-      !preferenceId ||
-      !mpContainerRef.current
-    )
-      return;
-
-    if (walletBrickRef.current) {
-      try {
-        walletBrickRef.current.unmount();
-      } catch (_) {}
-      walletBrickRef.current = null;
-    }
-
-    mpContainerRef.current.innerHTML = '';
-
-    try {
-      const mp = new window.MercadoPago(mpPublicKey, { locale: 'es-MX' });
-      mpInstanceRef.current = mp;
-
-      const bricksBuilder = mp.bricks();
-      const walletBrick = await bricksBuilder.create('wallet', 'mp-wallet-container', {
-        initialization: {
-          preferenceId: preferenceId,
-          redirectMode: 'self',
-        },
-        customization: {
-          texts: {
-            action: 'pay',
-            valueProp: 'security_details',
-          },
-          visual: {
-            buttonBackground: 'default',
-            borderRadius: '12px',
-          },
-        },
-      });
-
-      walletBrickRef.current = walletBrick;
-    } catch (err) {
-      console.error('Error rendering wallet brick:', err);
-      setSubmitError('Error al cargar el formulario de pago. Intenta de nuevo.');
-    }
-  }, [mpPublicKey, mpSdkLoaded, preferenceId]);
-
-  useEffect(() => {
-    if (step === 'payment' && preferenceId && mpSdkLoaded) {
-      const timer = setTimeout(() => renderWalletBrick(), 300);
-      return () => clearTimeout(timer);
-    }
-  }, [step, preferenceId, mpSdkLoaded, renderWalletBrick]);
-
-  const handleSimulatePayment = async () => {
-    if (!createdOrderId || !confirmationData) return;
-
-    try {
-      setStep('processing');
-
-      await supabase
-        .from('orders')
-        .update({
-          order_status: 'completed',
-          stripe_payment_status: 'succeeded',
-          stripe_paid_at: new Date().toISOString(),
-        })
-        .eq('id', createdOrderId);
-
-      await customerOrderSubmissionService.markOrderAsPaid(confirmationData);
-
-      clearCart();
-      clearProteinCart();
-      setStep('success');
-    } catch (err) {
-      console.error('Error simulating payment:', err);
-      setSubmitError('Error al procesar el pago simulado.');
-      setStep('payment');
-    }
-  };
-
   const cartTotals =
     cart || hasProteinItems
       ? (() => {
@@ -503,6 +416,119 @@ export const CustomerCheckout: React.FC = () => {
           );
         })()
       : null;
+
+  const renderPaymentBrick = useCallback(async () => {
+    if (
+      !mpPublicKey ||
+      !mpSdkLoaded ||
+      !preferenceId ||
+      !mpContainerRef.current ||
+      !cartTotals
+    )
+      return;
+
+    if (walletBrickRef.current) {
+      try {
+        walletBrickRef.current.unmount();
+      } catch (_) {}
+      walletBrickRef.current = null;
+    }
+
+    mpContainerRef.current.innerHTML = '';
+
+    try {
+      const mp = new window.MercadoPago(mpPublicKey, { locale: 'es-MX' });
+      mpInstanceRef.current = mp;
+
+      const bricksBuilder = mp.bricks();
+      const paymentBrick = await bricksBuilder.create('payment', 'mp-payment-container', {
+        initialization: {
+          amount: cartTotals.finalTotal,
+          preferenceId: preferenceId,
+        },
+        customization: {
+          paymentMethods: {
+            creditCard: 'all',
+            debitCard: 'all',
+            ticket: 'all',
+            bankTransfer: 'all',
+            mercadoPago: 'all',
+          },
+          visual: {
+            style: {
+              customVariables: {
+                borderRadiusMedium: '12px',
+                borderRadiusLarge: '16px',
+              },
+            },
+          },
+        },
+        callbacks: {
+          onReady: () => {},
+          onSubmit: async ({ selectedPaymentMethod, formData }: any) => {
+            setStep('processing');
+            setSubmitError(null);
+            try {
+              const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+              const response = await fetch(
+                `${supabaseUrl}/functions/v1/mercado-pago-checkout`,
+                {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    action: 'process-payment',
+                    payment_data: formData,
+                    order_id: createdOrderId,
+                  }),
+                }
+              );
+              const result = await response.json();
+              if (result.success && result.status === 'approved') {
+                if (confirmationData) {
+                  await customerOrderSubmissionService.markOrderAsPaid(confirmationData);
+                }
+                clearCart();
+                clearProteinCart();
+                setStep('success');
+              } else if (result.status === 'in_process' || result.status === 'pending') {
+                setSubmitError(
+                  'Tu pago esta siendo procesado. Te notificaremos cuando se confirme.'
+                );
+                setStep('payment');
+              } else {
+                setSubmitError(
+                  result.status_detail
+                    ? `Pago rechazado: ${result.status_detail}`
+                    : 'No se pudo procesar el pago. Intenta con otro metodo.'
+                );
+                setStep('payment');
+              }
+            } catch (err) {
+              console.error('Payment processing error:', err);
+              setSubmitError('Error al procesar el pago. Intenta de nuevo.');
+              setStep('payment');
+            }
+          },
+          onError: (error: any) => {
+            console.error('Payment Brick error:', error);
+            setSubmitError('Error en el formulario de pago. Intenta de nuevo.');
+          },
+        },
+      });
+
+      walletBrickRef.current = paymentBrick;
+    } catch (err) {
+      console.error('Error rendering payment brick:', err);
+      setSubmitError('Error al cargar el formulario de pago. Intenta de nuevo.');
+    }
+  }, [mpPublicKey, mpSdkLoaded, preferenceId, cartTotals, createdOrderId, confirmationData, clearCart, clearProteinCart]);
+
+  useEffect(() => {
+    if (step === 'payment' && preferenceId && mpSdkLoaded) {
+      const timer = setTimeout(() => renderPaymentBrick(), 300);
+      return () => clearTimeout(timer);
+    }
+  }, [step, preferenceId, mpSdkLoaded, renderPaymentBrick]);
 
   if (!hasItems && !hasProteinItems && step !== 'success') {
     return null;
@@ -741,42 +767,10 @@ export const CustomerCheckout: React.FC = () => {
             </div>
           )}
 
-          {/* Payment Method Cards */}
-          <div className="grid grid-cols-2 gap-4 mb-8">
-            <PaymentMethodCard
-              icon={<CreditCard className="w-6 h-6" />}
-              title="Tarjeta"
-              description="Credito o debito"
-              selected={selectedPaymentMethod === 'card'}
-              onClick={() => setSelectedPaymentMethod('card')}
-            />
-            <PaymentMethodCard
-              icon={<Store className="w-6 h-6" />}
-              title="OXXO"
-              description="Pago en efectivo"
-              selected={selectedPaymentMethod === 'oxxo'}
-              onClick={() => setSelectedPaymentMethod('oxxo')}
-            />
-            <PaymentMethodCard
-              icon={<Wallet className="w-6 h-6" />}
-              title="Vales"
-              description="Tarjetas de vales"
-              selected={selectedPaymentMethod === 'vales'}
-              onClick={() => setSelectedPaymentMethod('vales')}
-            />
-            <PaymentMethodCard
-              icon={<Clock className="w-6 h-6" />}
-              title="Meses sin intereses"
-              description="3 o 6 meses"
-              selected={selectedPaymentMethod === 'msi'}
-              onClick={() => setSelectedPaymentMethod('msi')}
-            />
-          </div>
-
-          {/* Order Total */}
-          {cartTotals && (
-            <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
-              <div className="flex justify-between items-center">
+          {/* MercadoPago Payment Brick Container */}
+          <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
+            {cartTotals && (
+              <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-100">
                 <span className="font-semibold text-gray-900">
                   Total a pagar
                 </span>
@@ -784,108 +778,18 @@ export const CustomerCheckout: React.FC = () => {
                   ${cartTotals.finalTotal.toFixed(0)} MXN
                 </span>
               </div>
-              {selectedPaymentMethod === 'msi' && (
-                <div className="mt-3 pt-3 border-t border-gray-100 space-y-1">
-                  <p className="text-sm text-gray-600">
-                    <span className="font-medium">3 meses:</span> $
-                    {(cartTotals.finalTotal / 3).toFixed(0)} MXN /mes
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    <span className="font-medium">6 meses:</span> $
-                    {(cartTotals.finalTotal / 6).toFixed(0)} MXN /mes
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Payment Method Info */}
-          <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
-            {selectedPaymentMethod === 'card' && (
-              <div className="text-center">
-                <CreditCard className="w-10 h-10 text-blue-600 mx-auto mb-3" />
-                <h3 className="font-semibold text-gray-900 mb-1">
-                  Pago con Tarjeta
-                </h3>
-                <p className="text-sm text-gray-500 mb-4">
-                  Acepta tarjetas de credito y debito Visa, Mastercard y American
-                  Express
-                </p>
-              </div>
-            )}
-            {selectedPaymentMethod === 'oxxo' && (
-              <div className="text-center">
-                <Store className="w-10 h-10 text-orange-600 mx-auto mb-3" />
-                <h3 className="font-semibold text-gray-900 mb-1">
-                  Pago en OXXO
-                </h3>
-                <p className="text-sm text-gray-500 mb-4">
-                  Recibiras una referencia para pagar en cualquier tienda OXXO.
-                  Tu pedido se confirmara al recibir el pago.
-                </p>
-              </div>
-            )}
-            {selectedPaymentMethod === 'vales' && (
-              <div className="text-center">
-                <Wallet className="w-10 h-10 text-green-600 mx-auto mb-3" />
-                <h3 className="font-semibold text-gray-900 mb-1">
-                  Tarjetas de Vales
-                </h3>
-                <p className="text-sm text-gray-500 mb-4">
-                  Paga con tus tarjetas de vales de despensa (Sodexo, Edenred, SI
-                  Vale, Up Sidente)
-                </p>
-              </div>
-            )}
-            {selectedPaymentMethod === 'msi' && (
-              <div className="text-center">
-                <Clock className="w-10 h-10 text-teal-600 mx-auto mb-3" />
-                <h3 className="font-semibold text-gray-900 mb-1">
-                  Meses sin Intereses
-                </h3>
-                <p className="text-sm text-gray-500 mb-4">
-                  Paga a 3 o 6 meses sin intereses con tarjetas de credito
-                  participantes
-                </p>
-              </div>
             )}
 
-            {/* MercadoPago Wallet Brick Container */}
-            <div id="mp-wallet-container" ref={mpContainerRef} className="min-h-[60px]" />
+            <div id="mp-payment-container" ref={mpContainerRef} className="min-h-[60px]" />
 
             {!mpSdkLoaded && (
-              <div className="flex items-center justify-center py-4">
+              <div className="flex items-center justify-center py-8">
                 <Loader2 className="w-5 h-5 text-gray-400 animate-spin mr-2" />
                 <span className="text-sm text-gray-500">
                   Cargando opciones de pago...
                 </span>
               </div>
             )}
-          </div>
-
-          {/* Test Mode Simulate Button */}
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
-            <div className="flex items-start gap-3">
-              <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
-                <Zap className="w-4 h-4 text-amber-600" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-semibold text-amber-800 mb-1">
-                  Modo de Prueba
-                </p>
-                <p className="text-xs text-amber-700 mb-3">
-                  Estas en modo de prueba. Puedes simular un pago exitoso
-                  sin usar dinero real, o usar el boton de Mercado Pago
-                  arriba con tarjetas de prueba.
-                </p>
-                <button
-                  onClick={handleSimulatePayment}
-                  className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-                >
-                  Simular Pago Exitoso
-                </button>
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -1317,42 +1221,3 @@ export const CustomerCheckout: React.FC = () => {
   );
 };
 
-// ─── Payment Method Card Component ────────────────────────────────────
-interface PaymentMethodCardProps {
-  icon: React.ReactNode;
-  title: string;
-  description: string;
-  selected: boolean;
-  onClick: () => void;
-}
-
-const PaymentMethodCard: React.FC<PaymentMethodCardProps> = ({
-  icon,
-  title,
-  description,
-  selected,
-  onClick,
-}) => (
-  <button
-    onClick={onClick}
-    className={`p-4 rounded-xl border-2 text-left transition-all ${
-      selected
-        ? 'border-green-500 bg-green-50 shadow-sm'
-        : 'border-gray-200 bg-white hover:border-gray-300'
-    }`}
-  >
-    <div
-      className={`mb-2 ${selected ? 'text-green-600' : 'text-gray-400'}`}
-    >
-      {icon}
-    </div>
-    <h4
-      className={`font-semibold text-sm ${
-        selected ? 'text-green-900' : 'text-gray-900'
-      }`}
-    >
-      {title}
-    </h4>
-    <p className="text-xs text-gray-500 mt-0.5">{description}</p>
-  </button>
-);
