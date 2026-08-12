@@ -1,19 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  CircleCheck as CheckCircle,
-  Circle as XCircle,
-  Loader as Loader2,
-  Trash2,
-  ArrowLeft,
-  CreditCard,
-  Calendar,
-  MapPin,
-  User,
-  Phone,
-  Zap,
-  ShieldCheck,
-} from 'lucide-react';
+import { CircleCheck as CheckCircle, Circle as XCircle, Loader as Loader2, Trash2, ArrowLeft, CreditCard, Calendar, MapPin, User, Phone, Zap, ShieldCheck, Mail, CircleAlert as AlertCircle } from 'lucide-react';
 import { useCart } from '../../contexts/CartContext';
 import { useCustomerAuth } from '../../contexts/CustomerAuthContext';
 import {
@@ -23,6 +10,7 @@ import {
 import { BILLABLE_MEAL_TYPES } from '../../../types/orderMenu';
 import { calculatePriceBreakdown } from '../../../utils/priceCalculations';
 import { supabase } from '../../../config/supabase';
+import { mailgunService } from '../../../services/mailgunService';
 
 declare global {
   interface Window {
@@ -52,6 +40,24 @@ function loadMercadoPagoSdk(): Promise<void> {
 
 type CheckoutStep = 'review' | 'payment' | 'success' | 'error';
 
+interface ConfirmationDetails {
+  orderNumber: string;
+  deliveryWeeks: Array<{ weekName: string; deliveryDate: string | null }>;
+  deliveryAddress: string;
+  deliveryOptionName: string;
+  totals: {
+    subtotal: number;
+    planDiscount: number;
+    deliveryPrice: number;
+    couponDiscount: number;
+    taxAmount: number;
+    finalTotal: number;
+  };
+  couponCode?: string;
+  emailSent: boolean;
+  emailError?: string;
+}
+
 export const CustomerCheckout: React.FC = () => {
   const [step, setStep] = useState<CheckoutStep>('review');
   const [submitting, setSubmitting] = useState(false);
@@ -64,6 +70,7 @@ export const CustomerCheckout: React.FC = () => {
   const [paymentResult, setPaymentResult] = useState<any>(null);
   const [createdOrderNumber, setCreatedOrderNumber] = useState<string | null>(null);
   const [paymentTotalAmount, setPaymentTotalAmount] = useState(0);
+  const [confirmationDetails, setConfirmationDetails] = useState<ConfirmationDetails | null>(null);
 
   const brickControllerRef = useRef<any>(null);
   const brickContainerRef = useRef<HTMLDivElement>(null);
@@ -186,6 +193,8 @@ export const CustomerCheckout: React.FC = () => {
     try {
       let orderId = '';
       let orderNumber = '';
+      let emailSent = false;
+      let emailError: string | undefined;
 
       if (snappedCart && snappedCart.orderItems.length > 0) {
         const result = await customerOrderSubmissionService.submitOrder({
@@ -223,8 +232,38 @@ export const CustomerCheckout: React.FC = () => {
         };
 
         if (mpStatus === 'approved') {
-          await customerOrderSubmissionService.markOrderAsPaid(confirmData);
+          try {
+            await customerOrderSubmissionService.markOrderAsPaid(confirmData);
+            emailSent = true;
+          } catch (err: any) {
+            emailError = 'No pudimos enviar el correo de confirmacion.';
+          }
         }
+
+        const formatAddress = (): string => {
+          const parts: string[] = [];
+          if (customer.customer_street && customer.customer_street_number)
+            parts.push(`${customer.customer_street} ${customer.customer_street_number}`);
+          if (customer.customer_interior_number) parts.push(`Int. ${customer.customer_interior_number}`);
+          if (customer.customer_colonia) parts.push(customer.customer_colonia);
+          if (customer.customer_delegacion) parts.push(customer.customer_delegacion);
+          if (customer.customer_postal_code) parts.push(`CP ${customer.customer_postal_code}`);
+          return parts.join(', ');
+        };
+
+        setConfirmationDetails({
+          orderNumber,
+          deliveryWeeks: snappedCart.selectedWeeks.map(sw => ({
+            weekName: sw.week.week_name,
+            deliveryDate: sw.week.week_date
+          })),
+          deliveryAddress: formatAddress(),
+          deliveryOptionName: snappedCart.selectedDeliveryOption?.delivery_options_name ?? '',
+          totals,
+          couponCode: snappedCart.appliedCoupon?.code,
+          emailSent,
+          emailError,
+        });
       } else if (hasSnappedProtein) {
         const taxAmount = snappedProteinSubtotal * 0.16;
         const finalTotal = snappedProteinSubtotal + taxAmount;
@@ -250,6 +289,59 @@ export const CustomerCheckout: React.FC = () => {
           orderId = orderRow.id;
           orderNumber = orderRow.order_id;
           await saveProteinOrders(orderId, snappedProteinCart);
+
+          if (mpStatus === 'approved') {
+            try {
+              const formatAddress = (): string => {
+                const parts: string[] = [];
+                if (customer.customer_street && customer.customer_street_number)
+                  parts.push(`${customer.customer_street} ${customer.customer_street_number}`);
+                if (customer.customer_interior_number) parts.push(`Int. ${customer.customer_interior_number}`);
+                if (customer.customer_colonia) parts.push(customer.customer_colonia);
+                if (customer.customer_delegacion) parts.push(customer.customer_delegacion);
+                if (customer.customer_postal_code) parts.push(`CP ${customer.customer_postal_code}`);
+                return parts.join(', ');
+              };
+              await mailgunService.sendOrderConfirmationEmail({
+                customerName: `${customer.customer_name} ${customer.customer_lastname}`.trim(),
+                customerEmail: customer.customer_email,
+                orderNumber,
+                deliveryAddress: formatAddress(),
+                deliveryWeeks: [],
+                totals: {
+                  subtotal: snappedProteinSubtotal,
+                  planDiscount: 0,
+                  deliveryPrice: 0,
+                  couponDiscount: 0,
+                  taxAmount: snappedProteinSubtotal * 0.16,
+                  finalTotal: snappedProteinSubtotal * 1.16,
+                },
+                deliveryOptionName: 'Proteinas',
+                shopUrl: window.location.origin,
+              });
+              emailSent = true;
+            } catch (err: any) {
+              emailError = 'No pudimos enviar el correo de confirmacion.';
+              console.warn('Could not send protein order email:', err);
+            }
+          }
+
+          setConfirmationDetails({
+            orderNumber,
+            deliveryWeeks: [],
+            deliveryAddress: '',
+            deliveryOptionName: 'Proteinas',
+            totals: {
+              subtotal: snappedProteinSubtotal,
+              planDiscount: 0,
+              deliveryPrice: 0,
+              couponDiscount: 0,
+              taxAmount: snappedProteinSubtotal * 0.16,
+              finalTotal: snappedProteinSubtotal * 1.16,
+            },
+            emailSent,
+            emailError,
+          });
         }
       }
 
@@ -522,29 +614,145 @@ export const CustomerCheckout: React.FC = () => {
   // --- SUCCESS SCREEN ---
   if (step === 'success') {
     const isApproved = paymentResult?.status === 'approved';
+    const cd = confirmationDetails;
+
+    const formatDeliveryDate = (dateString: string | null): string => {
+      if (!dateString) return 'Por confirmar';
+      const [year, month, day] = dateString.split('-').map(Number);
+      const date = new Date(year, month - 1, day);
+      return date.toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    };
+
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4">
-        <div className="max-w-md w-full bg-white rounded-2xl shadow-lg p-8 text-center">
-          <div className={`w-16 h-16 rounded-full ${isApproved ? 'bg-green-100' : 'bg-yellow-100'} flex items-center justify-center mx-auto mb-6`}>
-            <CheckCircle className={`w-8 h-8 ${isApproved ? 'text-green-600' : 'text-yellow-600'}`} />
+      <div className="min-h-screen bg-gray-50 py-12 px-4">
+        <div className="max-w-lg mx-auto">
+          {/* Header */}
+          <div className={`rounded-2xl shadow-lg overflow-hidden ${isApproved ? 'bg-white' : 'bg-white'}`}>
+            <div className={`px-8 py-10 text-center ${isApproved ? 'bg-gradient-to-br from-green-500 to-emerald-600' : 'bg-gradient-to-br from-yellow-400 to-amber-500'}`}>
+              <div className="w-20 h-20 rounded-full bg-white/20 flex items-center justify-center mx-auto mb-5">
+                <CheckCircle className="w-10 h-10 text-white" />
+              </div>
+              <h2 className="text-2xl font-bold text-white mb-1">
+                {isApproved ? 'Pedido Confirmado' : 'Pago en Proceso'}
+              </h2>
+              <p className="text-white/90 text-sm">
+                {isApproved
+                  ? 'Tu pago ha sido procesado exitosamente'
+                  : 'Tu pago esta siendo procesado. Te notificaremos cuando se confirme.'}
+              </p>
+            </div>
+
+            <div className="px-8 py-8 space-y-6">
+              {/* Order number */}
+              {(cd?.orderNumber || createdOrderNumber) && (
+                <div className="bg-gray-50 rounded-xl p-5 text-center border border-gray-100">
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Numero de Orden</p>
+                  <p className="text-2xl font-bold text-red-600">#{cd?.orderNumber || createdOrderNumber}</p>
+                </div>
+              )}
+
+              {/* Delivery dates */}
+              {cd && cd.deliveryWeeks.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <Calendar className="w-4 h-4" /> Fechas de Entrega
+                  </h3>
+                  <div className="space-y-2">
+                    {cd.deliveryWeeks.map((w, i) => (
+                      <div key={i} className="flex items-center justify-between bg-green-50 rounded-lg px-4 py-3 border border-green-100">
+                        <span className="text-sm font-medium text-gray-700">{w.weekName}</span>
+                        <span className="text-sm font-semibold text-green-700">{formatDeliveryDate(w.deliveryDate)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Delivery address */}
+              {cd && cd.deliveryAddress && (
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-2">
+                    <MapPin className="w-4 h-4" /> Direccion de Entrega
+                  </h3>
+                  <p className="text-sm text-gray-700 bg-gray-50 rounded-lg px-4 py-3 border border-gray-100">
+                    {cd.deliveryAddress}
+                    {cd.deliveryOptionName && <span className="block text-xs text-gray-500 mt-1">Metodo: {cd.deliveryOptionName}</span>}
+                  </p>
+                </div>
+              )}
+
+              {/* Payment summary */}
+              {cd && cd.totals && (
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Resumen de Pago</h3>
+                  <div className="bg-gray-50 rounded-xl border border-gray-100 overflow-hidden">
+                    <div className="divide-y divide-gray-100">
+                      <div className="flex justify-between px-4 py-3">
+                        <span className="text-sm text-gray-600">Subtotal</span>
+                        <span className="text-sm font-medium text-gray-900">${Math.round(cd.totals.subtotal).toLocaleString()} MXN</span>
+                      </div>
+                      {cd.totals.planDiscount > 0 && (
+                        <div className="flex justify-between px-4 py-3">
+                          <span className="text-sm text-green-600">Descuento por volumen</span>
+                          <span className="text-sm font-medium text-green-600">-${Math.round(cd.totals.planDiscount).toLocaleString()} MXN</span>
+                        </div>
+                      )}
+                      {cd.totals.deliveryPrice > 0 && (
+                        <div className="flex justify-between px-4 py-3">
+                          <span className="text-sm text-gray-600">Envio</span>
+                          <span className="text-sm font-medium text-gray-900">${Math.round(cd.totals.deliveryPrice).toLocaleString()} MXN</span>
+                        </div>
+                      )}
+                      {cd.totals.couponDiscount > 0 && (
+                        <div className="flex justify-between px-4 py-3">
+                          <span className="text-sm text-green-600">Cupon {cd.couponCode}</span>
+                          <span className="text-sm font-medium text-green-600">-${Math.round(cd.totals.couponDiscount).toLocaleString()} MXN</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between px-4 py-3">
+                        <span className="text-sm text-gray-600">IVA (16%)</span>
+                        <span className="text-sm font-medium text-gray-900">${Math.round(cd.totals.taxAmount).toLocaleString()} MXN</span>
+                      </div>
+                    </div>
+                    <div className="bg-gray-900 px-4 py-4 flex justify-between items-center">
+                      <span className="text-sm font-bold text-white">Total Pagado</span>
+                      <span className="text-xl font-bold text-white">${Math.round(cd.totals.finalTotal).toLocaleString()} MXN</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Email notification */}
+              {cd && cd.emailSent && (
+                <div className="flex items-center gap-3 bg-blue-50 rounded-lg px-4 py-3 border border-blue-100">
+                  <Mail className="w-5 h-5 text-blue-600 flex-shrink-0" />
+                  <p className="text-sm text-blue-800">Te enviamos un correo de confirmacion a tu email registrado.</p>
+                </div>
+              )}
+              {cd && cd.emailError && (
+                <div className="flex items-center gap-3 bg-yellow-50 rounded-lg px-4 py-3 border border-yellow-100">
+                  <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0" />
+                  <p className="text-sm text-yellow-800">{cd.emailError} Puedes ver tu pedido en tu cuenta.</p>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="space-y-3 pt-2">
+                <button
+                  onClick={() => navigate('/account')}
+                  className="w-full bg-red-600 hover:bg-red-700 text-white py-3.5 rounded-xl font-semibold transition-colors"
+                >
+                  Ver mis pedidos
+                </button>
+                <button
+                  onClick={() => navigate('/')}
+                  className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-xl font-medium transition-colors"
+                >
+                  Volver al Inicio
+                </button>
+              </div>
+            </div>
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            {isApproved ? 'Pago Aprobado' : 'Pago en Proceso'}
-          </h2>
-          <p className="text-gray-600 mb-2">
-            {isApproved
-              ? 'Tu pago ha sido procesado exitosamente.'
-              : 'Tu pago esta siendo procesado. Te notificaremos cuando se confirme.'}
-          </p>
-          {createdOrderNumber && (
-            <p className="text-sm text-gray-500 mb-6">Pedido #{createdOrderNumber}</p>
-          )}
-          <button
-            onClick={() => navigate('/')}
-            className="w-full bg-red-600 hover:bg-red-700 text-white py-3 rounded-xl font-semibold transition-colors"
-          >
-            Volver al Inicio
-          </button>
         </div>
       </div>
     );
