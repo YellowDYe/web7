@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   CircleCheck as CheckCircle,
@@ -50,6 +50,7 @@ export const CustomerCheckout: React.FC = () => {
   const mpContainerRef = useRef<HTMLDivElement>(null);
   const mpInstanceRef = useRef<any>(null);
   const walletBrickRef = useRef<any>(null);
+  const brickAmountRef = useRef<number>(0);
 
   const {
     cart,
@@ -380,37 +381,38 @@ export const CustomerCheckout: React.FC = () => {
     }
   };
 
-  const cartTotals =
-    cart || hasProteinItems
-      ? (() => {
-          const mealItemsTotal = cart
-            ? cart.orderItems.reduce((total, item) => {
-                if (BILLABLE_MEAL_TYPES.includes(item.meal_type as any)) {
-                  return total + item.meal_plan_price * item.quantity;
-                }
-                return total;
-              }, 0)
-            : 0;
+  const cartTotals = useMemo(() => {
+    if (!cart && !hasProteinItems) return null;
 
-          const totalPlanDiscount = planDiscounts.reduce(
-            (sum, d) => sum + d.amount,
-            0
-          );
-          const deliveryPrice =
-            cart?.selectedDeliveryOption?.delivery_options_price || 0;
-          const couponDiscountAmount = cart?.couponDiscountAmount || 0;
-          const taxRate = 16;
+    const mealItemsTotal = cart
+      ? cart.orderItems.reduce((total, item) => {
+          if (BILLABLE_MEAL_TYPES.includes(item.meal_type as any)) {
+            return total + item.meal_plan_price * item.quantity;
+          }
+          return total;
+        }, 0)
+      : 0;
 
-          return calculatePriceBreakdown(
-            mealItemsTotal + proteinSubtotal,
-            totalPlanDiscount,
-            deliveryPrice,
-            couponDiscountAmount,
-            0,
-            taxRate
-          );
-        })()
-      : null;
+    const totalPlanDiscount = planDiscounts.reduce(
+      (sum, d) => sum + d.amount,
+      0
+    );
+    const deliveryPrice =
+      cart?.selectedDeliveryOption?.delivery_options_price || 0;
+    const couponDiscountAmount = cart?.couponDiscountAmount || 0;
+    const taxRate = 16;
+
+    const result = calculatePriceBreakdown(
+      mealItemsTotal + proteinSubtotal,
+      totalPlanDiscount,
+      deliveryPrice,
+      couponDiscountAmount,
+      0,
+      taxRate
+    );
+    if (result) brickAmountRef.current = Math.round(result.finalTotal * 100) / 100;
+    return result;
+  }, [cart, hasProteinItems, planDiscounts, proteinSubtotal]);
 
   const renderPaymentBrick = useCallback(async () => {
     if (
@@ -418,7 +420,7 @@ export const CustomerCheckout: React.FC = () => {
       !mpSdkLoaded ||
       !preferenceId ||
       !mpContainerRef.current ||
-      !cartTotals
+      !brickAmountRef.current
     )
       return;
 
@@ -438,7 +440,7 @@ export const CustomerCheckout: React.FC = () => {
       const bricksBuilder = mp.bricks();
       const paymentBrick = await bricksBuilder.create('payment', 'mp-payment-container', {
         initialization: {
-          amount: Math.round(cartTotals.finalTotal * 100) / 100,
+          amount: brickAmountRef.current,
           preferenceId: preferenceId!,
         },
         customization: {
@@ -516,10 +518,10 @@ export const CustomerCheckout: React.FC = () => {
       console.error('Error rendering payment brick:', err);
       setSubmitError('Error al cargar el formulario de pago. Intenta de nuevo.');
     }
-  }, [mpPublicKey, mpSdkLoaded, preferenceId, cartTotals, createdOrderId, confirmationData, clearCart, clearProteinCart]);
+  }, [mpPublicKey, mpSdkLoaded, preferenceId, createdOrderId, confirmationData, clearCart, clearProteinCart]);
 
   useEffect(() => {
-    if (step === 'payment' && preferenceId && mpSdkLoaded) {
+    if (step === 'payment' && preferenceId && mpSdkLoaded && !walletBrickRef.current) {
       const timer = setTimeout(() => renderPaymentBrick(), 300);
       return () => clearTimeout(timer);
     }
