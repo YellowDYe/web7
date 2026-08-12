@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   CircleCheck as CheckCircle,
@@ -11,10 +11,8 @@ import {
   MapPin,
   User,
   Phone,
-  Package,
-  Chrome as Home,
   Zap,
-  ExternalLink,
+  ShieldCheck,
 } from 'lucide-react';
 import { useCart } from '../../contexts/CartContext';
 import { useCustomerAuth } from '../../contexts/CustomerAuthContext';
@@ -26,13 +24,54 @@ import { BILLABLE_MEAL_TYPES } from '../../../types/orderMenu';
 import { calculatePriceBreakdown } from '../../../utils/priceCalculations';
 import { supabase } from '../../../config/supabase';
 
+declare global {
+  interface Window {
+    MercadoPago: any;
+  }
+}
+
+function loadMercadoPagoSdk(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (window.MercadoPago) {
+      resolve();
+      return;
+    }
+    const existing = document.querySelector('script[src*="sdk.mercadopago.com"]');
+    if (existing) {
+      existing.addEventListener('load', () => resolve());
+      existing.addEventListener('error', () => reject(new Error('Error cargando SDK de Mercado Pago')));
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://sdk.mercadopago.com/js/v2';
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('Error cargando SDK de Mercado Pago'));
+    document.head.appendChild(script);
+  });
+}
+
+type CheckoutStep = 'review' | 'payment' | 'success' | 'error';
+
 export const CustomerCheckout: React.FC = () => {
+  const [step, setStep] = useState<CheckoutStep>('review');
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [planDiscounts, setPlanDiscounts] = useState<
     { planId: string; planName: string; percentage: number; amount: number }[]
   >([]);
   const [loadingDiscounts, setLoadingDiscounts] = useState(false);
+  const [brickLoading, setBrickLoading] = useState(false);
+  const [orderData, setOrderData] = useState<{
+    orderId: string;
+    orderNumber: string;
+    totalAmount: number;
+    confirmData: OrderConfirmationData;
+  } | null>(null);
+  const [paymentResult, setPaymentResult] = useState<any>(null);
+
+  const brickControllerRef = useRef<any>(null);
+  const brickContainerRef = useRef<HTMLDivElement>(null);
+  const brickInitializedRef = useRef(false);
 
   const {
     cart, clearCart, hasItems,
@@ -112,8 +151,8 @@ export const CustomerCheckout: React.FC = () => {
   }, [cart?.orderItems]);
 
   useEffect(() => {
-    if (!hasItems && !hasProteinItems) navigate('/cart');
-  }, [hasItems, hasProteinItems, navigate]);
+    if (!hasItems && !hasProteinItems && step === 'review') navigate('/cart');
+  }, [hasItems, hasProteinItems, navigate, step]);
 
   const saveProteinOrders = async (orderId: string) => {
     try {
@@ -133,7 +172,129 @@ export const CustomerCheckout: React.FC = () => {
     }
   };
 
-  const handlePayWithMercadoPago = async () => {
+  const initializeBrick = useCallback(async (amount: number, prefId: string, pubKey: string) => {
+    if (brickInitializedRef.current) return;
+    brickInitializedRef.current = true;
+
+    try {
+      setBrickLoading(true);
+      await loadMercadoPagoSdk();
+
+      await new Promise((r) => setTimeout(r, 300));
+
+      const mp = new window.MercadoPago(pubKey, { locale: 'es-MX' });
+
+      if (brickControllerRef.current) {
+        brickControllerRef.current.unmount();
+        brickControllerRef.current = null;
+      }
+
+      const containerId = 'paymentBrick_container';
+      const container = document.getElementById(containerId);
+      if (!container) {
+        console.error('Payment brick container not found');
+        brickInitializedRef.current = false;
+        setBrickLoading(false);
+        return;
+      }
+
+      const controller = await mp.bricks().create('payment', containerId, {
+        initialization: {
+          amount: amount,
+          preferenceId: prefId,
+        },
+        customization: {
+          visual: {
+            style: {
+              theme: 'default',
+            },
+            hideFormTitle: true,
+            hidePaymentButton: false,
+          },
+          paymentMethods: {
+            creditCard: 'all',
+            debitCard: 'all',
+            ticket: 'all',
+            mercadoPago: 'all',
+          },
+        },
+        callbacks: {
+          onReady: () => {
+            setBrickLoading(false);
+          },
+          onSubmit: async ({ selectedPaymentMethod, formData }: any) => {
+            try {
+              const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+              const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+              const response = await fetch(`${supabaseUrl}/functions/v1/mercado-pago-checkout`, {
+                method: 'POST',
+                headers: {
+                  Authorization: `Bearer ${supabaseAnonKey}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  action: 'process-payment',
+                  payment_data: formData,
+                  order_id: orderData?.orderId,
+                }),
+              });
+
+              const result = await response.json();
+
+              if (!response.ok || !result.success) {
+                throw new Error(result.error || 'Error al procesar el pago');
+              }
+
+              setPaymentResult(result);
+
+              if (result.status === 'approved') {
+                clearCart();
+                clearProteinCart();
+                setStep('success');
+              } else if (result.status === 'pending' || result.status === 'in_process') {
+                clearCart();
+                clearProteinCart();
+                setStep('success');
+              } else {
+                setSubmitError(
+                  result.status_detail === 'cc_rejected_other_reason'
+                    ? 'La tarjeta fue rechazada. Intenta con otro metodo de pago.'
+                    : `El pago fue rechazado: ${result.status_detail || result.status}`
+                );
+              }
+            } catch (err: any) {
+              console.error('Payment processing error:', err);
+              setSubmitError(err.message || 'Error al procesar el pago');
+            }
+          },
+          onError: (error: any) => {
+            console.error('Brick error:', error);
+            setBrickLoading(false);
+          },
+        },
+      });
+
+      brickControllerRef.current = controller;
+    } catch (err: any) {
+      console.error('Error initializing payment brick:', err);
+      setSubmitError('Error al cargar el formulario de pago. Recarga la pagina e intenta de nuevo.');
+      brickInitializedRef.current = false;
+      setBrickLoading(false);
+    }
+  }, [orderData, clearCart, clearProteinCart]);
+
+  useEffect(() => {
+    return () => {
+      if (brickControllerRef.current) {
+        try { brickControllerRef.current.unmount(); } catch (_) {}
+        brickControllerRef.current = null;
+        brickInitializedRef.current = false;
+      }
+    };
+  }, []);
+
+  const handleProceedToPayment = async () => {
     if (!customer) { setSubmitError('Informacion del cliente incompleta'); return; }
     if (!cart && !hasProteinItems) { setSubmitError('El carrito esta vacio'); return; }
 
@@ -176,7 +337,7 @@ export const CustomerCheckout: React.FC = () => {
           totals.finalTotal += proteinSubtotal * 1.16;
         }
 
-        totalAmount = Math.round(totals.finalTotal);
+        totalAmount = Math.round(totals.finalTotal * 100) / 100;
 
         const confirmData: OrderConfirmationData = {
           orderId, orderNumber, customer,
@@ -187,11 +348,11 @@ export const CustomerCheckout: React.FC = () => {
 
         if (hasProteinItems) await saveProteinOrders(orderId);
 
-        localStorage.setItem('mp_pending_order', JSON.stringify(confirmData));
+        setOrderData({ orderId, orderNumber, totalAmount, confirmData });
       } else if (hasProteinItems) {
         const taxAmount = proteinSubtotal * 0.16;
         const finalTotal = proteinSubtotal + taxAmount;
-        totalAmount = Math.round(finalTotal);
+        totalAmount = Math.round(finalTotal * 100) / 100;
 
         const { data: orderRow } = await supabase
           .from('orders')
@@ -219,7 +380,8 @@ export const CustomerCheckout: React.FC = () => {
           totals: { subtotal: proteinSubtotal, planDiscount: 0, deliveryPrice: 0, couponDiscount: 0, taxAmount, finalTotal },
           deliveryOptionName: 'Por coordinar', couponCode: undefined,
         };
-        localStorage.setItem('mp_pending_order', JSON.stringify(confirmData));
+
+        setOrderData({ orderId, orderNumber, totalAmount, confirmData });
       }
 
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -234,7 +396,7 @@ export const CustomerCheckout: React.FC = () => {
         },
         body: JSON.stringify({
           action: 'create-preference',
-          items: [{ title: `Pedido #${orderNumber}`, quantity: 1, unit_price: Math.round(totalAmount * 100) / 100 }],
+          items: [{ title: `Pedido #${orderNumber}`, quantity: 1, unit_price: totalAmount }],
           payer: {
             name: customer.customer_name, surname: customer.customer_lastname,
             email: customer.customer_email, phone: customer.customer_phone,
@@ -248,14 +410,16 @@ export const CustomerCheckout: React.FC = () => {
       if (!response.ok) throw new Error(`Error al crear preferencia de pago (${response.status})`);
 
       const prefData = await response.json();
-      if (!prefData.success || !prefData.init_point) {
+      if (!prefData.success) {
         throw new Error(prefData.error || 'No se pudo crear la preferencia de pago');
       }
 
-      clearCart();
-      clearProteinCart();
+      setStep('payment');
 
-      window.location.href = prefData.init_point;
+      setTimeout(() => {
+        initializeBrick(totalAmount, prefData.preference_id, prefData.public_key);
+      }, 100);
+
     } catch (err: any) {
       console.error('Error creating order:', err);
       setSubmitError(err.message || 'Error al procesar el pedido. Por favor intenta de nuevo.');
@@ -277,6 +441,99 @@ export const CustomerCheckout: React.FC = () => {
     const couponDiscountAmount = cart?.couponDiscountAmount || 0;
     return calculatePriceBreakdown(mealItemsTotal + proteinSubtotal, totalPlanDiscount, deliveryPrice, couponDiscountAmount, 0, 16);
   }, [cart, hasProteinItems, planDiscounts, proteinSubtotal]);
+
+  if (step === 'success') {
+    const isApproved = paymentResult?.status === 'approved';
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4">
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-lg p-8 text-center">
+          <div className={`w-16 h-16 rounded-full ${isApproved ? 'bg-green-100' : 'bg-yellow-100'} flex items-center justify-center mx-auto mb-6`}>
+            <CheckCircle className={`w-8 h-8 ${isApproved ? 'text-green-600' : 'text-yellow-600'}`} />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            {isApproved ? 'Pago Aprobado' : 'Pago en Proceso'}
+          </h2>
+          <p className="text-gray-600 mb-2">
+            {isApproved
+              ? 'Tu pago ha sido procesado exitosamente.'
+              : 'Tu pago esta siendo procesado. Te notificaremos cuando se confirme.'}
+          </p>
+          {orderData && (
+            <p className="text-sm text-gray-500 mb-6">Pedido #{orderData.orderNumber}</p>
+          )}
+          <button
+            onClick={() => navigate('/')}
+            className="w-full bg-red-600 hover:bg-red-700 text-white py-3 rounded-xl font-semibold transition-colors"
+          >
+            Volver al Inicio
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (step === 'payment') {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8 px-4">
+        <div className="max-w-3xl mx-auto">
+          <button
+            onClick={() => {
+              if (brickControllerRef.current) {
+                try { brickControllerRef.current.unmount(); } catch (_) {}
+                brickControllerRef.current = null;
+                brickInitializedRef.current = false;
+              }
+              setStep('review');
+            }}
+            className="flex items-center text-gray-600 hover:text-gray-900 mb-6 transition-colors"
+          >
+            <ArrowLeft className="h-5 w-5 mr-2" /> Volver a revisar pedido
+          </button>
+
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="bg-gradient-to-r from-gray-900 to-gray-800 px-6 py-5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <ShieldCheck className="w-6 h-6 text-green-400" />
+                  <div>
+                    <h2 className="text-lg font-bold text-white">Pago Seguro</h2>
+                    <p className="text-gray-400 text-sm">Procesado por Mercado Pago</p>
+                  </div>
+                </div>
+                {orderData && (
+                  <div className="text-right">
+                    <p className="text-gray-400 text-sm">Total a pagar</p>
+                    <p className="text-2xl font-bold text-white">${orderData.totalAmount.toFixed(2)} MXN</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {submitError && (
+              <div className="mx-6 mt-4 bg-red-50 border border-red-200 rounded-xl p-4 flex items-center space-x-3">
+                <XCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+                <span className="text-red-800 text-sm">{submitError}</span>
+              </div>
+            )}
+
+            <div className="p-6">
+              {brickLoading && (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-blue-500 mb-4" />
+                  <p className="text-gray-600">Cargando formulario de pago...</p>
+                </div>
+              )}
+              <div
+                id="paymentBrick_container"
+                ref={brickContainerRef}
+                style={{ minHeight: brickLoading ? 0 : 200 }}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!hasItems && !hasProteinItems) return null;
 
@@ -450,7 +707,6 @@ export const CustomerCheckout: React.FC = () => {
             )}
           </div>
 
-          {/* Sidebar */}
           <div className="lg:col-span-1">
             <div className="bg-gray-50 rounded-xl p-6 sticky top-6">
               <h3 className="font-bold text-gray-900 mb-4">Resumen</h3>
@@ -507,18 +763,18 @@ export const CustomerCheckout: React.FC = () => {
 
               <div className="space-y-3">
                 <button
-                  onClick={handlePayWithMercadoPago}
+                  onClick={handleProceedToPayment}
                   disabled={submitting || loadingDiscounts}
                   className="w-full bg-[#009ee3] hover:bg-[#007eb5] text-white px-6 py-3.5 rounded-xl font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {submitting ? (
                     <><Loader2 className="w-5 h-5 animate-spin" /> Procesando...</>
                   ) : (
-                    <><CreditCard className="w-5 h-5" /> Pagar con Mercado Pago <ExternalLink className="w-4 h-4 ml-1" /></>
+                    <><CreditCard className="w-5 h-5" /> Proceder al Pago</>
                   )}
                 </button>
                 <p className="text-xs text-center text-gray-500">
-                  Seras redirigido a Mercado Pago para completar tu pago de forma segura
+                  El pago se procesara de forma segura con Mercado Pago
                 </p>
                 <button
                   onClick={() => { clearCart(); clearProteinCart(); }}
