@@ -7,7 +7,7 @@ import { DeliveryOption } from '../../types/deliveryOption';
 import { Coupon } from '../../types/coupon';
 import { buildQuantityUpdates } from '../../utils/orderWeeksTransformer';
 import { Customer } from '../../types/customer';
-import { mailgunService } from '../../services/mailgunService';
+
 
 interface OrderSubmissionData {
   customer: Customer;
@@ -295,21 +295,35 @@ class CustomerOrderSubmissionService {
       };
 
       const shopUrl = `${window.location.origin}`;
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-      await mailgunService.sendOrderConfirmationEmail({
-        customerName: `${customer.customer_name} ${customer.customer_lastname}`.trim(),
-        customerEmail: customer.customer_email,
-        orderNumber,
-        deliveryAddress: formatAddress(),
-        deliveryWeeks: selectedWeeks.map(sw => ({
-          weekName: sw.week.week_name,
-          deliveryDate: sw.week.week_date
-        })),
-        totals,
-        deliveryOptionName,
-        couponCode,
-        shopUrl
+      const response = await fetch(`${supabaseUrl}/functions/v1/send-order-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseAnonKey}`,
+        },
+        body: JSON.stringify({
+          customerName: `${customer.customer_name} ${customer.customer_lastname}`.trim(),
+          customerEmail: customer.customer_email,
+          orderNumber,
+          deliveryAddress: formatAddress(),
+          deliveryWeeks: selectedWeeks.map(sw => ({
+            weekName: sw.week.week_name,
+            deliveryDate: sw.week.week_date
+          })),
+          totals,
+          deliveryOptionName,
+          couponCode,
+          shopUrl
+        }),
       });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.warn('Order email edge function error:', errorData);
+      }
     } catch (err) {
       console.warn('Could not send order confirmation email:', err);
     }

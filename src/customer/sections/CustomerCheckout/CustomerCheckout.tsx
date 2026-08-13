@@ -10,7 +10,7 @@ import {
 import { BILLABLE_MEAL_TYPES } from '../../../types/orderMenu';
 import { calculatePriceBreakdown } from '../../../utils/priceCalculations';
 import { supabase } from '../../../config/supabase';
-import { mailgunService } from '../../../services/mailgunService';
+
 
 declare global {
   interface Window {
@@ -302,24 +302,37 @@ export const CustomerCheckout: React.FC = () => {
                 if (customer.customer_postal_code) parts.push(`CP ${customer.customer_postal_code}`);
                 return parts.join(', ');
               };
-              await mailgunService.sendOrderConfirmationEmail({
-                customerName: `${customer.customer_name} ${customer.customer_lastname}`.trim(),
-                customerEmail: customer.customer_email,
-                orderNumber,
-                deliveryAddress: formatAddress(),
-                deliveryWeeks: [],
-                totals: {
-                  subtotal: snappedProteinSubtotal,
-                  planDiscount: 0,
-                  deliveryPrice: 0,
-                  couponDiscount: 0,
-                  taxAmount: snappedProteinSubtotal * 0.16,
-                  finalTotal: snappedProteinSubtotal * 1.16,
+              const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+              const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+              const emailResp = await fetch(`${supabaseUrl}/functions/v1/send-order-email`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${supabaseAnonKey}`,
                 },
-                deliveryOptionName: 'Proteinas',
-                shopUrl: window.location.origin,
+                body: JSON.stringify({
+                  customerName: `${customer.customer_name} ${customer.customer_lastname}`.trim(),
+                  customerEmail: customer.customer_email,
+                  orderNumber,
+                  deliveryAddress: formatAddress(),
+                  deliveryWeeks: [],
+                  totals: {
+                    subtotal: snappedProteinSubtotal,
+                    planDiscount: 0,
+                    deliveryPrice: 0,
+                    couponDiscount: 0,
+                    taxAmount: snappedProteinSubtotal * 0.16,
+                    finalTotal: snappedProteinSubtotal * 1.16,
+                  },
+                  deliveryOptionName: 'Proteinas',
+                  shopUrl: window.location.origin,
+                }),
               });
-              emailSent = true;
+              if (emailResp.ok) {
+                emailSent = true;
+              } else {
+                emailError = 'No pudimos enviar el correo de confirmacion.';
+              }
             } catch (err: any) {
               emailError = 'No pudimos enviar el correo de confirmacion.';
               console.warn('Could not send protein order email:', err);
