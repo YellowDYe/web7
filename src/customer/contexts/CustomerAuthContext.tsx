@@ -128,6 +128,13 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     initAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      // Skip events that don't require re-fetching when user is already loaded
+      if (user && session?.user?.id === user.id) {
+        if (_event === 'TOKEN_REFRESHED' || _event === 'INITIAL_SESSION') {
+          return;
+        }
+      }
+
       (async () => {
         console.log('[CustomerAuth] Auth state changed, event:', _event);
         setUser(session?.user ?? null);

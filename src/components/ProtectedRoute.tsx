@@ -12,9 +12,11 @@ interface ProtectedRouteProps {
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const { user, loading, passwordChangeRequired, checkPasswordChangeRequired, noAdminAccess, noAdminAccessEmail, logout } = useAuth();
   const location = useLocation();
+  const checkedRef = React.useRef<string | null>(null);
 
   React.useEffect(() => {
-    if (user) {
+    if (user && checkedRef.current !== user.id) {
+      checkedRef.current = user.id;
       checkPasswordChangeRequired();
     }
   }, [user, checkPasswordChangeRequired]);
