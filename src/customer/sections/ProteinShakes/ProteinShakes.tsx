@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ShoppingCart, Plus, Minus, CheckCircle, Zap, Loader2, AlertCircle } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { ShoppingCart, Plus, Minus, CircleCheck as CheckCircle, Zap, Loader as Loader2, CircleAlert as AlertCircle } from 'lucide-react';
 import { proteinPlanService } from '../../../services/proteinPlanService';
 import { ProteinPlan } from '../../../types/proteinPlan';
 import { useCart } from '../../contexts/CartContext';
 
 export const ProteinShakes: React.FC = () => {
-  const navigate = useNavigate();
   const { addProteinToCart } = useCart();
 
   const [plans, setPlans] = useState<ProteinPlan[]>([]);
@@ -219,13 +218,13 @@ export const ProteinShakes: React.FC = () => {
 
         {/* CTA to cart */}
         <div className="text-center">
-          <button
-            onClick={() => navigate('/cart')}
+          <Link
+            to="/cart"
             className="inline-flex items-center gap-2 bg-white border-2 border-gray-200 hover:border-gray-300 text-gray-700 hover:text-gray-900 font-semibold px-8 py-3.5 rounded-xl transition-all duration-200 shadow-sm hover:shadow-md"
           >
             <ShoppingCart className="w-5 h-5" />
             Ver carrito
-          </button>
+          </Link>
         </div>
 
       </div>

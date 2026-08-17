@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { ShoppingCart, Trash2, Plus, ArrowLeft, Package, Tag, Truck, Users, Zap } from 'lucide-react';
 import { useCart } from '../../contexts/CartContext';
 import { useCustomerAuth } from '../../contexts/CustomerAuthContext';
@@ -11,7 +11,7 @@ import { couponService } from '../../../services/couponService';
 import CustomerCouponInput from '../../components/orders/CustomerCouponInput';
 
 export const CustomerCart: React.FC = () => {
-  const navigate = useNavigate();
+
   const { cart, clearCart, updateCart, proteinCart, removeProteinFromCart, proteinSubtotal, hasItems } = useCart();
   const { customer } = useCustomerAuth();
   const [showClearConfirm, setShowClearConfirm] = useState(false);
@@ -118,13 +118,7 @@ export const CustomerCart: React.FC = () => {
     }
   };
 
-  const handleContinueShopping = () => {
-    navigate('/order');
-  };
 
-  const handleProceedToCheckout = () => {
-    navigate('/checkout');
-  };
 
   const hasMealItems = cart && cart.orderItems && cart.orderItems.length > 0;
   const hasProteinCartItems = proteinCart && proteinCart.length > 0;
@@ -171,20 +165,20 @@ export const CustomerCart: React.FC = () => {
               Agrega planes de comida o proteínas a tu carrito para continuar
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Button
-                onClick={handleContinueShopping}
-                className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-full text-lg"
+              <Link
+                to="/order"
+                className="inline-flex items-center justify-center bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-full text-lg font-medium transition-colors"
               >
                 <Plus className="h-5 w-5 mr-2" />
                 Explorar Planes
-              </Button>
-              <Button
-                onClick={() => navigate('/proteinas')}
-                className="bg-red-500 hover:bg-red-600 text-white px-8 py-3 rounded-full text-lg"
+              </Link>
+              <Link
+                to="/proteinas"
+                className="inline-flex items-center justify-center bg-red-500 hover:bg-red-600 text-white px-8 py-3 rounded-full text-lg font-medium transition-colors"
               >
                 <Zap className="h-5 w-5 mr-2" />
                 Ver Proteínas
-              </Button>
+              </Link>
             </div>
           </div>
         </div>
@@ -197,13 +191,13 @@ export const CustomerCart: React.FC = () => {
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <button
-            onClick={handleContinueShopping}
+          <Link
+            to="/order"
             className="flex items-center text-gray-600 hover:text-gray-900 mb-4 transition-colors"
           >
             <ArrowLeft className="h-5 w-5 mr-2" />
             Continuar comprando
-          </button>
+          </Link>
           <h1 className="text-3xl font-bold font-antonio text-gray-900">Tu Carrito</h1>
           <p className="text-gray-600 mt-2">Revisa tu pedido antes de proceder al pago</p>
         </div>
@@ -455,20 +449,19 @@ export const CustomerCart: React.FC = () => {
 
                     {/* Action Buttons */}
                     <div className="space-y-3 pt-4">
-                      <Button
-                        onClick={handleProceedToCheckout}
-                        className="w-full bg-green-600 hover:bg-green-700 text-white py-6 text-lg rounded-full"
+                      <Link
+                        to="/checkout"
+                        className="w-full inline-flex items-center justify-center bg-green-600 hover:bg-green-700 text-white py-4 text-lg rounded-full font-medium transition-colors"
                       >
                         Proceder al Pago
-                      </Button>
+                      </Link>
 
-                      <Button
-                        onClick={handleContinueShopping}
-                        variant="outline"
-                        className="w-full py-6 text-lg rounded-full"
+                      <Link
+                        to="/order"
+                        className="w-full inline-flex items-center justify-center border border-gray-300 hover:bg-gray-50 text-gray-900 py-4 text-lg rounded-full font-medium transition-colors"
                       >
                         Continuar Comprando
-                      </Button>
+                      </Link>
 
                       <button
                         onClick={() => setShowClearConfirm(true)}

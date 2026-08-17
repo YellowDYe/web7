@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import { CircleCheck as CheckCircle, Circle as XCircle, Clock, Loader as Loader2, Package, Chrome as Home, Calendar, MapPin, User, Phone } from 'lucide-react';
 import { customerOrderSubmissionService, OrderConfirmationData } from '../services/customerOrderSubmissionService';
 import { supabase } from '../../config/supabase';
@@ -8,7 +8,6 @@ type PaymentStatus = 'loading' | 'approved' | 'pending' | 'failure';
 
 export const CheckoutReturn: React.FC = () => {
   const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
   const [status, setStatus] = useState<PaymentStatus>('loading');
   const [confirmationData, setConfirmationData] = useState<OrderConfirmationData | null>(null);
 
@@ -94,12 +93,12 @@ export const CheckoutReturn: React.FC = () => {
             Tu pago no pudo ser procesado. Puedes intentar de nuevo o elegir otro metodo de pago.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <button onClick={() => navigate('/order')} className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl font-semibold transition-colors">
+            <Link to="/order" className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl font-semibold transition-colors text-center">
               Intentar de nuevo
-            </button>
-            <button onClick={() => navigate('/')} className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3 rounded-xl font-semibold transition-colors">
+            </Link>
+            <Link to="/" className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3 rounded-xl font-semibold transition-colors text-center">
               Volver al inicio
-            </button>
+            </Link>
           </div>
         </div>
       </div>
@@ -124,12 +123,12 @@ export const CheckoutReturn: React.FC = () => {
             </div>
           )}
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <button onClick={() => navigate('/account?tab=orders')} className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2">
+            <Link to="/account?tab=orders" className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2">
               <Package className="w-4 h-4" /> Ver mis pedidos
-            </button>
-            <button onClick={() => navigate('/')} className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2">
+            </Link>
+            <Link to="/" className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2">
               <Home className="w-4 h-4" /> Volver al inicio
-            </button>
+            </Link>
           </div>
         </div>
       </div>
@@ -265,12 +264,12 @@ export const CheckoutReturn: React.FC = () => {
         )}
 
         <div className="flex flex-col sm:flex-row gap-3">
-          <button onClick={() => navigate('/account?tab=orders')} className="flex-1 bg-red-600 hover:bg-red-700 text-white px-6 py-3.5 rounded-xl font-semibold text-sm transition-colors flex items-center justify-center gap-2">
+          <Link to="/account?tab=orders" className="flex-1 bg-red-600 hover:bg-red-700 text-white px-6 py-3.5 rounded-xl font-semibold text-sm transition-colors flex items-center justify-center gap-2">
             <Package className="w-4 h-4" /> Ver mis pedidos
-          </button>
-          <button onClick={() => navigate('/')} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3.5 rounded-xl font-semibold text-sm transition-colors flex items-center justify-center gap-2">
+          </Link>
+          <Link to="/" className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3.5 rounded-xl font-semibold text-sm transition-colors flex items-center justify-center gap-2">
             <Home className="w-4 h-4" /> Volver al inicio
-          </button>
+          </Link>
         </div>
       </div>
     </div>

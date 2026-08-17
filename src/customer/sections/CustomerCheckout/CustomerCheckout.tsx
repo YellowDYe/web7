@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { CircleCheck as CheckCircle, Circle as XCircle, Loader as Loader2, Trash2, ArrowLeft, CreditCard, Calendar, MapPin, User, Phone, Zap, ShieldCheck, Mail, CircleAlert as AlertCircle } from 'lucide-react';
 import { useCart } from '../../contexts/CartContext';
 import { useCustomerAuth } from '../../contexts/CustomerAuthContext';
@@ -751,18 +751,18 @@ export const CustomerCheckout: React.FC = () => {
 
               {/* Actions */}
               <div className="space-y-3 pt-2">
-                <button
-                  onClick={() => navigate('/account')}
-                  className="w-full bg-red-600 hover:bg-red-700 text-white py-3.5 rounded-xl font-semibold transition-colors"
+                <Link
+                  to="/account"
+                  className="block w-full bg-red-600 hover:bg-red-700 text-white py-3.5 rounded-xl font-semibold transition-colors text-center"
                 >
                   Ver mis pedidos
-                </button>
-                <button
-                  onClick={() => navigate('/')}
-                  className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-xl font-medium transition-colors"
+                </Link>
+                <Link
+                  to="/"
+                  className="block w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-xl font-medium transition-colors text-center"
                 >
                   Volver al Inicio
-                </button>
+                </Link>
               </div>
             </div>
           </div>
@@ -878,9 +878,9 @@ export const CustomerCheckout: React.FC = () => {
     <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="max-w-6xl mx-auto">
         <div className="mb-8">
-          <button onClick={() => navigate('/cart')} className="flex items-center text-gray-600 hover:text-gray-900 mb-4 transition-colors">
+          <Link to="/cart" className="flex items-center text-gray-600 hover:text-gray-900 mb-4 transition-colors">
             <ArrowLeft className="h-5 w-5 mr-2" /> Volver al carrito
-          </button>
+          </Link>
           <h1 className="text-3xl font-bold font-antonio text-gray-900">Revisar Pedido</h1>
           <p className="text-gray-600 mt-2">Revisa y confirma tu pedido antes de pagar</p>
         </div>
