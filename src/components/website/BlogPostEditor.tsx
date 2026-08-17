@@ -166,6 +166,7 @@ export const BlogPostEditor: React.FC<BlogPostEditorProps> = ({ post, onSave, on
             </div>
           )}
           <button
+            type="button"
             onClick={onCancel}
             className="flex items-center gap-1.5 text-gray-600 hover:text-gray-800 border border-gray-300 hover:border-gray-400 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
           >
@@ -173,6 +174,7 @@ export const BlogPostEditor: React.FC<BlogPostEditorProps> = ({ post, onSave, on
             Cancelar
           </button>
           <button
+            type="button"
             onClick={handleSave}
             disabled={saving}
             className="flex items-center gap-1.5 bg-primary-600 hover:bg-primary-700 disabled:opacity-60 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
@@ -189,6 +191,7 @@ export const BlogPostEditor: React.FC<BlogPostEditorProps> = ({ post, onSave, on
           {/* Section tabs */}
           <div className="flex gap-1 border-b border-gray-200">
             <button
+              type="button"
               onClick={() => setActiveSection('content')}
               className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
                 activeSection === 'content'
@@ -199,6 +202,7 @@ export const BlogPostEditor: React.FC<BlogPostEditorProps> = ({ post, onSave, on
               Contenido
             </button>
             <button
+              type="button"
               onClick={() => setActiveSection('seo')}
               className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
                 activeSection === 'seo'
@@ -227,12 +231,14 @@ export const BlogPostEditor: React.FC<BlogPostEditorProps> = ({ post, onSave, on
                     />
                     <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100 gap-3">
                       <button
+                        type="button"
                         onClick={() => setShowMediaBrowser(true)}
                         className="bg-white text-gray-900 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-gray-100 transition-colors"
                       >
                         Cambiar
                       </button>
                       <button
+                        type="button"
                         onClick={() => setForm(prev => ({ ...prev, cover_image_url: '' }))}
                         className="bg-red-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-red-700 transition-colors"
                       >
@@ -242,6 +248,7 @@ export const BlogPostEditor: React.FC<BlogPostEditorProps> = ({ post, onSave, on
                   </div>
                 ) : (
                   <button
+                    type="button"
                     onClick={() => setShowMediaBrowser(true)}
                     className="w-full h-36 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center gap-2 text-gray-500 hover:border-primary-400 hover:text-primary-600 transition-colors"
                   >
@@ -355,6 +362,7 @@ export const BlogPostEditor: React.FC<BlogPostEditorProps> = ({ post, onSave, on
                       >
                         {tag}
                         <button
+                          type="button"
                           onClick={() => removeTag(tag)}
                           className="hover:text-primary-900 ml-0.5"
                         >
@@ -431,6 +439,7 @@ export const BlogPostEditor: React.FC<BlogPostEditorProps> = ({ post, onSave, on
             <h3 className="font-semibold text-gray-900 text-sm">Estado de publicación</h3>
 
             <button
+              type="button"
               onClick={handleStatusToggle}
               className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg border-2 transition-colors text-sm font-medium ${
                 form.status === 'published'

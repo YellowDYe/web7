@@ -1,4 +1,4 @@
-import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
+import { useState, useEffect, useRef, createContext, useContext, ReactNode } from 'react';
 import { Session } from '@supabase/supabase-js';
 import { userManagementService } from '../services/userManagementService';
 import { supabase } from '../config/supabase';
@@ -34,6 +34,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [noAdminAccess, setNoAdminAccess] = useState(false);
   const [noAdminAccessEmail, setNoAdminAccessEmail] = useState<string | null>(null);
 
+  const currentAuthUserId = useRef<string | null>(null);
+
   useEffect(() => {
     console.log('Setting up Supabase auth state listener...');
 
@@ -43,6 +45,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('Auth state changed:', event);
+
+      // On token refresh, skip full re-verification if user is already loaded
+      if (event === 'TOKEN_REFRESHED' && currentAuthUserId.current && session?.user?.id === currentAuthUserId.current) {
+        return;
+      }
 
       // Handle password recovery event
       if (event === 'PASSWORD_RECOVERY') {
@@ -126,6 +133,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           };
 
           setUser(user);
+          currentAuthUserId.current = session.user.id;
           setLoading(false);
           await loadUserPermissions(session.user.id);
           setPermissionsLoading(false);
@@ -164,6 +172,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               };
 
               setUser(user);
+              currentAuthUserId.current = session.user.id;
               setLoading(false);
               await loadUserPermissions(session.user.id);
               setPermissionsLoading(false);
@@ -191,6 +200,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setLoading(false);
       }
     } else {
+      currentAuthUserId.current = null;
       setUser(null);
       setPermissions([]);
       setNoAdminAccess(false);
@@ -293,6 +303,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
+      currentAuthUserId.current = null;
       setUser(null);
       setPermissions([]);
       setPasswordChangeRequired(false);

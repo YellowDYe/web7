@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Image from '@tiptap/extension-image';
@@ -68,6 +68,12 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange,
   const [showImageModal, setShowImageModal] = useState(false);
   const [imageUrl, setImageUrl] = useState('');
 
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+
+  // Track whether content changes come from the editor itself (user typing)
+  const isInternalUpdate = useRef(false);
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -85,11 +91,28 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange,
       }),
     ],
     content: value,
+    shouldRerenderOnTransaction: false,
     onUpdate({ editor }) {
+      isInternalUpdate.current = true;
       const html = editor.getHTML();
-      onChange(html === '<p></p>' ? '' : html);
+      onChangeRef.current(html === '<p></p>' ? '' : html);
     },
   });
+
+  // Sync external value changes into the editor (e.g. loading a different post)
+  // but skip when the change originated from the editor's own onUpdate
+  useEffect(() => {
+    if (!editor) return;
+    if (isInternalUpdate.current) {
+      isInternalUpdate.current = false;
+      return;
+    }
+    const currentHtml = editor.getHTML();
+    const normalizedCurrent = currentHtml === '<p></p>' ? '' : currentHtml;
+    if (value !== normalizedCurrent) {
+      editor.commands.setContent(value || '', false);
+    }
+  }, [value, editor]);
 
   const openLinkModal = useCallback(() => {
     if (!editor) return;
@@ -302,7 +325,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange,
               type="url"
               value={linkUrl}
               onChange={e => setLinkUrl(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && applyLink()}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); applyLink(); } }}
               placeholder="https://ejemplo.com"
               autoFocus
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 mb-4"
@@ -357,7 +380,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange,
               type="url"
               value={imageUrl}
               onChange={e => setImageUrl(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && applyImage()}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); applyImage(); } }}
               placeholder="https://ejemplo.com/imagen.jpg"
               autoFocus
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 mb-4"
