@@ -46,16 +46,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('Auth state changed:', event);
 
-      // Skip events that don't require a full re-verification when user is already loaded
+      // When the same user is already fully loaded, only act on events that
+      // genuinely change auth state. This prevents tab-switch / token-refresh
+      // events from tearing down the UI.
       if (currentAuthUserId.current && session?.user?.id === currentAuthUserId.current) {
-        if (event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
-          return;
+        if (event === 'PASSWORD_RECOVERY') {
+          handleAuthChange(session);
+        } else if (event === 'USER_UPDATED') {
+          handleAuthChange(session);
         }
-      }
-
-      // Handle password recovery event
-      if (event === 'PASSWORD_RECOVERY') {
-        console.log('Password recovery detected, user should be on /reset-password');
+        // All other events (TOKEN_REFRESHED, INITIAL_SESSION, SIGNED_IN re-emit) are no-ops
+        return;
       }
 
       handleAuthChange(session);
@@ -68,6 +69,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const handleAuthChange = async (session: Session | null) => {
     if (session?.user) {
+      // If this user is already fully loaded, skip redundant processing
+      if (currentAuthUserId.current === session.user.id) {
+        setLoading(false);
+        return;
+      }
+
       try {
         const userType = session.user.user_metadata?.user_type;
 

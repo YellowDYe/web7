@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react';
 import { supabase } from '../../config/supabase';
 import { User } from '@supabase/supabase-js';
 import type { Customer } from '../../types/customer';
@@ -21,6 +21,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [loading, setLoading] = useState(true);
+  const currentUserIdRef = useRef<string | null>(null);
 
   const fetchCustomerData = async (authUserId: string, userEmail?: string) => {
     try {
@@ -109,6 +110,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
 
         setUser(session?.user ?? null);
         if (session?.user) {
+          currentUserIdRef.current = session.user.id;
           await fetchCustomerData(session.user.id, session.user.email);
         }
       } catch (error) {
@@ -128,19 +130,20 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     initAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      // Skip events that don't require re-fetching when user is already loaded
-      if (user && session?.user?.id === user.id) {
-        if (_event === 'TOKEN_REFRESHED' || _event === 'INITIAL_SESSION') {
-          return;
-        }
+      // When the same user is already loaded, skip all events except sign-out
+      if (currentUserIdRef.current && session?.user?.id === currentUserIdRef.current) {
+        return;
       }
 
       (async () => {
         console.log('[CustomerAuth] Auth state changed, event:', _event);
-        setUser(session?.user ?? null);
         if (session?.user) {
+          currentUserIdRef.current = session.user.id;
+          setUser(session.user);
           await fetchCustomerData(session.user.id, session.user.email);
         } else {
+          currentUserIdRef.current = null;
+          setUser(null);
           setCustomer(null);
         }
       })();
@@ -329,6 +332,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
+      currentUserIdRef.current = null;
       setUser(null);
       setCustomer(null);
     } catch (error: any) {
