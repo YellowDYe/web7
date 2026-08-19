@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
@@ -30,6 +30,8 @@ export default function CustomerSignupPage() {
   const [emailCheckMessage, setEmailCheckMessage] = useState('');
   const { signup, checkEmailExists } = useCustomerAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const returnTo = searchParams.get('returnTo') || '/account';
 
   const [formData, setFormData] = useState({
     email: '',
@@ -356,7 +358,7 @@ export default function CustomerSignupPage() {
 
       await signup(formData.email, formData.password, customerData);
       localStorage.removeItem('customerSignupDraft');
-      navigate('/account');
+      navigate(returnTo);
     } catch (err: any) {
       setError(err.message || 'Error al crear la cuenta');
     } finally {
@@ -855,7 +857,7 @@ export default function CustomerSignupPage() {
               {error}
               {error.includes('ya está registrado') && (
                 <div className="mt-2 flex gap-2">
-                  <Link to="/login" className="text-red-600 hover:text-red-800 font-medium underline">
+                  <Link to={`/login${returnTo !== '/account' ? `?returnTo=${encodeURIComponent(returnTo)}` : ''}`} className="text-red-600 hover:text-red-800 font-medium underline">
                     Iniciar Sesión
                   </Link>
                   <span>•</span>
@@ -908,7 +910,7 @@ export default function CustomerSignupPage() {
 
           <div className="mt-8 text-center text-sm">
             <span className="text-gray-600">¿Ya tienes cuenta? </span>
-            <Link to="/login" className="text-red-600 hover:text-red-700 font-medium">
+            <Link to={`/login${returnTo !== '/account' ? `?returnTo=${encodeURIComponent(returnTo)}` : ''}`} className="text-red-600 hover:text-red-700 font-medium">
               Iniciar sesión
             </Link>
           </div>

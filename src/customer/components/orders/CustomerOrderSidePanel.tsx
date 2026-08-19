@@ -1,5 +1,6 @@
 import React from 'react';
-import { Receipt, Trash2, Package, Users, ShoppingCart, Tag, Loader } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Receipt, Trash2, Package, Users, ShoppingCart, Tag, Loader, LogIn } from 'lucide-react';
 import { PendingOrderItem, BILLABLE_MEAL_TYPES } from '../../../types/orderMenu';
 import { DeliveryOption } from '../../../types/deliveryOption';
 import { Coupon } from '../../../types/coupon';
@@ -23,6 +24,7 @@ interface CustomerOrderSidePanelProps {
   isFirstOrder: boolean;
   loading: boolean;
   canAddToCart: boolean;
+  isLoggedIn: boolean;
 }
 
 const formatCurrency = (amount: number): string =>
@@ -42,6 +44,7 @@ const CustomerOrderSidePanel: React.FC<CustomerOrderSidePanelProps> = ({
   isFirstOrder,
   loading,
   canAddToCart,
+  isLoggedIn,
 }) => {
   const [confirmClear, setConfirmClear] = React.useState(false);
 
@@ -308,12 +311,36 @@ const CustomerOrderSidePanel: React.FC<CustomerOrderSidePanelProps> = ({
           </button>
           {!canAddToCart && !loading && orderItems.length > 0 && (
             <p className="mt-2 text-center text-xs text-orange-600 font-medium">
-              {!orderValidation.isValid
-                ? getValidationMessage(orderValidation.incompleteWeeks)
-                : !selectedDeliveryOption
-                  ? 'Selecciona una opción de entrega para continuar'
-                  : ''}
+              {!isLoggedIn
+                ? ''
+                : !orderValidation.isValid
+                  ? getValidationMessage(orderValidation.incompleteWeeks)
+                  : !selectedDeliveryOption
+                    ? 'Selecciona una opción de entrega para continuar'
+                    : ''}
             </p>
+          )}
+          {!isLoggedIn && (
+            <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-xl text-center">
+              <p className="text-sm text-amber-800 font-medium mb-2">
+                Inicia sesion para agregar al carrito
+              </p>
+              <div className="flex gap-2">
+                <Link
+                  to="/login?returnTo=/order"
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 bg-red-500 hover:bg-red-600 text-white text-xs font-semibold py-2 px-3 rounded-lg transition-colors"
+                >
+                  <LogIn className="w-3.5 h-3.5" />
+                  Iniciar Sesion
+                </Link>
+                <Link
+                  to="/signup?returnTo=/order"
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 border border-red-500 text-red-500 hover:bg-red-50 text-xs font-semibold py-2 px-3 rounded-lg transition-colors"
+                >
+                  Crear Cuenta
+                </Link>
+              </div>
+            </div>
           )}
         </div>
       </div>

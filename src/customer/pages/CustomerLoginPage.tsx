@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
@@ -14,6 +14,8 @@ export default function CustomerLoginPage() {
   const [error, setError] = useState('');
   const { login, loginWithGoogle } = useCustomerAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const returnTo = searchParams.get('returnTo') || '/account';
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,7 +24,7 @@ export default function CustomerLoginPage() {
 
     try {
       await login(email, password);
-      navigate('/account');
+      navigate(returnTo);
     } catch (err: any) {
       setError(err.message || 'Correo electrónico o contraseña inválidos');
     } finally {
@@ -165,7 +167,7 @@ export default function CustomerLoginPage() {
             <UserPlus className="h-12 w-12 text-red-600 mx-auto mb-3" />
             <h2 className="text-xl font-bold text-gray-900 mb-2">¿No tienes cuenta?</h2>
             <p className="text-gray-600 mb-4">Únete a Hola Dieta y comienza tu viaje hacia una alimentación saludable</p>
-            <Link to="/signup">
+            <Link to={`/signup${returnTo !== '/account' ? `?returnTo=${encodeURIComponent(returnTo)}` : ''}`}>
               <Button className="w-full bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg font-medium transition-colors">
                 Crear Cuenta Nueva
               </Button>

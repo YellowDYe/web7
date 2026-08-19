@@ -860,6 +860,7 @@ export const CustomerOrder: React.FC = () => {
           isFirstOrder={isFirstOrder}
           loading={loading}
           canAddToCart={!!canAddToCart}
+          isLoggedIn={!!customer}
         />
       )}
     </div>
