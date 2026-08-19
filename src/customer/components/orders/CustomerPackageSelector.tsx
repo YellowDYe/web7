@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Package, Coffee, Sun, Soup, Minus, Plus, Check, ShoppingBag, Trash2, TriangleAlert as AlertTriangle } from 'lucide-react';
+import { Package, Coffee, Sun, Soup, Minus, Plus, Check, ShoppingBag, Trash2, TriangleAlert as AlertTriangle, Ban } from 'lucide-react';
 import { SelectedWeek } from '../../../types/week';
 import { MealPlan } from '../../../types/mealPlan';
 import { PendingOrderItem, BILLABLE_MEAL_TYPES } from '../../../types/orderMenu';
@@ -388,6 +388,9 @@ const CustomerPackageSelector: React.FC<CustomerPackageSelectorProps> = ({
         activeWeek.week.week_name,
         activeWeek.week.week_id,
       );
+      if (items.length !== qty) {
+        setQuantities(prev => ({ ...prev, [key]: items.length }));
+      }
       onConfirmPackage(items, []);
     } else {
       onRemovePackageMealType(cat.mealType, selectedPlan.meal_plans_id, weekName);
@@ -417,6 +420,9 @@ const CustomerPackageSelector: React.FC<CustomerPackageSelectorProps> = ({
         activeWeek.week.week_name,
         activeWeek.week.week_id,
       );
+      if (items.length !== newQty) {
+        setQuantities(prev => ({ ...prev, [key]: items.length }));
+      }
       onConfirmPackage(items, []);
     }
   };
@@ -714,13 +720,14 @@ const CustomerPackageSelector: React.FC<CustomerPackageSelectorProps> = ({
                     {dishes.map(({ day, name, recipeId }) => {
                       const dayQty = isSelected ? getDayQuantity(day) : 0;
                       const warnings = recipeRestrictions.get(recipeId) || [];
+                      const isBlocked = blockedRecipeIds.has(recipeId);
                       const displayName = name.length > 50 ? `${name.slice(0, 50)}...` : name;
                       return (
-                        <div key={day} className="py-1">
+                        <div key={day} className={`py-1 ${isBlocked ? 'opacity-60' : ''}`}>
                           <div className="flex items-start gap-2">
-                            <span className={`text-xs font-semibold uppercase tracking-wide flex-shrink-0 w-10 pt-0.5 ${colors.text}`}>{day.slice(0, 3)}</span>
-                            <span className="text-sm text-gray-600 leading-snug flex-1 min-w-0 break-words">{displayName}</span>
-                            {isSelected && (
+                            <span className={`text-xs font-semibold uppercase tracking-wide flex-shrink-0 w-10 pt-0.5 ${isBlocked ? 'text-red-400' : colors.text}`}>{day.slice(0, 3)}</span>
+                            <span className={`text-sm leading-snug flex-1 min-w-0 break-words ${isBlocked ? 'text-gray-400 line-through' : 'text-gray-600'}`}>{displayName}</span>
+                            {isSelected && !isBlocked && (
                               <div className="flex-shrink-0 flex items-center gap-0.5">
                                 <button
                                   onClick={() => adjustDayQuantity(category.key, day, -1)}
@@ -740,11 +747,19 @@ const CustomerPackageSelector: React.FC<CustomerPackageSelectorProps> = ({
                               </div>
                             )}
                           </div>
-                          {warnings.length > 0 && (
+                          {isBlocked && warnings.length > 0 && (
+                            <div className="flex items-start gap-1.5 mt-1 ml-12 bg-red-50 border border-red-200 rounded-lg px-2 py-1.5">
+                              <Ban className="w-3.5 h-3.5 text-red-500 flex-shrink-0 mt-0.5" />
+                              <span className="text-xs text-red-600 font-medium leading-snug break-words">
+                                No disponible por tu restricción: {warnings.join(', ')}
+                              </span>
+                            </div>
+                          )}
+                          {!isBlocked && warnings.length > 0 && (
                             <div className="flex items-start gap-1 mt-1 ml-12">
                               <AlertTriangle className="w-3.5 h-3.5 text-amber-500 flex-shrink-0 mt-0.5" />
                               <span className="text-xs text-amber-600 font-medium leading-snug break-words">
-                                Contiene: {warnings.join(', ')}
+                                Contiene: {warnings.join(', ')} (se puede retirar/sustituir)
                               </span>
                             </div>
                           )}
