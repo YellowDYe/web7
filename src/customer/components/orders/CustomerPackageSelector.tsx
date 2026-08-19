@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Package, Coffee, Sun, Soup, Minus, Plus, Grid3x2 as Grid3X3, Check, ShoppingBag, Trash2, TriangleAlert as AlertTriangle } from 'lucide-react';
+import { Package, Coffee, Sun, Soup, Minus, Plus, Check, ShoppingBag, Trash2, TriangleAlert as AlertTriangle } from 'lucide-react';
 import { SelectedWeek } from '../../../types/week';
 import { MealPlan } from '../../../types/mealPlan';
 import { PendingOrderItem, BILLABLE_MEAL_TYPES } from '../../../types/orderMenu';
@@ -48,7 +48,6 @@ interface CustomerPackageSelectorProps {
   customerRestrictions?: string[];
   onConfirmPackage: (items: PendingOrderItem[], pendingIds: string[]) => void;
   onRemovePackageMealType: (mealType: string, planId: string, weekName: string) => void;
-  onOpenPersonalizedMenu: () => void;
   disabled?: boolean;
 }
 
@@ -157,7 +156,6 @@ const CustomerPackageSelector: React.FC<CustomerPackageSelectorProps> = ({
   customerRestrictions = [],
   onConfirmPackage,
   onRemovePackageMealType,
-  onOpenPersonalizedMenu,
   disabled = false,
 }) => {
   const [quantities, setQuantities] = useState<CardQuantity>({
@@ -175,6 +173,7 @@ const CustomerPackageSelector: React.FC<CustomerPackageSelectorProps> = ({
   const [menuRecipesRow, setMenuRecipesRow] = useState<Record<string, string | null> | null>(null);
   const [recipeNames, setRecipeNames] = useState<Map<string, string>>(new Map());
   const [recipeRestrictions, setRecipeRestrictions] = useState<Map<string, string[]>>(new Map());
+  const [blockedRecipeIds, setBlockedRecipeIds] = useState<Set<string>>(new Set());
 
   const weekName = activeWeek.week.week_name;
 
@@ -279,7 +278,7 @@ const CustomerPackageSelector: React.FC<CustomerPackageSelectorProps> = ({
           customerRestrictions.length > 0
             ? supabase
                 .from('recipe_ingredients')
-                .select('recipe_id, ingredient_id')
+                .select('recipe_id, ingredient_id, recipe_ingredient_restriction_management')
                 .in('recipe_id', Array.from(recipeIds))
                 .in('ingredient_id', customerRestrictions)
             : Promise.resolve({ data: [] }),
@@ -291,8 +290,9 @@ const CustomerPackageSelector: React.FC<CustomerPackageSelectorProps> = ({
         }
         setRecipeNames(nameMap);
 
-        const matchedRows = (recipeIngredientsRes.data as { recipe_id: string; ingredient_id: string }[] | null) ?? [];
+        const matchedRows = (recipeIngredientsRes.data as { recipe_id: string; ingredient_id: string; recipe_ingredient_restriction_management?: string }[] | null) ?? [];
         const restrictionMap = new Map<string, string[]>();
+        const blocked = new Set<string>();
 
         if (matchedRows.length > 0) {
           const matchedIngredientIds = [...new Set(matchedRows.map(r => r.ingredient_id))];
@@ -305,6 +305,11 @@ const CustomerPackageSelector: React.FC<CustomerPackageSelectorProps> = ({
           (ingredientRows ?? []).forEach(i => ingredientNameMap.set(i.ingredient_id, i.ingredient_name));
 
           matchedRows.forEach(row => {
+            const mgmt = row.recipe_ingredient_restriction_management || 'None';
+            const isBlocking = mgmt !== 'Remove' && mgmt !== 'Substitute';
+            if (isBlocking) {
+              blocked.add(row.recipe_id);
+            }
             const ingName = ingredientNameMap.get(row.ingredient_id) || row.ingredient_id;
             const existing = restrictionMap.get(row.recipe_id) || [];
             if (!existing.includes(ingName)) existing.push(ingName);
@@ -312,6 +317,7 @@ const CustomerPackageSelector: React.FC<CustomerPackageSelectorProps> = ({
           });
         }
         setRecipeRestrictions(restrictionMap);
+        setBlockedRecipeIds(blocked);
       } catch {
         // silently ignore fetch errors
       }
@@ -330,8 +336,16 @@ const CustomerPackageSelector: React.FC<CustomerPackageSelectorProps> = ({
     entryWeekId: string,
   ): PendingOrderItem[] => {
     const items: PendingOrderItem[] = [];
-    for (let i = 0; i < qty; i++) {
-      const day = DAYS_OF_WEEK[i % DAYS_OF_WEEK.length];
+    let added = 0;
+    let dayIndex = 0;
+    while (added < qty && dayIndex < DAYS_OF_WEEK.length) {
+      const day = DAYS_OF_WEEK[dayIndex];
+      dayIndex++;
+      if (menuRecipesRow) {
+        const col = buildRecipeColumn(day, mealType);
+        const recipeId = menuRecipesRow[col];
+        if (recipeId && blockedRecipeIds.has(recipeId)) continue;
+      }
       let recipeName: string | undefined;
       if (menuRecipesRow) {
         const col = buildRecipeColumn(day, mealType);
@@ -339,7 +353,7 @@ const CustomerPackageSelector: React.FC<CustomerPackageSelectorProps> = ({
         if (recipeId) recipeName = recipeNames.get(recipeId);
       }
       items.push({
-        tempId: `pkg_${entryWeekName}_${mealType}_${day}_${Date.now()}_${i}`,
+        tempId: `pkg_${entryWeekName}_${mealType}_${day}_${Date.now()}_${added}`,
         order_week_id: '',
         meal_plans_id: planId,
         meal_type: mealType,
@@ -353,6 +367,7 @@ const CustomerPackageSelector: React.FC<CustomerPackageSelectorProps> = ({
         family_member_id: selectedFamilyMemberId,
         family_member_name: selectedFamilyMemberName,
       });
+      added++;
     }
     return items;
   };
@@ -411,6 +426,13 @@ const CustomerPackageSelector: React.FC<CustomerPackageSelectorProps> = ({
     if (!selected[key]) return;
 
     const cat = MEAL_CATEGORIES.find(c => c.key === key)!;
+
+    if (delta > 0 && menuRecipesRow) {
+      const col = buildRecipeColumn(day, cat.mealType);
+      const recipeId = menuRecipesRow[col];
+      if (recipeId && blockedRecipeIds.has(recipeId)) return;
+    }
+
     const currentMemberId = selectedFamilyMemberId || null;
 
     const dayItems = orderItems.filter(item =>
@@ -793,17 +815,7 @@ const CustomerPackageSelector: React.FC<CustomerPackageSelectorProps> = ({
         })}
       </div>
 
-      {/* Actions */}
-      <div>
-        <button
-          onClick={onOpenPersonalizedMenu}
-          disabled={disabled}
-          className="flex items-center justify-center space-x-2 border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-900 px-5 py-3.5 rounded-xl font-medium text-sm transition-colors disabled:opacity-40 w-full sm:w-auto"
-        >
-          <Grid3X3 className="w-4 h-4" />
-          <span>Menú Personalizado</span>
-        </button>
-      </div>
+
     </div>
   );
 };

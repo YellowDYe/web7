@@ -24,7 +24,6 @@ import PlanDurationSelector from '../../components/orders/PlanDurationSelector';
 import CustomerWeekSelector from '../../components/orders/CustomerWeekSelector';
 import CustomerMealPlanSelector from '../../components/orders/CustomerMealPlanSelector';
 import CustomerPackageSelector from '../../components/orders/CustomerPackageSelector';
-import CustomerMenuGrid from '../../components/orders/CustomerMenuGrid';
 import CustomerOrderSidePanel from '../../components/orders/CustomerOrderSidePanel';
 import CustomerFamilyMemberSelector from '../../components/orders/CustomerFamilyMemberSelector';
 import { FamilyMember } from '../../../types/familyMember';
@@ -58,8 +57,6 @@ export const CustomerOrder: React.FC = () => {
   const [menuRecipesRow, setMenuRecipesRow] = useState<Record<string, string | null> | null>(null);
   const [colacionRecipeNames, setColacionRecipeNames] = useState<Map<string, string>>(new Map());
 
-  // Package vs personalized mode per week (set of week tempIds using personalized mode)
-  const [personalizedModeWeeks, setPersonalizedModeWeeks] = useState<Set<string>>(new Set());
 
   // First-order detection
   const [isFirstOrder, setIsFirstOrder] = useState(false);
@@ -366,14 +363,6 @@ export const CustomerOrder: React.FC = () => {
 
   const handlePlanSelect = (plan: MealPlan | null) => {
     setSelectedPlan(plan);
-    // When plan changes, exit personalized mode for active week so package selector shows first
-    if (activeWeek) {
-      setPersonalizedModeWeeks(prev => {
-        const next = new Set(prev);
-        next.delete(activeWeek.tempId);
-        return next;
-      });
-    }
   };
 
   const handleConfirmPackage = (items: PendingOrderItem[], pendingIds: string[]) => {
@@ -409,23 +398,6 @@ export const CustomerOrder: React.FC = () => {
     );
   };
 
-  const handleOpenPersonalizedMenu = () => {
-    if (!activeWeek) return;
-    // Clear package-generated billable items for this week so the grid starts clean
-    const weekName = activeWeek.week.week_name;
-    setOrderItems(prev =>
-      prev.filter(item =>
-        !(item.week_name === weekName &&
-          item.meal_plans_id === selectedPlan?.meal_plans_id &&
-          BILLABLE_MEAL_TYPES.includes(item.meal_type as any))
-      )
-    );
-    setPersonalizedModeWeeks(prev => {
-      const next = new Set(prev);
-      next.add(activeWeek.tempId);
-      return next;
-    });
-  };
 
   const handleFamilyMemberSelect = (familyMemberId: string | null, member: FamilyMember | null) => {
     setSelectedFamilyMemberId(familyMemberId);
@@ -828,40 +800,24 @@ export const CustomerOrder: React.FC = () => {
         />
       )}
 
-      {/* Step 4: Package / Personalized Selector */}
+      {/* Step 4: Package Selector */}
       {activeWeek && selectedPlan && (
-        <div>
-          {!personalizedModeWeeks.has(activeWeek.tempId) ? (
-            <CustomerPackageSelector
-              key={activeWeek.tempId}
-              activeWeek={activeWeek}
-              selectedPlan={selectedPlan}
-              orderItems={orderItems}
-              selectedFamilyMemberId={selectedFamilyMemberId}
-              selectedFamilyMemberName={selectedFamilyMember?.family_member_name}
-              customerRestrictions={
-                selectedFamilyMember
-                  ? selectedFamilyMember.family_member_restrictions
-                  : customer?.customer_restrictions || []
-              }
-              onConfirmPackage={handleConfirmPackage}
-              onRemovePackageMealType={handleRemovePackageMealType}
-              onOpenPersonalizedMenu={handleOpenPersonalizedMenu}
-              disabled={loading}
-            />
-          ) : (
-            <CustomerMenuGrid
-              activeWeek={activeWeek}
-              selectedPlan={selectedPlan}
-              customer={customer}
-              selectedFamilyMember={selectedFamilyMember}
-              onAddToOrder={handleAddToOrder}
-              onRemoveFromOrder={handleRemoveOrderItem}
-              orderItems={orderItems}
-              disabled={loading}
-            />
-          )}
-        </div>
+        <CustomerPackageSelector
+          key={activeWeek.tempId}
+          activeWeek={activeWeek}
+          selectedPlan={selectedPlan}
+          orderItems={orderItems}
+          selectedFamilyMemberId={selectedFamilyMemberId}
+          selectedFamilyMemberName={selectedFamilyMember?.family_member_name}
+          customerRestrictions={
+            selectedFamilyMember
+              ? selectedFamilyMember.family_member_restrictions
+              : customer?.customer_restrictions || []
+          }
+          onConfirmPackage={handleConfirmPackage}
+          onRemovePackageMealType={handleRemovePackageMealType}
+          disabled={loading}
+        />
       )}
 
       {/* Resumen del Pedido */}
