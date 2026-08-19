@@ -299,9 +299,13 @@ const CustomerOrderSidePanel: React.FC<CustomerOrderSidePanelProps> = ({
               </>
             )}
           </button>
-          {!orderValidation.isValid && orderItems.length > 0 && (
+          {!canAddToCart && !loading && orderItems.length > 0 && (
             <p className="mt-2 text-center text-xs text-orange-600 font-medium">
-              {getValidationMessage(orderValidation.incompleteWeeks)}
+              {!orderValidation.isValid
+                ? getValidationMessage(orderValidation.incompleteWeeks)
+                : !selectedDeliveryOption
+                  ? 'Selecciona una opción de entrega para continuar'
+                  : ''}
             </p>
           )}
         </div>
