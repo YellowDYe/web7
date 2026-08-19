@@ -32,27 +32,34 @@ export const ModuleEditor: React.FC = () => {
   }>({ show: false, key: '' });
   const [showAddMenu, setShowAddMenu] = useState(false);
 
-  const moduleTypes = [
-    'MainMenu',
-    'MainHero',
-    'MainHeroCarousel',
-    'MultiCardFeature',
-    'StepsFeature',
-    'FeatureFullImage',
-    'FeatureSquareImage',
-    'FeaturePillImage',
-    'Gallery',
-    'StructuredGallery',
-    'BlogGrid',
-    'Objectives',
-    'FAQ',
-    'TitleBlock',
-    'CustomerProfile',
-    'CustomerOrder',
-    'Footer'
+  const contentModuleTypes = [
+    { value: 'MainMenu', label: 'Menu Principal' },
+    { value: 'MainHero', label: 'Hero Principal' },
+    { value: 'MainHeroCarousel', label: 'Hero Carrusel' },
+    { value: 'MultiCardFeature', label: 'Multi Card Feature' },
+    { value: 'StepsFeature', label: 'Pasos (Steps)' },
+    { value: 'FeatureFullImage', label: 'Feature Imagen Completa' },
+    { value: 'FeatureSquareImage', label: 'Feature Imagen Cuadrada' },
+    { value: 'FeaturePillImage', label: 'Feature Imagen Pill' },
+    { value: 'Gallery', label: 'Galeria' },
+    { value: 'StructuredGallery', label: 'Galeria Estructurada' },
+    { value: 'Footer', label: 'Footer' },
   ];
 
-  const systemModuleTypes = ['CustomerProfile', 'CustomerOrder'];
+  const systemModuleTypesList = [
+    { value: 'WeeklyMenu', label: 'Menu Semanal' },
+    { value: 'CustomerOrder', label: 'Ordenar' },
+    { value: 'CustomerCart', label: 'Carrito' },
+    { value: 'CustomerCheckout', label: 'Checkout' },
+    { value: 'CustomerProfile', label: 'Perfil Cliente' },
+    { value: 'ProteinShakes', label: 'Protein Shakes' },
+    { value: 'BlogGrid', label: 'Grid de Blog' },
+    { value: 'Objectives', label: 'Objetivos' },
+    { value: 'FAQ', label: 'Preguntas Frecuentes' },
+    { value: 'TitleBlock', label: 'Bloque de Titulo' },
+  ];
+
+  const systemModuleTypes = systemModuleTypesList.map(t => t.value);
 
   useEffect(() => {
     loadPages();
@@ -529,6 +536,16 @@ export const ModuleEditor: React.FC = () => {
           description: 'Módulo del sistema para mostrar información de cuenta del cliente',
           isSystemModule: true
         };
+      } else if (type === 'CustomerOrder') {
+        defaultContent = { isSystemModule: true };
+      } else if (type === 'CustomerCart') {
+        defaultContent = { isSystemModule: true };
+      } else if (type === 'CustomerCheckout') {
+        defaultContent = { isSystemModule: true };
+      } else if (type === 'WeeklyMenu') {
+        defaultContent = { isSystemModule: true };
+      } else if (type === 'ProteinShakes') {
+        defaultContent = { isSystemModule: true };
       } else if (type === 'Footer') {
         defaultContent = {
           logoUrl: "",
@@ -759,20 +776,37 @@ export const ModuleEditor: React.FC = () => {
                           ))}
                         </div>
                       )}
-                      <div className="p-2">
+                      <div className="p-2 border-b border-gray-200">
                         <div className="text-xs font-semibold text-gray-500 uppercase px-2 py-1">
-                          New Page-Specific Module
+                          Módulos
                         </div>
-                        {moduleTypes.map(type => (
+                        {contentModuleTypes.map(mt => (
                           <button
-                            key={type}
+                            key={mt.value}
                             onClick={() => {
-                              addModule(type);
+                              addModule(mt.value);
                               setShowAddMenu(false);
                             }}
                             className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded text-sm"
                           >
-                            {type}
+                            {mt.label}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="p-2">
+                        <div className="text-xs font-semibold text-gray-500 uppercase px-2 py-1">
+                          Módulos de Sistema
+                        </div>
+                        {systemModuleTypesList.map(mt => (
+                          <button
+                            key={mt.value}
+                            onClick={() => {
+                              addModule(mt.value);
+                              setShowAddMenu(false);
+                            }}
+                            className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded text-sm"
+                          >
+                            {mt.label}
                           </button>
                         ))}
                       </div>
