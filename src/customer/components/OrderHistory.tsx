@@ -129,7 +129,7 @@ export function OrderHistory({ customerId }: OrderHistoryProps) {
         couponDiscountAmount: 0
       });
 
-      navigate('/orden');
+      navigate('/order');
     } catch (err) {
       console.error('Error repeating order:', err);
       setRepeatError(err instanceof Error ? err.message : 'No se pudo repetir el pedido');
