@@ -89,6 +89,30 @@ export const CustomerOrder: React.FC = () => {
     setCouponDiscountAmount(cart.couponDiscountAmount);
   }, [cart]);
 
+  // Auto-select delivery option when duration is set but delivery option is missing
+  useEffect(() => {
+    if (selectedDeliveryOption || !planDuration) return;
+    const autoSelectDelivery = async () => {
+      try {
+        const deliveryOptions = await deliveryOptionService.getOptions();
+        if (deliveryOptions.length === 0) return;
+        let option: DeliveryOption | null = null;
+        if (planDuration === 1) {
+          option = deliveryOptions.find(opt => opt.delivery_options_name.toLowerCase() === 'semanal') ||
+            deliveryOptions.find(opt => opt.delivery_options_name.toLowerCase().includes('semana') && !opt.delivery_options_name.toLowerCase().includes('dos')) || null;
+        } else if (planDuration === 2) {
+          option = deliveryOptions.find(opt => opt.delivery_options_name.toLowerCase().includes('dos semanas')) || null;
+        } else if (planDuration === 4) {
+          option = deliveryOptions.find(opt => opt.delivery_options_name.toLowerCase().includes('mensual')) || null;
+        }
+        setSelectedDeliveryOption(option || deliveryOptions[0]);
+      } catch {
+        // silently ignore
+      }
+    };
+    autoSelectDelivery();
+  }, [planDuration, selectedDeliveryOption]);
+
   // Load customer restrictions
   useEffect(() => {
     if (customer && customer.customer_restrictions && customer.customer_restrictions.length > 0) {
@@ -316,7 +340,7 @@ export const CustomerOrder: React.FC = () => {
         selectedOption = deliveryOptions.find(opt => opt.delivery_options_name.toLowerCase().includes('mensual')) || null;
       }
 
-      setSelectedDeliveryOption(selectedOption);
+      setSelectedDeliveryOption(selectedOption || deliveryOptions[0] || null);
 
       // Auto-select upcoming weeks
       const upcomingWeeks = await weekService.getUpcomingWeeks(duration);

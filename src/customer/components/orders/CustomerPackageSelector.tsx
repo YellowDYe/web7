@@ -177,6 +177,37 @@ const CustomerPackageSelector: React.FC<CustomerPackageSelectorProps> = ({
 
   const weekName = activeWeek.week.week_name;
 
+  // Pre-compute maximum available (non-blocked) dishes per meal type
+  const maxAvailablePerType = React.useMemo(() => {
+    const result: CardQuantity = { desayuno: DAYS_OF_WEEK.length, comida: DAYS_OF_WEEK.length, cena: DAYS_OF_WEEK.length };
+    if (!menuRecipesRow || blockedRecipeIds.size === 0) return result;
+    MEAL_CATEGORIES.forEach(cat => {
+      let available = 0;
+      DAYS_OF_WEEK.forEach(day => {
+        const col = buildRecipeColumn(day, cat.mealType);
+        const recipeId = menuRecipesRow[col];
+        if (!recipeId || !blockedRecipeIds.has(recipeId)) available++;
+      });
+      result[cat.key] = available;
+    });
+    return result;
+  }, [menuRecipesRow, blockedRecipeIds]);
+
+  // Update displayed quantities when blocked dishes are computed (caps default to actual available)
+  useEffect(() => {
+    setQuantities(prev => {
+      const next = { ...prev };
+      let changed = false;
+      (Object.keys(next) as (keyof CardQuantity)[]).forEach(key => {
+        if (!selected[key] && next[key] > maxAvailablePerType[key]) {
+          next[key] = maxAvailablePerType[key];
+          changed = true;
+        }
+      });
+      return changed ? next : prev;
+    });
+  }, [maxAvailablePerType]);
+
   const addedMealTypes: AddedMealTypeSummary[] = React.useMemo(() => {
     const weekItems = orderItems.filter(
       item =>
