@@ -1,9 +1,33 @@
 import React, { useState, useEffect } from 'react';
 import { websiteService } from '../../services/websiteService';
-import type { Page, Module } from '../../types/website';
+import type { Page, Module, ModuleType } from '../../types/website';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Plus, CreditCard as Edit, Trash2, Eye, EyeOff, ChevronUp, ChevronDown, Save, X, CircleCheck as CheckCircle, CircleAlert as AlertCircle, ExternalLink, Globe, FileText } from 'lucide-react';
+import { Plus, CreditCard as Edit, Trash2, Eye, EyeOff, ChevronUp, ChevronDown, Save, X, CircleCheck as CheckCircle, CircleAlert as AlertCircle, ExternalLink, Globe, FileText, Package } from 'lucide-react';
+
+const SYSTEM_MODULE_TYPES: { value: ModuleType; label: string }[] = [
+  { value: 'MainMenu', label: 'Menu Principal' },
+  { value: 'MainHero', label: 'Hero Principal' },
+  { value: 'MainHeroCarousel', label: 'Hero Carrusel' },
+  { value: 'MultiCardFeature', label: 'Multi Card Feature' },
+  { value: 'StepsFeature', label: 'Pasos (Steps)' },
+  { value: 'FeatureFullImage', label: 'Feature Imagen Completa' },
+  { value: 'FeatureSquareImage', label: 'Feature Imagen Cuadrada' },
+  { value: 'FeaturePillImage', label: 'Feature Imagen Pill' },
+  { value: 'Gallery', label: 'Galeria' },
+  { value: 'StructuredGallery', label: 'Galeria Estructurada' },
+  { value: 'Objectives', label: 'Objetivos' },
+  { value: 'FAQ', label: 'Preguntas Frecuentes' },
+  { value: 'TitleBlock', label: 'Bloque de Titulo' },
+  { value: 'BlogGrid', label: 'Grid de Blog' },
+  { value: 'ProteinShakes', label: 'Protein Shakes' },
+  { value: 'WeeklyMenu', label: 'Menu Semanal' },
+  { value: 'CustomerOrder', label: 'Ordenar (Sistema)' },
+  { value: 'CustomerCart', label: 'Carrito (Sistema)' },
+  { value: 'CustomerCheckout', label: 'Checkout (Sistema)' },
+  { value: 'CustomerProfile', label: 'Perfil Cliente (Sistema)' },
+  { value: 'Footer', label: 'Footer' },
+];
 
 export const PageManager: React.FC = () => {
   const [pages, setPages] = useState<Page[]>([]);
@@ -24,10 +48,23 @@ export const PageManager: React.FC = () => {
     pageId: string;
     pageName: string;
   }>({ show: false, pageId: '', pageName: '' });
+  const [showAddModule, setShowAddModule] = useState(false);
+  const [customModules, setCustomModules] = useState<Module[]>([]);
+  const [addingModule, setAddingModule] = useState(false);
 
   useEffect(() => {
     loadPages();
+    loadCustomModules();
   }, []);
+
+  const loadCustomModules = async () => {
+    try {
+      const custom = await websiteService.getCustomModules();
+      setCustomModules(custom);
+    } catch (error) {
+      console.error('Error loading custom modules:', error);
+    }
+  };
 
   const loadPages = async () => {
     try {
@@ -206,6 +243,58 @@ export const PageManager: React.FC = () => {
       ));
     } catch (error) {
       console.error('Error updating module order:', error);
+    }
+  };
+
+  const handleAddCustomModule = async (customModule: Module) => {
+    if (!selectedPage) return;
+    setAddingModule(true);
+    try {
+      const newModule = await websiteService.createModule({
+        type: customModule.type,
+        content: customModule.content,
+        name: customModule.name,
+      });
+      const newOrder = [...(selectedPage.module_order || []), newModule.id];
+      await websiteService.updatePage(selectedPage.id, { module_order: newOrder });
+      setModules([...modules, newModule]);
+      setPages(pages.map(p => p.id === selectedPage.id ? { ...p, module_order: newOrder } : p));
+      setSelectedPage({ ...selectedPage, module_order: newOrder });
+      setShowAddModule(false);
+      setActionStatus({ type: 'success', message: '¡Módulo agregado!' });
+      setTimeout(() => setActionStatus({ type: null, message: '' }), 3000);
+    } catch (error) {
+      console.error('Error adding custom module:', error);
+      setActionStatus({ type: 'error', message: 'Error al agregar el módulo.' });
+      setTimeout(() => setActionStatus({ type: null, message: '' }), 3000);
+    } finally {
+      setAddingModule(false);
+    }
+  };
+
+  const handleAddNewModule = async (type: ModuleType, label: string) => {
+    if (!selectedPage) return;
+    setAddingModule(true);
+    try {
+      const newModule = await websiteService.createModule({
+        type,
+        content: {},
+        name: label,
+      });
+      const newOrder = [...(selectedPage.module_order || []), newModule.id];
+      await websiteService.updatePage(selectedPage.id, { module_order: newOrder });
+      setModules([...modules, newModule]);
+      setPages(pages.map(p => p.id === selectedPage.id ? { ...p, module_order: newOrder } : p));
+      setSelectedPage({ ...selectedPage, module_order: newOrder });
+      setShowAddModule(false);
+      setActionStatus({ type: 'success', message: `¡Módulo "${label}" agregado!` });
+      setTimeout(() => setActionStatus({ type: null, message: '' }), 3000);
+    } catch (error) {
+      console.error('Error adding new module:', error);
+      setActionStatus({ type: 'error', message: 'Error al agregar el módulo.' });
+      setTimeout(() => setActionStatus({ type: null, message: '' }), 3000);
+    } finally {
+      setAddingModule(false);
     }
   };
 
@@ -496,6 +585,60 @@ export const PageManager: React.FC = () => {
                     No hay módulos en esta página
                   </div>
                 )}
+
+                {/* Add Module Button */}
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <Button
+                    onClick={() => setShowAddModule(!showAddModule)}
+                    variant="outline"
+                    className="w-full flex items-center justify-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Agregar Módulo
+                  </Button>
+
+                  {showAddModule && (
+                    <div className="mt-3 border border-gray-200 rounded-lg p-4 bg-gray-50 max-h-80 overflow-y-auto">
+                      {/* Custom modules from library */}
+                      {customModules.length > 0 && (
+                        <div className="mb-4">
+                          <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Módulos Personalizados</h4>
+                          <div className="space-y-1">
+                            {customModules.map(cm => (
+                              <button
+                                key={cm.id}
+                                onClick={() => handleAddCustomModule(cm)}
+                                disabled={addingModule}
+                                className="w-full text-left px-3 py-2 rounded-md text-sm hover:bg-blue-50 hover:text-blue-700 transition-colors flex items-center gap-2 disabled:opacity-50"
+                              >
+                                <Package className="w-3.5 h-3.5 text-gray-400" />
+                                <span className="font-medium">{cm.name || cm.type}</span>
+                                <span className="text-xs text-gray-400 ml-auto">{cm.type}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* System module types */}
+                      <div>
+                        <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Crear Módulo Nuevo</h4>
+                        <div className="space-y-1">
+                          {SYSTEM_MODULE_TYPES.map(mt => (
+                            <button
+                              key={mt.value}
+                              onClick={() => handleAddNewModule(mt.value, mt.label)}
+                              disabled={addingModule}
+                              className="w-full text-left px-3 py-2 rounded-md text-sm hover:bg-blue-50 hover:text-blue-700 transition-colors disabled:opacity-50"
+                            >
+                              {mt.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             ) : (
               <div className="text-center text-gray-500 py-8">
