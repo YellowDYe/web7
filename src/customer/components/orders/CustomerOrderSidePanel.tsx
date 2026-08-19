@@ -250,7 +250,7 @@ const CustomerOrderSidePanel: React.FC<CustomerOrderSidePanelProps> = ({
 
           <div className="flex justify-between text-sm">
             <span className="text-gray-500">IVA (16%)</span>
-            <span className="font-medium text-gray-900">{formatCurrency(priceBreakdown.taxAmount)}</span>
+            <span className="font-medium text-gray-900">{formatCurrency(priceBreakdown.taxAmount + priceBreakdown.deliveryTaxAmount)}</span>
           </div>
 
           <div className="pt-2 border-t border-gray-200 flex justify-between items-baseline">
