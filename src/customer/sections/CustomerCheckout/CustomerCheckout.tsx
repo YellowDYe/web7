@@ -415,13 +415,13 @@ export const CustomerCheckout: React.FC = () => {
           onSubmit: async ({ selectedPaymentMethod, formData }: any) => {
             try {
               const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-              const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+              const { data: { session: paySession } } = await supabase.auth.getSession();
 
               // Step 1: Process payment with MercadoPago (no order in DB yet)
               const response = await fetch(`${supabaseUrl}/functions/v1/mercado-pago-checkout`, {
                 method: 'POST',
                 headers: {
-                  Authorization: `Bearer ${supabaseAnonKey}`,
+                  Authorization: `Bearer ${paySession?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY}`,
                   'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
@@ -533,13 +533,13 @@ export const CustomerCheckout: React.FC = () => {
 
       // Create MercadoPago preference (no DB order)
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const { data: { session: prefSession } } = await supabase.auth.getSession();
       const currentOrigin = window.location.origin;
 
       const response = await fetch(`${supabaseUrl}/functions/v1/mercado-pago-checkout`, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${supabaseAnonKey}`,
+          Authorization: `Bearer ${prefSession?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
