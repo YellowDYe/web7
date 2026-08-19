@@ -439,6 +439,18 @@ const MenuPlanningGrid: React.FC<MenuPlanningGridProps> = ({
     loadFamilyMember();
   }, [selectedFamilyMemberId]);
 
+  const isRecipeBlockedLive = (recipeId: string): boolean => {
+    const restrictions = getActiveRestrictions();
+    if (restrictions.length === 0) return false;
+    const ingredients = recipeIngredientsCache.get(recipeId);
+    if (!ingredients) return blockedRecipeSet.has(recipeId);
+    return ingredients.some(ing => {
+      if (!restrictions.includes(ing.ingredient_id)) return false;
+      const mgmt = ing.restriction_management;
+      return mgmt !== 'Remove' && mgmt !== 'Substitute';
+    });
+  };
+
   // Helper function to get meals for a specific selection type
   const getMealsForSelection = (
     selectionType: 'overall' | 'column' | 'row',
@@ -457,7 +469,7 @@ const MenuPlanningGrid: React.FC<MenuPlanningGridProps> = ({
     daysToProcess.forEach(day => {
       mealTypesToProcess.forEach(mealTypeObj => {
         const recipeData = getRecipeData(mealTypeObj.label, day);
-        if (recipeData.id && !blockedRecipeSet.has(recipeData.id)) { // Skip blocked dishes
+        if (recipeData.id && !isRecipeBlockedLive(recipeData.id)) { // Skip blocked dishes
           const familyMemberId = selectedFamilyMemberId || null;
           const item: PendingOrderItem = {
             tempId: `select_${day}_${mealTypeObj.label}_${selectedPlan.meal_plans_id}_${activeWeek.week.week_name}${familyMemberId ? `_${familyMemberId}` : ''}`,
