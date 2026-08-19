@@ -148,12 +148,11 @@ const GridCell: React.FC<GridCellProps> = ({
     
     allConflictingIds.forEach(ingredientId => {
       const recipeIngredient = recipeIngredientsWithRestrictions.find(ing => ing.ingredient_id === ingredientId);
-      if (recipeIngredient && recipeIngredient.restriction_management === 'Block') {
-        // This is a blocked ingredient (marked as Block in recipe)
-        blockedIngredients.push(ingredientId);
-      } else {
-        // This is a general restriction
+      const management = recipeIngredient?.restriction_management;
+      if (management === 'Remove' || management === 'Substitute') {
         restrictedIngredients.push(ingredientId);
+      } else {
+        blockedIngredients.push(ingredientId);
       }
     });
 
@@ -388,7 +387,11 @@ const MenuPlanningGrid: React.FC<MenuPlanningGridProps> = ({
       const restrictions = getActiveRestrictions();
       const blocked = new Set<string>();
       cache.forEach((ingredients, recipeId) => {
-        const hasBlock = ingredients.some(ing => ing.restriction_management === 'Block' && restrictions.includes(ing.ingredient_id));
+        const hasBlock = ingredients.some(ing => {
+          if (!restrictions.includes(ing.ingredient_id)) return false;
+          const mgmt = ing.restriction_management;
+          return mgmt !== 'Remove' && mgmt !== 'Substitute';
+        });
         if (hasBlock) blocked.add(recipeId);
       });
       setBlockedRecipeSet(blocked);
