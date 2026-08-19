@@ -35,7 +35,8 @@ export const CustomModulesManager: React.FC = () => {
     { value: 'FeaturePillImage', label: 'Feature Pill Image' },
     { value: 'Gallery', label: 'Gallery' },
     { value: 'StructuredGallery', label: 'Structured Gallery' },
-    { value: 'Footer', label: 'Footer' }
+    { value: 'Footer', label: 'Footer' },
+    { value: 'WeeklyMenu', label: 'Menu Semanal' }
   ];
 
   useEffect(() => {

@@ -151,4 +151,5 @@ export type ModuleType =
   | 'StructuredGallery'
   | 'BlogGrid'
   | 'Objectives'
-  | 'TitleBlock';
+  | 'TitleBlock'
+  | 'WeeklyMenu';

@@ -21,6 +21,7 @@ import { BlogPage } from '../../customer/sections/BlogPage/BlogPage';
 import { Objectives } from '../../customer/sections/Objectives/Objectives';
 import { FAQ } from '../../customer/sections/FAQ/FAQ';
 import { TitleBlock } from '../../customer/sections/TitleBlock/TitleBlock';
+import { WeeklyMenu } from '../../customer/sections/WeeklyMenu/WeeklyMenu';
 
 export interface Module {
   id: string;
@@ -95,6 +96,8 @@ export const CMSRenderer: React.FC<CMSRendererProps> = ({ modules, basePath = ''
         return <FAQ key={module.id} {...content} />;
       case 'TitleBlock':
         return <TitleBlock key={module.id} {...content} />;
+      case 'WeeklyMenu':
+        return <WeeklyMenu key={module.id} />;
       case 'Footer':
         return <Footer key={module.id} {...content} />;
       default:
