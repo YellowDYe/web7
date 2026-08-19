@@ -208,6 +208,51 @@ const CustomerPackageSelector: React.FC<CustomerPackageSelectorProps> = ({
     });
   }, [maxAvailablePerType]);
 
+  // Cleanup: when blockedRecipeIds loads, remove blocked items from already-selected meal types
+  const blockedCleanupDoneRef = useRef(false);
+  useEffect(() => {
+    if (blockedRecipeIds.size === 0 || !menuRecipesRow) return;
+    if (blockedCleanupDoneRef.current) return;
+    blockedCleanupDoneRef.current = true;
+
+    MEAL_CATEGORIES.forEach(cat => {
+      if (!selected[cat.key]) return;
+      const currentItems = orderItems.filter(item =>
+        item.meal_plans_id === selectedPlan.meal_plans_id &&
+        item.week_name === weekName &&
+        item.meal_type === cat.mealType &&
+        (item.family_member_id ?? null) === (selectedFamilyMemberId ?? null)
+      );
+      if (currentItems.length === 0) return;
+
+      const hasBlockedItem = currentItems.some(item => {
+        if (!item.day_of_week) return false;
+        const col = buildRecipeColumn(item.day_of_week, cat.mealType);
+        const recipeId = menuRecipesRow[col];
+        return recipeId && blockedRecipeIds.has(recipeId);
+      });
+
+      if (hasBlockedItem) {
+        const rebuilt = buildItemsForMealType(
+          cat.mealType,
+          currentItems.length,
+          selectedPlan.meal_plans_id,
+          selectedPlan.meal_plans_name,
+          selectedPlan.meal_plans_price,
+          activeWeek.week.week_name,
+          activeWeek.week.week_id,
+        );
+        setQuantities(prev => ({ ...prev, [cat.key]: rebuilt.length }));
+        if (rebuilt.length === 0) {
+          onRemovePackageMealType(cat.mealType, selectedPlan.meal_plans_id, weekName);
+          setSelected(prev => ({ ...prev, [cat.key]: false }));
+        } else {
+          onConfirmPackage(rebuilt, []);
+        }
+      }
+    });
+  }, [blockedRecipeIds, menuRecipesRow]);
+
   const addedMealTypes: AddedMealTypeSummary[] = React.useMemo(() => {
     const weekItems = orderItems.filter(
       item =>
@@ -265,6 +310,7 @@ const CustomerPackageSelector: React.FC<CustomerPackageSelectorProps> = ({
 
     setQuantities(nextQuantities);
     setSelected(nextSelected);
+    blockedCleanupDoneRef.current = false;
   }, [selectedPlan.meal_plans_id, weekName, selectedFamilyMemberId]);
 
   useEffect(() => {
