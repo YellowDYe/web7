@@ -476,34 +476,6 @@ const CustomerPackageSelector: React.FC<CustomerPackageSelectorProps> = ({
     setSelected(prev => ({ ...prev, [key]: !isCurrentlySelected }));
   };
 
-  const adjustQuantity = (key: keyof CardQuantity, delta: number, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (disabled) return;
-    const newQty = Math.max(MIN_QUANTITY, quantities[key] + delta);
-    setQuantities(prev => ({ ...prev, [key]: newQty }));
-
-    const cat = MEAL_CATEGORIES.find(c => c.key === key)!;
-
-    if (newQty === 0 && selected[key]) {
-      onRemovePackageMealType(cat.mealType, selectedPlan.meal_plans_id, weekName);
-      setSelected(prev => ({ ...prev, [key]: false }));
-    } else if (selected[key] && newQty > 0) {
-      const items = buildItemsForMealType(
-        cat.mealType,
-        newQty,
-        selectedPlan.meal_plans_id,
-        selectedPlan.meal_plans_name,
-        selectedPlan.meal_plans_price,
-        activeWeek.week.week_name,
-        activeWeek.week.week_id,
-      );
-      if (items.length !== newQty) {
-        setQuantities(prev => ({ ...prev, [key]: items.length }));
-      }
-      onConfirmPackage(items, []);
-    }
-  };
-
   const adjustDayQuantity = (key: keyof CardQuantity, day: string, delta: number) => {
     if (disabled) return;
     if (!selected[key]) return;
@@ -846,33 +818,11 @@ const CustomerPackageSelector: React.FC<CustomerPackageSelectorProps> = ({
                   </div>
                 )}
 
-                {/* Quantity stepper — only visible when selected */}
+                {/* Summary — only visible when selected */}
                 {isSelected && (
-                  <div className={`mt-4 rounded-xl border ${colors.border} ${colors.bg} px-4 py-3`}>
-                    <div className="flex items-center justify-between mb-1">
-                      <span className={`text-xs font-semibold uppercase tracking-wide ${colors.text}`}>Cantidad total</span>
-                      <span className={`text-xs font-medium text-gray-400`}>0 = eliminar</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => adjustQuantity(category.key, -1, { stopPropagation: () => {} } as React.MouseEvent)}
-                          disabled={disabled || qty <= 0}
-                          className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${colors.stepper}`}
-                        >
-                          <Minus className="w-3.5 h-3.5" />
-                        </button>
-                        <span className="w-8 text-center text-xl font-bold text-gray-900">{qty}</span>
-                        <button
-                          onClick={() => adjustQuantity(category.key, 1, { stopPropagation: () => {} } as React.MouseEvent)}
-                          disabled={disabled}
-                          className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${colors.stepper}`}
-                        >
-                          <Plus className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                      <span className={`text-sm font-bold ${colors.textDark}`}>{formatCurrency(subtotal)}</span>
-                    </div>
+                  <div className={`mt-4 rounded-xl border ${colors.border} ${colors.bg} px-4 py-3 flex items-center justify-between`}>
+                    <span className={`text-xs font-semibold uppercase tracking-wide ${colors.text}`}>{qty} {qty === 1 ? 'platillo' : 'platillos'}</span>
+                    <span className={`text-sm font-bold ${colors.textDark}`}>{formatCurrency(subtotal)}</span>
                   </div>
                 )}
 
