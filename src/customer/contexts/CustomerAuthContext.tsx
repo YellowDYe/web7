@@ -156,47 +156,26 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const checkEmailExists = async (email: string) => {
-    console.log('[AUTH] checkEmailExists called with:', email);
     try {
       const { data, error } = await supabase.rpc('check_customer_email_exists', { p_email: email });
 
-      console.log('[AUTH] RPC response - data:', data, 'error:', error);
-
       if (error) {
         console.error('[AUTH] RPC error:', error);
-        throw new Error(`Error al verificar correo: ${error.message}`);
+        throw new Error('No pudimos verificar el correo. Intenta de nuevo.');
       }
 
       if (data && data.length > 0) {
         const result = data[0];
-        console.log('[AUTH] Processing result:', result);
+        // The server intentionally never returns the stored customer record for
+        // an address the caller has not proven they own, so there is no
+        // personal data to pre-fill here.
         return {
           exists: result.email_exists || false,
           hasAuth: result.has_auth || false,
-          customer: result.customer_data ? {
-            id: result.customer_data.id,
-            customer_id: result.customer_data.customer_id,
-            first_name: result.customer_data.customer_name,
-            last_name: result.customer_data.customer_lastname,
-            email: email,
-            phone: result.customer_data.customer_phone,
-            street_address: result.customer_data.customer_street,
-            address_number: result.customer_data.customer_street_number,
-            interior_number: result.customer_data.customer_interior_number,
-            colonia: result.customer_data.customer_colonia,
-            delegacion: result.customer_data.customer_delegacion,
-            postal_code: result.customer_data.customer_postal_code,
-            delivery_instructions: result.customer_data.customer_delivery_instructions,
-            restrictions: result.customer_data.customer_restrictions || [],
-            rfc: result.customer_data.rfc,
-            invoice_name: result.customer_data.billing_name,
-            tax_regime: result.customer_data.tax_regime,
-            invoice_address: result.customer_data.billing_street,
-          } as any : undefined
+          customer: undefined,
         };
       }
 
-      console.log('[AUTH] No data returned, email does not exist');
       return { exists: false, hasAuth: false };
     } catch (error: any) {
       console.error('[AUTH] Error checking email:', error);

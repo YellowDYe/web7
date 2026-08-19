@@ -11,6 +11,34 @@ interface DeleteAuthUserRequest {
   auth_user_id?: string;
 }
 
+const ADMIN_ROLES = ["ADMIN", "MANAGER"];
+
+/** Confirms the caller is an active administrator. */
+async function isAdminCaller(
+  req: Request,
+  supabaseUrl: string,
+  serviceKey: string,
+): Promise<boolean> {
+  const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
+  if (!token || token === serviceKey) return false;
+
+  const userRes = await fetch(`${supabaseUrl}/auth/v1/user`, {
+    headers: { Authorization: `Bearer ${token}`, apikey: serviceKey },
+  });
+  if (!userRes.ok) return false;
+  const authUser = await userRes.json();
+  if (!authUser?.id) return false;
+
+  const staffRes = await fetch(
+    `${supabaseUrl}/rest/v1/app_users?auth_user_id=eq.${authUser.id}&select=role_id,is_active`,
+    { headers: { Authorization: `Bearer ${serviceKey}`, apikey: serviceKey } },
+  );
+  if (!staffRes.ok) return false;
+  const rows = await staffRes.json();
+  const staff = Array.isArray(rows) ? rows[0] : null;
+  return !!staff && staff.is_active !== false && ADMIN_ROLES.includes(staff.role_id);
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, {
@@ -39,6 +67,16 @@ Deno.serve(async (req: Request) => {
         JSON.stringify({ error: "Server configuration error" }),
         {
           status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    if (!(await isAdminCaller(req, supabaseUrl, supabaseServiceKey))) {
+      return new Response(
+        JSON.stringify({ error: "Not authorized" }),
+        {
+          status: 403,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );
@@ -79,7 +117,6 @@ Deno.serve(async (req: Request) => {
         return new Response(
           JSON.stringify({
             error: "Failed to lookup user",
-            details: errorData,
           }),
           {
             status: getUserResponse.status,
@@ -159,7 +196,6 @@ Deno.serve(async (req: Request) => {
       return new Response(
         JSON.stringify({
           error: errorMessage,
-          details: errorData,
         }),
         {
           status: deleteUserResponse.status,
@@ -185,12 +221,9 @@ Deno.serve(async (req: Request) => {
   } catch (error) {
     console.error("Error in delete-auth-user function:", error);
 
-    const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
-
     return new Response(
       JSON.stringify({
         error: "Internal server error",
-        message: errorMessage,
       }),
       {
         status: 500,

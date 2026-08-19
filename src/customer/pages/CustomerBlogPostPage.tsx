@@ -4,6 +4,7 @@ import { ArrowLeft, Calendar, User, Tag } from 'lucide-react';
 import { blogService } from '../../services/blogService';
 import type { BlogPost } from '../../types/website';
 import { CustomerSiteHeader } from '../components/CustomerSiteHeader';
+import { sanitizeHtml } from '../../utils/sanitizeHtml';
 
 const CustomerBlogPostPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -157,7 +158,7 @@ const CustomerBlogPostPage: React.FC = () => {
         {post.body ? (
           <div
             className="prose-blog"
-            dangerouslySetInnerHTML={{ __html: post.body }}
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.body) }}
           />
         ) : post.summary ? (
           <p className="[font-family:'Chivo',Helvetica] text-gray-700 text-lg leading-relaxed">

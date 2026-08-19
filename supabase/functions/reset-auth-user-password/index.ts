@@ -11,6 +11,41 @@ interface ResetPasswordRequest {
   new_password: string;
 }
 
+const ADMIN_ROLES = ["ADMIN", "MANAGER"];
+
+/**
+ * Resolves the caller from the Authorization header and confirms they are an
+ * active administrator. Returns null when the caller is not authorized.
+ */
+async function requireAdminCaller(
+  req: Request,
+  supabaseUrl: string,
+  serviceKey: string,
+): Promise<{ id: string; email: string; role_id: string } | null> {
+  const authHeader = req.headers.get("Authorization") ?? "";
+  const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+  if (!token || token === serviceKey) return null;
+
+  const userRes = await fetch(`${supabaseUrl}/auth/v1/user`, {
+    headers: { Authorization: `Bearer ${token}`, apikey: serviceKey },
+  });
+  if (!userRes.ok) return null;
+  const authUser = await userRes.json();
+  if (!authUser?.id) return null;
+
+  const staffRes = await fetch(
+    `${supabaseUrl}/rest/v1/app_users?auth_user_id=eq.${authUser.id}&select=id,email,role_id,is_active`,
+    { headers: { Authorization: `Bearer ${serviceKey}`, apikey: serviceKey } },
+  );
+  if (!staffRes.ok) return null;
+  const rows = await staffRes.json();
+  const staff = Array.isArray(rows) ? rows[0] : null;
+  if (!staff || staff.is_active === false) return null;
+  if (!ADMIN_ROLES.includes(staff.role_id)) return null;
+
+  return { id: authUser.id, email: staff.email, role_id: staff.role_id };
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, {
@@ -39,6 +74,17 @@ Deno.serve(async (req: Request) => {
         JSON.stringify({ error: "Server configuration error" }),
         {
           status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    const admin = await requireAdminCaller(req, supabaseUrl, supabaseServiceKey);
+    if (!admin) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Not authorized" }),
+        {
+          status: 403,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );
@@ -87,7 +133,6 @@ Deno.serve(async (req: Request) => {
         JSON.stringify({
           success: false,
           error: "Failed to lookup user",
-          details: errorData,
         }),
         {
           status: getUserResponse.status,
@@ -144,7 +189,6 @@ Deno.serve(async (req: Request) => {
         JSON.stringify({
           success: false,
           error: errorMessage,
-          details: errorData,
         }),
         {
           status: updateResponse.status,
@@ -172,13 +216,10 @@ Deno.serve(async (req: Request) => {
   } catch (error) {
     console.error("Error in reset-auth-user-password function:", error);
 
-    const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
-
     return new Response(
       JSON.stringify({
         success: false,
         error: "Internal server error",
-        message: errorMessage,
       }),
       {
         status: 500,

@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
-import { Mail, Lock, User, Phone, MapPin, FileText, Check, Users, Edit, Trash2, Plus, AlertCircle } from 'lucide-react';
+import { Mail, Lock, User, Phone, MapPin, FileText, Check, Users, CreditCard as Edit, Trash2, Plus, CircleAlert as AlertCircle } from 'lucide-react';
 import CustomerSiteHeader from '../components/CustomerSiteHeader';
 import RestrictionSelector from '../../components/customers/RestrictionSelector';
 import PostalCodeSearchDropdown from '../../components/customers/PostalCodeSearchDropdown';
@@ -62,7 +62,6 @@ export default function CustomerSignupPage() {
     invoice_address: '',
   });
 
-  const [existingCustomer, setExistingCustomer] = useState<Partial<Customer> | null>(null);
   const [isFamilyMemberFormOpen, setIsFamilyMemberFormOpen] = useState(false);
   const [editingMemberSlot, setEditingMemberSlot] = useState<number | null>(null);
   const [restrictionNames, setRestrictionNames] = useState<Record<string, string>>({});
@@ -224,35 +223,13 @@ export default function CustomerSignupPage() {
         console.log('[SIGNUP] Email already registered with auth');
         setError('Este correo ya está registrado.');
         setEmailCheckMessage('');
-      } else if (result.exists && !result.hasAuth && result.customer) {
-        console.log('[SIGNUP] Email exists without auth, pre-filling data');
-        setEmailCheckMessage('¡Excelente! Encontramos tu información. Completaremos tus datos automáticamente.');
-        setExistingCustomer(result.customer);
-        setFormData(prev => ({
-          ...prev,
-          first_name: result.customer?.first_name || '',
-          last_name: result.customer?.last_name || '',
-          phone: result.customer?.phone || '',
-          street_address: result.customer?.street_address || '',
-          address_number: result.customer?.address_number || '',
-          interior_number: result.customer?.interior_number || '',
-          colonia: result.customer?.colonia || '',
-          delegacion: result.customer?.delegacion || '',
-          postal_code: result.customer?.postal_code || '',
-          delivery_instructions: result.customer?.delivery_instructions || '',
-          restrictions: result.customer?.restrictions || [],
-          rfc: result.customer?.rfc || '',
-          invoice_name: result.customer?.invoice_name || '',
-          tax_regime: result.customer?.tax_regime || '',
-          invoice_address: result.customer?.invoice_address || '',
-        }));
       } else {
         console.log('[SIGNUP] Email available');
         setEmailCheckMessage('¡Correo disponible!');
       }
     } catch (err: any) {
       console.error('[SIGNUP] Error checking email:', err);
-      setError(err.message || 'Error al verificar el correo. Por favor intenta de nuevo.');
+      setError('No pudimos verificar el correo. Por favor intenta de nuevo.');
     } finally {
       setCheckingEmail(false);
     }

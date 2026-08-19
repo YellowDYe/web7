@@ -9,24 +9,29 @@ import { stripeConfigService } from './stripeConfigService';
 class StripeService {
   async createPaymentIntent(params: CreatePaymentIntentParams): Promise<StripePaymentIntentResponse> {
     try {
-      const config = await stripeConfigService.getStripeConfig();
-
-      if (!config || !config.publishable_key || !config.secret_key) {
-        throw new Error('Stripe no está configurado. Por favor configura tus credenciales de Stripe.');
+      if (!params.order_id) {
+        throw new Error('Falta el pedido para iniciar el pago.');
       }
 
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+
+      if (!accessToken) {
+        throw new Error('Debes iniciar sesión para pagar.');
+      }
+
+      // The amount is derived from the stored order on the server; it is
+      // deliberately not sent from the browser.
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-payment-intent`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+          'Authorization': `Bearer ${accessToken}`,
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY
         },
         body: JSON.stringify({
-          amount: Math.round(params.amount * 100),
           currency: params.currency || 'mxn',
-          customer_id: params.customer_id,
-          order_id: params.order_id,
-          metadata: params.metadata || {}
+          order_id: params.order_id
         })
       });
 
@@ -41,7 +46,7 @@ class StripeService {
         payment_intent_id: data.paymentIntentId,
         order_id: params.order_id || null,
         customer_id: params.customer_id,
-        amount: params.amount,
+        amount: typeof data.amount === 'number' ? data.amount / 100 : params.amount,
         currency: params.currency || 'mxn',
         status: 'requires_payment_method',
         client_secret: data.clientSecret,
