@@ -221,18 +221,16 @@ const CustomerOrderSidePanel: React.FC<CustomerOrderSidePanelProps> = ({
           </div>
 
           {appliedDiscounts.length > 0 && (
-            <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2 space-y-1.5">
-              {appliedDiscounts.map((d, i) => (
-                <div key={i} className="flex justify-between items-center">
-                  <div className="flex items-center space-x-1.5">
-                    <Tag className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />
-                    <span className="text-sm font-medium text-green-800">
-                      {d.discount.discount_name} ({d.discount.discount_percentage}%)
-                    </span>
-                  </div>
-                  <span className="text-sm font-bold text-green-700">-{formatCurrency(d.amount)}</span>
+            <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+              <div className="flex justify-between items-center">
+                <div className="flex items-center space-x-1.5">
+                  <Tag className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />
+                  <span className="text-sm font-medium text-green-800">
+                    Descuento por cantidad
+                  </span>
                 </div>
-              ))}
+                <span className="text-sm font-bold text-green-700">-{formatCurrency(appliedDiscounts.reduce((sum, d) => sum + d.amount, 0))}</span>
+              </div>
             </div>
           )}
 
