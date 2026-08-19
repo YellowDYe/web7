@@ -25,19 +25,31 @@ export const CustomModulesManager: React.FC = () => {
     moduleName: string;
   }>({ show: false, moduleId: '', moduleName: '' });
 
-  const moduleTypes: { value: ModuleType; label: string }[] = [
-    { value: 'MainMenu', label: 'Main Menu' },
-    { value: 'MainHero', label: 'Hero Section' },
+  const moduleTypes: { value: ModuleType; label: string; isSystem?: boolean }[] = [
+    { value: 'MainMenu', label: 'Menu Principal' },
+    { value: 'MainHero', label: 'Hero Principal' },
+    { value: 'MainHeroCarousel', label: 'Hero Carrusel' },
     { value: 'MultiCardFeature', label: 'Multi Card Feature' },
-    { value: 'StepsFeature', label: 'Steps Feature' },
-    { value: 'FeatureFullImage', label: 'Feature Full Image' },
-    { value: 'FeatureSquareImage', label: 'Feature Square Image' },
-    { value: 'FeaturePillImage', label: 'Feature Pill Image' },
-    { value: 'Gallery', label: 'Gallery' },
-    { value: 'StructuredGallery', label: 'Structured Gallery' },
+    { value: 'StepsFeature', label: 'Pasos (Steps)' },
+    { value: 'FeatureFullImage', label: 'Feature Imagen Completa' },
+    { value: 'FeatureSquareImage', label: 'Feature Imagen Cuadrada' },
+    { value: 'FeaturePillImage', label: 'Feature Imagen Pill' },
+    { value: 'Gallery', label: 'Galeria' },
+    { value: 'StructuredGallery', label: 'Galeria Estructurada' },
+    { value: 'Objectives', label: 'Objetivos', isSystem: true },
+    { value: 'FAQ', label: 'Preguntas Frecuentes', isSystem: true },
+    { value: 'TitleBlock', label: 'Bloque de Titulo', isSystem: true },
+    { value: 'BlogGrid', label: 'Grid de Blog', isSystem: true },
+    { value: 'ProteinShakes', label: 'Protein Shakes', isSystem: true },
+    { value: 'WeeklyMenu', label: 'Menu Semanal', isSystem: true },
+    { value: 'CustomerOrder', label: 'Ordenar (Sistema)', isSystem: true },
+    { value: 'CustomerCart', label: 'Carrito (Sistema)', isSystem: true },
+    { value: 'CustomerCheckout', label: 'Checkout (Sistema)', isSystem: true },
+    { value: 'CustomerProfile', label: 'Perfil Cliente (Sistema)', isSystem: true },
     { value: 'Footer', label: 'Footer' },
-    { value: 'WeeklyMenu', label: 'Menu Semanal' }
   ];
+
+  const isSystemType = (type: string) => moduleTypes.find(t => t.value === type)?.isSystem === true;
 
   useEffect(() => {
     loadCustomModules();
@@ -461,32 +473,49 @@ export const CustomModulesManager: React.FC = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
                 >
                   <option value="">Select a module type...</option>
-                  {moduleTypes.map(type => (
-                    <option key={type.value} value={type.value}>
-                      {type.label}
-                    </option>
-                  ))}
+                  <optgroup label="Módulos con contenido">
+                    {moduleTypes.filter(t => !t.isSystem).map(type => (
+                      <option key={type.value} value={type.value}>
+                        {type.label}
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="Módulos de sistema">
+                    {moduleTypes.filter(t => t.isSystem).map(type => (
+                      <option key={type.value} value={type.value}>
+                        {type.label}
+                      </option>
+                    ))}
+                  </optgroup>
                 </select>
               )}
             </div>
 
             {selectedType && (
               <>
-                <div className="border-t pt-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Module Content</h3>
-                  <div className="space-y-4">
-                    <ContentFieldRenderer
-                      content={editingContent}
-                      onContentChange={handleContentChange}
-                      onNestedContentChange={handleNestedContentChange}
-                      onArrayContentChange={handleArrayContentChange}
-                      onAddArrayItem={handleAddArrayItem}
-                      onRemoveArrayItem={handleRemoveArrayItem}
-                      media={media}
-                      onMediaLibraryRefresh={loadMedia}
-                    />
+                {isSystemType(selectedType) ? (
+                  <div className="border-t pt-6">
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
+                      Este módulo no requiere configuración de contenido. Funciona automáticamente al agregarse a una página.
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="border-t pt-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Module Content</h3>
+                    <div className="space-y-4">
+                      <ContentFieldRenderer
+                        content={editingContent}
+                        onContentChange={handleContentChange}
+                        onNestedContentChange={handleNestedContentChange}
+                        onArrayContentChange={handleArrayContentChange}
+                        onAddArrayItem={handleAddArrayItem}
+                        onRemoveArrayItem={handleRemoveArrayItem}
+                        media={media}
+                        onMediaLibraryRefresh={loadMedia}
+                      />
+                    </div>
+                  </div>
+                )}
 
                 <div className="flex items-center justify-end gap-3 pt-6 border-t">
                   <Button
