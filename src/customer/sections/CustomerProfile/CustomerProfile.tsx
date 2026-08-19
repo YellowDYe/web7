@@ -7,25 +7,16 @@ import { OrderHistory } from '../../components/OrderHistory';
 import { CustomerAccountEditModal } from '../../components/CustomerAccountEditModal';
 import { useIngredientNames } from '../../hooks/useIngredientNames';
 import { familyMemberService } from '../../../services/familyMemberService';
+import RestrictionSelector from '../../../components/customers/RestrictionSelector';
 import { FamilyMember } from '../../../types/familyMember';
-import {
-  User,
-  Mail,
-  Phone,
-  MapPin,
-  FileText,
-  AlertCircle,
-  Edit,
-  Package,
-  IdCard,
-  Users,
-} from 'lucide-react';
+import { User, Mail, Phone, MapPin, FileText, CircleAlert as AlertCircle, CreditCard as Edit, Package, IdCard, Users, X, Save } from 'lucide-react';
 
 export const CustomerProfile: React.FC = () => {
   const { customer, user, loading, logout } = useCustomerAuth();
   const { getIngredientName, loading: ingredientsLoading } = useIngredientNames();
   const [searchParams] = useSearchParams();
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showRestrictionsModal, setShowRestrictionsModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'profile' | 'orders'>(
     searchParams.get('tab') === 'orders' ? 'orders' : 'profile'
   );
@@ -235,9 +226,9 @@ export const CustomerProfile: React.FC = () => {
         </div>
       </Card>
 
-      {customer.customer_restrictions && customer.customer_restrictions.length > 0 && (
-        <Card className="p-6">
-          <div className="flex items-center gap-3 mb-4">
+      <Card className="p-6">
+        <div className="flex items-start justify-between mb-4">
+          <div className="flex items-center gap-3">
             <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
               <AlertCircle className="h-6 w-6 text-orange-600" />
             </div>
@@ -246,25 +237,38 @@ export const CustomerProfile: React.FC = () => {
               <p className="text-sm text-gray-600">Tus preferencias alimenticias</p>
             </div>
           </div>
-          {ingredientsLoading ? (
-            <div className="flex items-center gap-2 text-gray-600">
-              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-orange-600"></div>
-              <span className="text-sm">Cargando restricciones...</span>
-            </div>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {customer.customer_restrictions.map((restrictionId, index) => (
-                <span
-                  key={index}
-                  className="px-3 py-1 bg-orange-50 text-orange-700 rounded-full text-sm font-medium border border-orange-200"
-                >
-                  {getIngredientName(restrictionId)}
-                </span>
-              ))}
-            </div>
-          )}
-        </Card>
-      )}
+          <Button
+            onClick={() => setShowRestrictionsModal(true)}
+            variant="outline"
+            size="sm"
+            className="flex items-center gap-2"
+          >
+            <Edit className="h-4 w-4" />
+            Editar
+          </Button>
+        </div>
+        {ingredientsLoading ? (
+          <div className="flex items-center gap-2 text-gray-600">
+            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-orange-600"></div>
+            <span className="text-sm">Cargando restricciones...</span>
+          </div>
+        ) : customer.customer_restrictions && customer.customer_restrictions.length > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            {customer.customer_restrictions.map((restrictionId, index) => (
+              <span
+                key={index}
+                className="px-3 py-1 bg-orange-50 text-orange-700 rounded-full text-sm font-medium border border-orange-200"
+              >
+                {getIngredientName(restrictionId)}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <p className="text-gray-500 text-sm">
+            No tienes restricciones alimenticias registradas. Haz clic en "Editar" para agregar.
+          </p>
+        )}
+      </Card>
 
       <Card className="p-6">
         <div className="flex items-start justify-between mb-6">
@@ -447,6 +451,103 @@ export const CustomerProfile: React.FC = () => {
           }}
         />
       )}
+
+      {showRestrictionsModal && (
+        <RestrictionsEditModal
+          currentRestrictions={customer.customer_restrictions || []}
+          onClose={() => setShowRestrictionsModal(false)}
+          onSave={() => setShowRestrictionsModal(false)}
+        />
+      )}
     </div>
   );
 };
+
+function RestrictionsEditModal({
+  currentRestrictions,
+  onClose,
+  onSave,
+}: {
+  currentRestrictions: string[];
+  onClose: () => void;
+  onSave: () => void;
+}) {
+  const { updateCustomerProfile } = useCustomerAuth();
+  const [restrictions, setRestrictions] = useState<string[]>(currentRestrictions);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSave = async () => {
+    setSaving(true);
+    setError('');
+    try {
+      await updateCustomerProfile({ customer_restrictions: restrictions });
+      onSave();
+    } catch (err: any) {
+      setError(err.message || 'No se pudo guardar');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <Card className="w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 bg-white border-b p-6 flex items-center justify-between">
+          <h2 className="text-xl font-bold text-gray-900">Editar Restricciones Alimenticias</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <X className="h-6 w-6" />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-4">
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-red-700 text-sm">
+              {error}
+            </div>
+          )}
+
+          <p className="text-sm text-gray-600">
+            Selecciona los ingredientes a los que eres alérgico o que deseas evitar.
+          </p>
+
+          <RestrictionSelector
+            selectedRestrictions={restrictions}
+            onRestrictionsChange={setRestrictions}
+          />
+
+          <div className="flex gap-3 pt-4 border-t">
+            <Button
+              onClick={onClose}
+              variant="outline"
+              className="flex-1"
+              disabled={saving}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleSave}
+              className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+              disabled={saving}
+            >
+              {saving ? (
+                <span className="flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                  Guardando...
+                </span>
+              ) : (
+                <span className="flex items-center justify-center">
+                  <Save className="h-5 w-5 mr-2" />
+                  Guardar
+                </span>
+              )}
+            </Button>
+          </div>
+        </div>
+      </Card>
+    </div>
+  );
+}
