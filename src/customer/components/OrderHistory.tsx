@@ -1,22 +1,29 @@
 import { useEffect, useState } from 'react';
-import { Package, Calendar, DollarSign, Eye, FileText, AlertCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Package, Calendar, DollarSign, Eye, FileText, CircleAlert as AlertCircle, RotateCcw } from 'lucide-react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { getCustomerOrders, type CustomerOrder } from '../services/customerOrderService';
 import { CustomerOrderDetailsModal } from './CustomerOrderDetailsModal';
 import { CustomerInvoiceDetailsModal } from './CustomerInvoiceDetailsModal';
+import { buildRepeatOrderCart } from '../services/repeatOrderService';
+import { useCart } from '../contexts/CartContext';
 
 interface OrderHistoryProps {
   customerId: string;
 }
 
 export function OrderHistory({ customerId }: OrderHistoryProps) {
+  const navigate = useNavigate();
+  const { addToCart, clearCart } = useCart();
   const [orders, setOrders] = useState<CustomerOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [showOrderDetailsModal, setShowOrderDetailsModal] = useState(false);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [repeatLoading, setRepeatLoading] = useState<string | null>(null);
+  const [repeatError, setRepeatError] = useState<string | null>(null);
 
   useEffect(() => {
     loadOrders();
@@ -101,6 +108,36 @@ export function OrderHistory({ customerId }: OrderHistoryProps) {
     setShowInvoiceModal(true);
   };
 
+  const handleRepeatOrder = async (orderId: string) => {
+    try {
+      setRepeatLoading(orderId);
+      setRepeatError(null);
+      const result = await buildRepeatOrderCart(orderId);
+
+      clearCart();
+      addToCart({
+        planDuration: result.planDuration,
+        selectedWeeks: result.selectedWeeks,
+        activeWeek: result.selectedWeeks[0] ?? null,
+        selectedPlan: result.selectedPlan,
+        selectedFamilyMemberId: null,
+        selectedFamilyMember: null,
+        orderItems: result.orderItems,
+        orderNotes: '',
+        selectedDeliveryOption: null,
+        appliedCoupon: null,
+        couponDiscountAmount: 0
+      });
+
+      navigate('/orden');
+    } catch (err) {
+      console.error('Error repeating order:', err);
+      setRepeatError(err instanceof Error ? err.message : 'No se pudo repetir el pedido');
+    } finally {
+      setRepeatLoading(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -144,6 +181,13 @@ export function OrderHistory({ customerId }: OrderHistoryProps) {
 
   return (
     <>
+      {repeatError && (
+        <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-3">
+          <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0" />
+          <p className="text-red-700 text-sm">{repeatError}</p>
+          <button onClick={() => setRepeatError(null)} className="ml-auto text-red-400 hover:text-red-600 text-lg font-bold">&times;</button>
+        </div>
+      )}
       <div className="space-y-4">
         {orders.map((order) => (
           <Card key={order.id} className="p-6 hover:shadow-lg transition-shadow">
@@ -210,6 +254,18 @@ export function OrderHistory({ customerId }: OrderHistoryProps) {
                 >
                   <FileText className="h-4 w-4 mr-2" />
                   Ver Factura
+                </Button>
+              )}
+              {(order.order_status === 'completed' || order.order_status === 'delivered') && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleRepeatOrder(order.id)}
+                  disabled={repeatLoading === order.id}
+                  className="flex-1 sm:flex-none border-green-300 text-green-700 hover:bg-green-50"
+                >
+                  <RotateCcw className={`h-4 w-4 mr-2 ${repeatLoading === order.id ? 'animate-spin' : ''}`} />
+                  {repeatLoading === order.id ? 'Preparando...' : 'Repetir Pedido'}
                 </Button>
               )}
             </div>
