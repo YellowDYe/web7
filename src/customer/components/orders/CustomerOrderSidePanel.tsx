@@ -220,12 +220,21 @@ const CustomerOrderSidePanel: React.FC<CustomerOrderSidePanelProps> = ({
             <span className="font-medium text-gray-900">{formatCurrency(itemsTotal)}</span>
           </div>
 
-          {appliedDiscounts.map((d, i) => (
-            <div key={i} className="flex justify-between text-sm text-green-600">
-              <span>Descuento {d.discount.discount_name}</span>
-              <span>-{formatCurrency(d.amount)}</span>
+          {appliedDiscounts.length > 0 && (
+            <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2 space-y-1.5">
+              {appliedDiscounts.map((d, i) => (
+                <div key={i} className="flex justify-between items-center">
+                  <div className="flex items-center space-x-1.5">
+                    <Tag className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />
+                    <span className="text-sm font-medium text-green-800">
+                      {d.discount.discount_name} ({d.discount.discount_percentage}%)
+                    </span>
+                  </div>
+                  <span className="text-sm font-bold text-green-700">-{formatCurrency(d.amount)}</span>
+                </div>
+              ))}
             </div>
-          ))}
+          )}
 
           {selectedDeliveryOption && (
             <div className="flex justify-between text-sm">

@@ -172,14 +172,19 @@ const CustomerOrderSummary: React.FC<CustomerOrderSummaryProps> = ({
         </div>
 
         {appliedDiscounts.length > 0 && (
-          <>
+          <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2 space-y-1.5">
             {appliedDiscounts.map((discountWithAmount, index) => (
-              <div key={index} className="flex justify-between text-sm text-green-600">
-                <span>Descuento {discountWithAmount.discount.discount_name}:</span>
-                <span>-${discountWithAmount.amount.toFixed(2)}</span>
+              <div key={index} className="flex justify-between items-center">
+                <div className="flex items-center space-x-1.5">
+                  <span className="w-2 h-2 bg-green-500 rounded-full flex-shrink-0"></span>
+                  <span className="text-sm font-medium text-green-800">
+                    {discountWithAmount.discount.discount_name} ({discountWithAmount.discount.discount_percentage}%)
+                  </span>
+                </div>
+                <span className="text-sm font-bold text-green-700">-${discountWithAmount.amount.toFixed(2)}</span>
               </div>
             ))}
-          </>
+          </div>
         )}
 
         {selectedDeliveryOption && (
