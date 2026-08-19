@@ -332,7 +332,6 @@ const MenuPlanningGrid: React.FC<MenuPlanningGridProps> = ({
   const [loadingRecipes, setLoadingRecipes] = useState(false);
   const [familyMemberData, setFamilyMemberData] = useState<{ name: string; restrictions: string[] } | null>(null);
   const [ingredientNameMap, setIngredientNameMap] = useState<Map<string, string>>(new Map());
-  const [blockedRecipeSet, setBlockedRecipeSet] = useState<Set<string>>(new Set());
 
   // Load ingredient names once for display in blocked warnings
   useEffect(() => {
@@ -349,55 +348,8 @@ const MenuPlanningGrid: React.FC<MenuPlanningGridProps> = ({
     loadIngredientNames();
   }, []);
 
-  // Compute which recipes are blocked for the current customer/family member
+  // Cache of recipe ingredients - loaded once when menu data loads
   const [recipeIngredientsCache, setRecipeIngredientsCache] = useState<Map<string, { ingredient_id: string; restriction_management: string }[]>>(new Map());
-
-  useEffect(() => {
-    const loadRecipeIngredients = async () => {
-      if (weeklyMenuPlans.length === 0 || !selectedPlan) {
-        setRecipeIngredientsCache(new Map());
-        setBlockedRecipeSet(new Set());
-        return;
-      }
-      const menuRecipe = weeklyMenuPlans[0];
-      const recipeIds = new Set<string>();
-      DAYS_OF_WEEK.forEach(day => {
-        MEAL_TYPES.forEach(mt => {
-          const col = buildRecipeColumn(day, mt.label);
-          const rid = menuRecipe[col];
-          if (rid) recipeIds.add(rid);
-        });
-      });
-      if (recipeIds.size === 0) { setBlockedRecipeSet(new Set()); return; }
-
-      const { data, error } = await supabase
-        .from('recipe_ingredients')
-        .select('recipe_id, ingredient_id, recipe_ingredient_restriction_management')
-        .in('recipe_id', Array.from(recipeIds));
-      if (error || !data) { setBlockedRecipeSet(new Set()); return; }
-
-      const cache = new Map<string, { ingredient_id: string; restriction_management: string }[]>();
-      data.forEach(row => {
-        if (!cache.has(row.recipe_id)) cache.set(row.recipe_id, []);
-        cache.get(row.recipe_id)!.push({ ingredient_id: row.ingredient_id, restriction_management: row.recipe_ingredient_restriction_management || 'None' });
-      });
-      setRecipeIngredientsCache(cache);
-
-      // Determine which recipes are blocked for current restrictions
-      const restrictions = getActiveRestrictions();
-      const blocked = new Set<string>();
-      cache.forEach((ingredients, recipeId) => {
-        const hasBlock = ingredients.some(ing => {
-          if (!restrictions.includes(ing.ingredient_id)) return false;
-          const mgmt = ing.restriction_management;
-          return mgmt !== 'Remove' && mgmt !== 'Substitute';
-        });
-        if (hasBlock) blocked.add(recipeId);
-      });
-      setBlockedRecipeSet(blocked);
-    };
-    loadRecipeIngredients();
-  }, [weeklyMenuPlans, selectedPlan, selectedCustomer, selectedFamilyMemberId, familyMemberData]);
 
   const getActiveRestrictions = (): string[] => {
     if (selectedFamilyMemberId && familyMemberData?.restrictions) {
@@ -443,7 +395,7 @@ const MenuPlanningGrid: React.FC<MenuPlanningGridProps> = ({
     const restrictions = getActiveRestrictions();
     if (restrictions.length === 0) return false;
     const ingredients = recipeIngredientsCache.get(recipeId);
-    if (!ingredients) return blockedRecipeSet.has(recipeId);
+    if (!ingredients || ingredients.length === 0) return false;
     return ingredients.some(ing => {
       if (!restrictions.includes(ing.ingredient_id)) return false;
       const mgmt = ing.restriction_management;
@@ -580,24 +532,32 @@ const MenuPlanningGrid: React.FC<MenuPlanningGridProps> = ({
           });
         });
 
-        // Fetch recipe names for all recipe IDs
+        // Fetch recipe names and ingredients for all recipe IDs
         if (recipeIds.size > 0) {
-          console.log('[MenuPlanningGrid] Fetching recipe names for IDs:', Array.from(recipeIds));
-          const { data: recipesData, error: recipesError } = await supabase
-            .from('recipes')
-            .select('recipe_id, recipe_name')
-            .in('recipe_id', Array.from(recipeIds));
+          const recipeIdArray = Array.from(recipeIds);
 
-          if (recipesError) {
-            console.error('[MenuPlanningGrid] Error loading recipe names:', recipesError);
-          } else if (recipesData) {
-            console.log('[MenuPlanningGrid] Fetched recipes:', recipesData);
+          const [recipesResult, ingredientsResult] = await Promise.all([
+            supabase.from('recipes').select('recipe_id, recipe_name').in('recipe_id', recipeIdArray),
+            supabase.from('recipe_ingredients').select('recipe_id, ingredient_id, recipe_ingredient_restriction_management').in('recipe_id', recipeIdArray)
+          ]);
+
+          if (recipesResult.error) {
+            console.error('[MenuPlanningGrid] Error loading recipe names:', recipesResult.error);
+          } else if (recipesResult.data) {
             const nameMap = new Map<string, string>();
-            recipesData.forEach(recipe => {
+            recipesResult.data.forEach(recipe => {
               nameMap.set(recipe.recipe_id, recipe.recipe_name);
             });
-            console.log('[MenuPlanningGrid] Recipe name map created:', Array.from(nameMap.entries()));
             setRecipeNames(nameMap);
+          }
+
+          if (!ingredientsResult.error && ingredientsResult.data) {
+            const cache = new Map<string, { ingredient_id: string; restriction_management: string }[]>();
+            ingredientsResult.data.forEach(row => {
+              if (!cache.has(row.recipe_id)) cache.set(row.recipe_id, []);
+              cache.get(row.recipe_id)!.push({ ingredient_id: row.ingredient_id, restriction_management: row.recipe_ingredient_restriction_management || 'None' });
+            });
+            setRecipeIngredientsCache(cache);
           }
         }
       } catch (error) {
