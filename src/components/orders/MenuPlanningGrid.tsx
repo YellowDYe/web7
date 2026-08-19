@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, Minus, ShoppingCart, TriangleAlert as AlertTriangle, Ban, Calendar, Check, X } from 'lucide-react';
 import { SelectedWeek } from '../../types/week';
 import { MealPlan } from '../../types/mealPlan';
@@ -33,6 +33,7 @@ interface GridCellProps {
   disabled?: boolean;
   recipeName?: string;
   recipeId?: string;
+  ingredientNameMap: Map<string, string>;
 }
 
 const GridCell: React.FC<GridCellProps> = ({
@@ -48,7 +49,8 @@ const GridCell: React.FC<GridCellProps> = ({
   orderItems,
   disabled = false,
   recipeName,
-  recipeId
+  recipeId,
+  ingredientNameMap
 }) => {
   const [recipeIngredients, setRecipeIngredients] = useState<any[]>([]);
   const [loadingIngredients, setLoadingIngredients] = useState(false);
@@ -260,12 +262,20 @@ const GridCell: React.FC<GridCellProps> = ({
 
       {/* Blocked Ingredients Warning */}
       {blockedIngredients.length > 0 && (
-        <div className="mb-2 xl:mb-3 p-1 xl:p-2 bg-red-200 border border-red-400 rounded">
-          <div className="flex items-center space-x-1">
-            <Ban className="w-2 xl:w-3 h-2 xl:h-3 text-red-700 flex-shrink-0" />
-            <p className="text-xs font-bold text-red-900 truncate">
-              Bloqueado
-            </p>
+        <div className="mb-2 xl:mb-3 p-1.5 xl:p-2.5 bg-red-100 border border-red-400 rounded-lg">
+          <div className="flex items-start space-x-1.5">
+            <Ban className="w-3 xl:w-4 h-3 xl:h-4 text-red-700 flex-shrink-0 mt-0.5" />
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-red-900">
+                Bloqueado
+              </p>
+              <p className="text-xs text-red-800 mt-0.5 break-words">
+                Contiene: {blockedIngredients.map(id => ingredientNameMap.get(id) || id).join(', ')}
+              </p>
+              <p className="text-xs text-red-700 mt-1 italic">
+                Selecciona otro platillo
+              </p>
+            </div>
           </div>
         </div>
       )}
@@ -283,11 +293,11 @@ const GridCell: React.FC<GridCellProps> = ({
       )}
 
       {/* Quantity Selector */}
-      <div className="flex items-center justify-center mb-2 xl:mb-3 mt-auto">
+      <div className={`flex items-center justify-center mb-2 xl:mb-3 mt-auto ${blockedIngredients.length > 0 ? 'opacity-40 pointer-events-none' : ''}`}>
         <div className="flex items-center space-x-2">
           <button
             onClick={handleRemoveOne}
-            disabled={currentQuantity <= 0 || disabled}
+            disabled={currentQuantity <= 0 || disabled || blockedIngredients.length > 0}
             className="w-6 xl:w-8 h-6 xl:h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Minus className="w-3 xl:w-4 h-3 xl:h-4 text-gray-600" />
@@ -297,7 +307,7 @@ const GridCell: React.FC<GridCellProps> = ({
           </span>
           <button
             onClick={handleAddOne}
-            disabled={disabled}
+            disabled={disabled || blockedIngredients.length > 0}
             className="w-6 xl:w-8 h-6 xl:h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Plus className="w-3 xl:w-4 h-3 xl:h-4 text-gray-600" />
@@ -322,6 +332,76 @@ const MenuPlanningGrid: React.FC<MenuPlanningGridProps> = ({
   const [recipeNames, setRecipeNames] = useState<Map<string, string>>(new Map());
   const [loadingRecipes, setLoadingRecipes] = useState(false);
   const [familyMemberData, setFamilyMemberData] = useState<{ name: string; restrictions: string[] } | null>(null);
+  const [ingredientNameMap, setIngredientNameMap] = useState<Map<string, string>>(new Map());
+  const [blockedRecipeSet, setBlockedRecipeSet] = useState<Set<string>>(new Set());
+
+  // Load ingredient names once for display in blocked warnings
+  useEffect(() => {
+    const loadIngredientNames = async () => {
+      const { data, error } = await supabase
+        .from('ingredients')
+        .select('ingredient_id, ingredient_name');
+      if (!error && data) {
+        const map = new Map<string, string>();
+        data.forEach(i => map.set(i.ingredient_id, i.ingredient_name));
+        setIngredientNameMap(map);
+      }
+    };
+    loadIngredientNames();
+  }, []);
+
+  // Compute which recipes are blocked for the current customer/family member
+  const [recipeIngredientsCache, setRecipeIngredientsCache] = useState<Map<string, { ingredient_id: string; restriction_management: string }[]>>(new Map());
+
+  useEffect(() => {
+    const loadRecipeIngredients = async () => {
+      if (weeklyMenuPlans.length === 0 || !selectedPlan) {
+        setRecipeIngredientsCache(new Map());
+        setBlockedRecipeSet(new Set());
+        return;
+      }
+      const menuRecipe = weeklyMenuPlans[0];
+      const recipeIds = new Set<string>();
+      DAYS_OF_WEEK.forEach(day => {
+        MEAL_TYPES.forEach(mt => {
+          const col = buildRecipeColumn(day, mt.label);
+          const rid = menuRecipe[col];
+          if (rid) recipeIds.add(rid);
+        });
+      });
+      if (recipeIds.size === 0) { setBlockedRecipeSet(new Set()); return; }
+
+      const { data, error } = await supabase
+        .from('recipe_ingredients')
+        .select('recipe_id, ingredient_id, recipe_ingredient_restriction_management')
+        .in('recipe_id', Array.from(recipeIds));
+      if (error || !data) { setBlockedRecipeSet(new Set()); return; }
+
+      const cache = new Map<string, { ingredient_id: string; restriction_management: string }[]>();
+      data.forEach(row => {
+        if (!cache.has(row.recipe_id)) cache.set(row.recipe_id, []);
+        cache.get(row.recipe_id)!.push({ ingredient_id: row.ingredient_id, restriction_management: row.recipe_ingredient_restriction_management || 'None' });
+      });
+      setRecipeIngredientsCache(cache);
+
+      // Determine which recipes are blocked for current restrictions
+      const restrictions = getActiveRestrictions();
+      const blocked = new Set<string>();
+      cache.forEach((ingredients, recipeId) => {
+        const hasBlock = ingredients.some(ing => ing.restriction_management === 'Block' && restrictions.includes(ing.ingredient_id));
+        if (hasBlock) blocked.add(recipeId);
+      });
+      setBlockedRecipeSet(blocked);
+    };
+    loadRecipeIngredients();
+  }, [weeklyMenuPlans, selectedPlan, selectedCustomer, selectedFamilyMemberId, familyMemberData]);
+
+  const getActiveRestrictions = (): string[] => {
+    if (selectedFamilyMemberId && familyMemberData?.restrictions) {
+      return familyMemberData.restrictions;
+    }
+    return selectedCustomer?.customer_restrictions || [];
+  };
 
   // Load family member data when selectedFamilyMemberId changes
   React.useEffect(() => {
@@ -374,7 +454,7 @@ const MenuPlanningGrid: React.FC<MenuPlanningGridProps> = ({
     daysToProcess.forEach(day => {
       mealTypesToProcess.forEach(mealTypeObj => {
         const recipeData = getRecipeData(mealTypeObj.label, day);
-        if (recipeData.id) { // Only include meals that have recipes assigned
+        if (recipeData.id && !blockedRecipeSet.has(recipeData.id)) { // Skip blocked dishes
           const familyMemberId = selectedFamilyMemberId || null;
           const item: PendingOrderItem = {
             tempId: `select_${day}_${mealTypeObj.label}_${selectedPlan.meal_plans_id}_${activeWeek.week.week_name}${familyMemberId ? `_${familyMemberId}` : ''}`,
@@ -703,6 +783,7 @@ const MenuPlanningGrid: React.FC<MenuPlanningGridProps> = ({
                           disabled={disabled}
                           recipeName={recipeData.name}
                           recipeId={recipeData.id}
+                          ingredientNameMap={ingredientNameMap}
                         />
                       </div>
                     );
@@ -803,6 +884,7 @@ const MenuPlanningGrid: React.FC<MenuPlanningGridProps> = ({
                         disabled={disabled}
                         recipeName={recipeData.name}
                         recipeId={recipeData.id}
+                        ingredientNameMap={ingredientNameMap}
                       />
                     );
                   })}
@@ -855,6 +937,7 @@ const MenuPlanningGrid: React.FC<MenuPlanningGridProps> = ({
                             disabled={disabled}
                             recipeName={recipeData.name}
                             recipeId={recipeData.id}
+                            ingredientNameMap={ingredientNameMap}
                           />
                         </div>
                       );
