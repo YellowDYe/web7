@@ -3,7 +3,7 @@ import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import { ReactNode } from 'react';
 
 export function ProtectedCustomerRoute({ children }: { children: ReactNode }) {
-  const { user, loading } = useCustomerAuth();
+  const { user, customer, loading } = useCustomerAuth();
 
   if (loading) {
     return (
@@ -18,6 +18,10 @@ export function ProtectedCustomerRoute({ children }: { children: ReactNode }) {
 
   if (!user) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (!customer) {
+    return <Navigate to="/signup?incomplete=true" replace />;
   }
 
   return <>{children}</>;

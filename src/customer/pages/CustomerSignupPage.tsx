@@ -221,10 +221,13 @@ export default function CustomerSignupPage() {
       const result = await checkEmailExists(formData.email);
       console.log('[SIGNUP] Email check result:', result);
 
-      if (result.exists && result.hasAuth) {
-        console.log('[SIGNUP] Email already registered with auth');
+      if (result.hasAuth && result.hasCustomer) {
+        console.log('[SIGNUP] Email already registered with completed account');
         setError('Este correo ya está registrado.');
         setEmailCheckMessage('');
+      } else if (result.hasAuth && !result.hasCustomer) {
+        console.log('[SIGNUP] Email has incomplete signup, allowing retry');
+        setEmailCheckMessage('Cuenta incompleta detectada. Puedes completar tu registro.');
       } else {
         console.log('[SIGNUP] Email available');
         setEmailCheckMessage('¡Correo disponible!');
@@ -265,9 +268,9 @@ export default function CustomerSignupPage() {
         try {
           const result = await checkEmailExists(formData.email);
           console.log('[SIGNUP] Email availability check result:', result);
-          if (result.exists && result.hasAuth) {
-            console.log('[SIGNUP] Email already has auth account');
-            setError('Este correo ya está registrado.');
+          if (result.hasAuth && result.hasCustomer) {
+            console.log('[SIGNUP] Email already has completed account');
+            setError('Este correo ya está registrado. Por favor inicia sesión.');
             return false;
           }
         } catch (err: any) {
@@ -851,6 +854,12 @@ export default function CustomerSignupPage() {
               })}
             </div>
           </div>
+
+          {searchParams.get('incomplete') === 'true' && !error && (
+            <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-sm">
+              Tu registro anterior no se completó correctamente. Por favor, llena tus datos nuevamente para terminar de crear tu cuenta.
+            </div>
+          )}
 
           {error && (
             <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">

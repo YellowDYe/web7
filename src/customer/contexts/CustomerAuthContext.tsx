@@ -11,7 +11,7 @@ interface CustomerAuthContextType {
   loginWithGoogle: () => Promise<void>;
   signup: (email: string, password: string, customerData: Partial<Customer>) => Promise<void>;
   logout: () => Promise<void>;
-  checkEmailExists: (email: string) => Promise<{ exists: boolean; hasAuth: boolean; customer?: Customer }>;
+  checkEmailExists: (email: string) => Promise<{ exists: boolean; hasAuth: boolean; hasCustomer: boolean; customer?: Customer }>;
   updateCustomerProfile: (data: Partial<Customer>) => Promise<void>;
 }
 
@@ -166,17 +166,15 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
 
       if (data && data.length > 0) {
         const result = data[0];
-        // The server intentionally never returns the stored customer record for
-        // an address the caller has not proven they own, so there is no
-        // personal data to pre-fill here.
         return {
           exists: result.email_exists || false,
           hasAuth: result.has_auth || false,
+          hasCustomer: result.has_customer || false,
           customer: undefined,
         };
       }
 
-      return { exists: false, hasAuth: false };
+      return { exists: false, hasAuth: false, hasCustomer: false };
     } catch (error: any) {
       console.error('[AUTH] Error checking email:', error);
       throw error;
@@ -217,24 +215,102 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const buildFamilyMembers = (customerData: Partial<Customer>) => {
+    const familyMembers: any[] = [];
+    for (let i = 1; i <= 5; i++) {
+      const memberName = (customerData as any)[`family_member_${i}_name`];
+      if (memberName) {
+        familyMembers.push({
+          family_member_name: memberName,
+          family_member_restrictions: (customerData as any)[`family_member_${i}_restrictions`] || []
+        });
+      }
+    }
+    return familyMembers;
+  };
+
+  const callCreateCustomerAccount = async (authUserId: string, email: string, customerData: Partial<Customer>, existingCustomerId: string | null) => {
+    const familyMembers = buildFamilyMembers(customerData);
+
+    const { data: accountResult, error: createError } = await supabase.rpc('create_customer_account', {
+      p_auth_user_id: authUserId,
+      p_email: email,
+      p_nombre: (customerData as any).first_name || '',
+      p_apellidos: (customerData as any).last_name || '',
+      p_telefono: (customerData as any).phone || '',
+      p_rfc: (customerData as any).rfc || '',
+      p_razon_social: (customerData as any).invoice_name || '',
+      p_regimen_fiscal: (customerData as any).tax_regime || '',
+      p_uso_cfdi: 'G03',
+      p_codigo_postal: (customerData as any).postal_code || '',
+      p_estado: '',
+      p_ciudad: (customerData as any).delegacion || '',
+      p_colonia: (customerData as any).colonia || '',
+      p_calle: (customerData as any).street_address || '',
+      p_numero_exterior: (customerData as any).address_number || '',
+      p_numero_interior: (customerData as any).interior_number || '',
+      p_referencias: (customerData as any).delivery_instructions || '',
+      p_customer_notes: '',
+      p_existing_customer_id: existingCustomerId,
+      p_customer_restrictions: (customerData as any).restrictions || [],
+      p_family_members: familyMembers
+    });
+
+    if (createError) {
+      console.error('Error creating customer account:', createError);
+      throw new Error(`Error al crear cuenta: ${createError.message}`);
+    }
+
+    return accountResult;
+  };
+
   const signup = async (email: string, password: string, customerData: Partial<Customer>) => {
+    let newAuthUserId: string | null = null;
+
     try {
-      // Step 1: Check if email exists FIRST to get existing customer_id
+      // Step 1: Check if email exists
       console.log('Step 1: Checking if email exists:', email);
       const emailCheck = await checkEmailExists(email);
       const existingCustomerId = emailCheck.customer?.id || null;
 
-      if (emailCheck.hasAuth) {
-        throw new Error('Esta dirección de correo ya tiene una cuenta. Por favor inicia sesión.');
-      }
-
       console.log('Email check result:', {
         exists: emailCheck.exists,
         hasAuth: emailCheck.hasAuth,
+        hasCustomer: emailCheck.hasCustomer,
         existingCustomerId
       });
 
-      // Step 2: Create auth user
+      // If auth exists AND customer exists, signup is fully completed already
+      if (emailCheck.hasAuth && emailCheck.hasCustomer) {
+        throw new Error('Esta dirección de correo ya tiene una cuenta. Por favor inicia sesión.');
+      }
+
+      // If auth exists but NO customer row, this is a partially failed signup -- retry
+      if (emailCheck.hasAuth && !emailCheck.hasCustomer) {
+        console.log('Step 2 (retry): Auth user exists without customer row, signing in to complete signup');
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (signInError) {
+          throw new Error('Tu cuenta fue creada parcialmente. Verifica tu contraseña e intenta de nuevo.');
+        }
+
+        if (!signInData.user) throw new Error('Error al iniciar sesión');
+
+        console.log('Signed in to complete signup:', signInData.user.id);
+
+        // Now create the customer record
+        const accountResult = await callCreateCustomerAccount(signInData.user.id, email, customerData, existingCustomerId);
+        console.log('Customer account created (retry):', accountResult);
+
+        await fetchCustomerData(signInData.user.id, email);
+        console.log('Signup recovery completed successfully');
+        return;
+      }
+
+      // Normal flow: create auth user first
       console.log('Step 2: Creating auth user');
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email,
@@ -250,56 +326,16 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
       if (signUpError) throw signUpError;
       if (!authData.user) throw new Error('Error al crear usuario');
 
-      console.log('Auth user created:', authData.user.id);
+      newAuthUserId = authData.user.id;
+      console.log('Auth user created:', newAuthUserId);
 
-      // Step 3: Format family members for database
-      const familyMembers: any[] = [];
-      for (let i = 1; i <= 5; i++) {
-        const memberName = (customerData as any)[`family_member_${i}_name`];
-        if (memberName) {
-          familyMembers.push({
-            family_member_name: memberName,
-            family_member_restrictions: (customerData as any)[`family_member_${i}_restrictions`] || []
-          });
-        }
-      }
-      console.log('Step 3: Creating customer account with family members:', familyMembers);
-
-      // Step 4: Create customer account directly (no pending storage)
-      const { data: accountResult, error: createError } = await supabase.rpc('create_customer_account', {
-        p_auth_user_id: authData.user.id,
-        p_email: email,
-        p_nombre: (customerData as any).first_name || '',
-        p_apellidos: (customerData as any).last_name || '',
-        p_telefono: (customerData as any).phone || '',
-        p_rfc: (customerData as any).rfc || '',
-        p_razon_social: (customerData as any).invoice_name || '',
-        p_regimen_fiscal: (customerData as any).tax_regime || '',
-        p_uso_cfdi: 'G03',
-        p_codigo_postal: (customerData as any).postal_code || '',
-        p_estado: '',
-        p_ciudad: (customerData as any).delegacion || '',
-        p_colonia: (customerData as any).colonia || '',
-        p_calle: (customerData as any).street_address || '',
-        p_numero_exterior: (customerData as any).address_number || '',
-        p_numero_interior: (customerData as any).interior_number || '',
-        p_referencias: (customerData as any).delivery_instructions || '',
-        p_customer_notes: '',
-        p_existing_customer_id: existingCustomerId,
-        p_customer_restrictions: (customerData as any).restrictions || [],
-        p_family_members: familyMembers
-      });
-
-      if (createError) {
-        console.error('Error creating customer account:', createError);
-        throw new Error(`Error al crear cuenta: ${createError.message}`);
-      }
-
+      // Create customer account
+      console.log('Step 3: Creating customer account');
+      const accountResult = await callCreateCustomerAccount(authData.user.id, email, customerData, existingCustomerId);
       console.log('Customer account created:', accountResult);
 
-      // Step 5: Fetch the customer data to update state
+      // Fetch the customer data to update state
       await fetchCustomerData(authData.user.id, email);
-
       console.log('Signup completed successfully');
     } catch (error: any) {
       console.error('Signup error:', error);
