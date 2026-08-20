@@ -3,7 +3,8 @@ import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Calendar, User, Tag } from 'lucide-react';
 import { blogService } from '../../services/blogService';
 import type { BlogPost } from '../../types/website';
-import { CustomerSiteHeader } from '../components/CustomerSiteHeader';
+import { MainMenu } from '../sections/MainMenu/MainMenu';
+import { Footer } from '../sections/Footer/Footer';
 import { sanitizeHtml } from '../../utils/sanitizeHtml';
 
 const CustomerBlogPostPage: React.FC = () => {
@@ -41,7 +42,7 @@ const CustomerBlogPostPage: React.FC = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-white">
-        <CustomerSiteHeader />
+        <MainMenu />
         <div className="max-w-3xl mx-auto px-4 py-16">
           <div className="animate-pulse space-y-4">
             <div className="h-8 bg-gray-100 rounded w-3/4" />
@@ -61,7 +62,7 @@ const CustomerBlogPostPage: React.FC = () => {
   if (notFound || !post) {
     return (
       <div className="min-h-screen bg-white">
-        <CustomerSiteHeader />
+        <MainMenu />
         <div className="max-w-3xl mx-auto px-4 py-20 text-center">
           <h1 className="[font-family:'Antonio',Helvetica] font-bold text-4xl text-gray-900 mb-4">
             Artículo no encontrado
@@ -87,7 +88,7 @@ const CustomerBlogPostPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-white">
-      <CustomerSiteHeader />
+      <MainMenu />
 
       {/* Cover Image */}
       {post.cover_image_url && (
@@ -201,6 +202,8 @@ const CustomerBlogPostPage: React.FC = () => {
           </Link>
         </div>
       </article>
+
+      <Footer />
 
       <style>{`
         .prose-blog h1, .prose-blog h2, .prose-blog h3, .prose-blog h4 {
