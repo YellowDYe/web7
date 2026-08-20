@@ -17,16 +17,12 @@ const DELEGACIONES = [
   'Cuajimalpa de Morelos',
   'Cuauhtémoc',
   'Gustavo A. Madero',
-  'Iztacalco',
   'Iztapalapa',
   'La Magdalena Contreras',
   'Miguel Hidalgo',
-  'Milpa Alta',
   'Naucalpan de Juárez',
-  'Tláhuac',
   'Tlalpan',
-  'Venustiano Carranza',
-  'Xochimilco'
+  'Venustiano Carranza'
 ];
 
 const DelegacionDropdown: React.FC<DelegacionDropdownProps> = ({
