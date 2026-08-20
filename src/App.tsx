@@ -17,7 +17,6 @@ import CustomerForgotPasswordPage from './customer/pages/CustomerForgotPasswordP
 import CustomerOrderPage from './customer/pages/CustomerOrderPage';
 import CustomerCartPage from './customer/pages/CustomerCartPage';
 import CustomerBlogPostPage from './customer/pages/CustomerBlogPostPage';
-import CustomerWeeklyMenuPage from './customer/pages/CustomerWeeklyMenuPage';
 import Admin from './pages/Admin';
 import ForcePasswordChange from './pages/ForcePasswordChange';
 import ForgotPassword from './pages/ForgotPassword';
@@ -126,7 +125,6 @@ function App() {
                   />
                   <Route path="/cart" element={<CustomerCartPage />} />
                   <Route path="/blog/:slug" element={<CustomerBlogPostPage />} />
-                  <Route path="/menu" element={<CustomerWeeklyMenuPage />} />
                   <Route
                     path="/checkout"
                     element={
