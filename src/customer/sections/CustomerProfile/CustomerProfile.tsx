@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { supabase } from '../../../config/supabase';
 import { useCustomerAuth } from '../../contexts/CustomerAuthContext';
 import { Card } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
@@ -9,7 +10,7 @@ import { useIngredientNames } from '../../hooks/useIngredientNames';
 import { familyMemberService } from '../../../services/familyMemberService';
 import RestrictionSelector from '../../../components/customers/RestrictionSelector';
 import { FamilyMember } from '../../../types/familyMember';
-import { User, Mail, Phone, MapPin, FileText, CircleAlert as AlertCircle, CreditCard as Edit, Package, IdCard, Users, X, Save } from 'lucide-react';
+import { User, Mail, Phone, MapPin, FileText, CircleAlert as AlertCircle, CreditCard as Edit, Package, IdCard, Users, X, Save, Trash2 } from 'lucide-react';
 
 export const CustomerProfile: React.FC = () => {
   const { customer, user, loading, logout } = useCustomerAuth();
@@ -17,6 +18,7 @@ export const CustomerProfile: React.FC = () => {
   const [searchParams] = useSearchParams();
   const [showEditModal, setShowEditModal] = useState(false);
   const [showRestrictionsModal, setShowRestrictionsModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'profile' | 'orders'>(
     searchParams.get('tab') === 'orders' ? 'orders' : 'profile'
   );
@@ -381,6 +383,32 @@ export const CustomerProfile: React.FC = () => {
           </div>
         </Card>
       )}
+
+      <Card className="p-6 border-red-200 bg-red-50/30">
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+              <Trash2 className="h-6 w-6 text-red-600" />
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">Eliminar Cuenta</h2>
+              <p className="text-sm text-gray-600">Eliminar permanentemente tu cuenta y datos personales</p>
+            </div>
+          </div>
+          <Button
+            onClick={() => setShowDeleteModal(true)}
+            variant="outline"
+            size="sm"
+            className="border-red-300 text-red-700 hover:bg-red-100 hover:border-red-400"
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            Eliminar
+          </Button>
+        </div>
+        <p className="mt-3 text-sm text-gray-600 ml-15">
+          Esta acción es irreversible. Se eliminará tu acceso y datos personales. Tu historial de pedidos se conservará de forma anónima.
+        </p>
+      </Card>
     </div>
   );
 
@@ -457,6 +485,17 @@ export const CustomerProfile: React.FC = () => {
           currentRestrictions={customer.customer_restrictions || []}
           onClose={() => setShowRestrictionsModal(false)}
           onSave={() => setShowRestrictionsModal(false)}
+        />
+      )}
+
+      {showDeleteModal && (
+        <DeleteAccountModal
+          customerEmail={customer.customer_email}
+          onClose={() => setShowDeleteModal(false)}
+          onDeleted={async () => {
+            await logout();
+            window.location.href = '/';
+          }}
         />
       )}
     </div>
@@ -543,6 +582,128 @@ function RestrictionsEditModal({
                   <Save className="h-5 w-5 mr-2" />
                   Guardar
                 </span>
+              )}
+            </Button>
+          </div>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+function DeleteAccountModal({
+  customerEmail,
+  onClose,
+  onDeleted,
+}: {
+  customerEmail: string;
+  onClose: () => void;
+  onDeleted: () => void;
+}) {
+  const [confirmEmail, setConfirmEmail] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState('');
+
+  const isConfirmed = confirmEmail.toLowerCase() === customerEmail.toLowerCase();
+
+  const handleDelete = async () => {
+    if (!isConfirmed) return;
+
+    setDeleting(true);
+    setError('');
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('No hay sesión activa');
+      }
+
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const res = await fetch(`${supabaseUrl}/functions/v1/delete-own-account`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+          apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+        },
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Error al eliminar la cuenta');
+      }
+
+      onDeleted();
+    } catch (err: any) {
+      setError(err.message || 'No se pudo eliminar la cuenta');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <Card className="w-full max-w-md">
+        <div className="p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+              <Trash2 className="h-6 w-6 text-red-600" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-gray-900">Eliminar Cuenta</h2>
+              <p className="text-sm text-gray-600">Esta acción no se puede deshacer</p>
+            </div>
+          </div>
+
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+            <p className="text-sm text-red-800">
+              Al eliminar tu cuenta se borrará tu acceso y datos personales de forma permanente.
+              Tu historial de pedidos se conservará de forma anónima.
+            </p>
+          </div>
+
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+              {error}
+            </div>
+          )}
+
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Escribe tu correo electrónico para confirmar:
+            </label>
+            <p className="text-xs text-gray-500 mb-2 font-mono">{customerEmail}</p>
+            <input
+              type="email"
+              value={confirmEmail}
+              onChange={(e) => setConfirmEmail(e.target.value)}
+              placeholder="tu@correo.com"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+              autoComplete="off"
+            />
+          </div>
+
+          <div className="flex gap-3">
+            <Button
+              onClick={onClose}
+              variant="outline"
+              className="flex-1"
+              disabled={deleting}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleDelete}
+              disabled={!isConfirmed || deleting}
+              className="flex-1 bg-red-600 hover:bg-red-700 text-white disabled:opacity-50"
+            >
+              {deleting ? (
+                <span className="flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Eliminando...
+                </span>
+              ) : (
+                'Eliminar mi cuenta'
               )}
             </Button>
           </div>

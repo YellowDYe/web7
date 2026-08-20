@@ -22,6 +22,7 @@ const DELEGACIONES = [
   'La Magdalena Contreras',
   'Miguel Hidalgo',
   'Milpa Alta',
+  'Naucalpan de Juárez',
   'Tláhuac',
   'Tlalpan',
   'Venustiano Carranza',

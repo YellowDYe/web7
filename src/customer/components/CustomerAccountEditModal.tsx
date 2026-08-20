@@ -6,6 +6,7 @@ import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import RestrictionSelector from '../../components/customers/RestrictionSelector';
 import PostalCodeSearchDropdown from '../../components/customers/PostalCodeSearchDropdown';
 import TaxRegimeDropdown from '../../components/customers/TaxRegimeDropdown';
+import DelegacionDropdown from '../../components/customers/DelegacionDropdown';
 import FamilyMembersList from '../../components/customers/FamilyMembersList';
 import type { Customer } from '../../types/customer';
 
@@ -231,15 +232,10 @@ export function CustomerAccountEditModal({ customer, onClose, onSave }: Customer
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Delegación *
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.delegacion}
-                    onChange={(e) => setFormData({ ...formData, delegacion: e.target.value })}
+                  <DelegacionDropdown
+                    selectedDelegacion={formData.delegacion}
+                    onDelegacionSelect={(value) => setFormData({ ...formData, delegacion: value })}
                     required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                   />
                 </div>
               </div>
