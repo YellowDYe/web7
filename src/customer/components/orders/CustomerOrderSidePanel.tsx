@@ -113,14 +113,13 @@ const CustomerOrderSidePanel: React.FC<CustomerOrderSidePanelProps> = ({
             <Receipt className="w-5 h-5 text-white flex-shrink-0" />
             <h2 className="text-base font-semibold text-white truncate">Resumen del Pedido</h2>
           </div>
-          <div className="flex items-center space-x-3">
-            <div className="text-right">
-              <p className="text-sm font-semibold text-gray-200">
-                {totalBillableMeals} comida{totalBillableMeals !== 1 ? 's' : ''}
-                {totalMeals > totalBillableMeals && ` + ${totalMeals - totalBillableMeals} col.`}
-              </p>
-              <p className="text-lg font-bold text-white">{formatCurrency(priceBreakdown.finalTotal)}</p>
-            </div>
+          <div className="flex items-center space-x-2.5 flex-shrink-0">
+            <span className="text-sm font-medium text-gray-300 whitespace-nowrap">
+              {totalBillableMeals} comida{totalBillableMeals !== 1 ? 's' : ''}
+              {totalMeals > totalBillableMeals && ` + ${totalMeals - totalBillableMeals} col.`}
+            </span>
+            <span className="text-gray-500">|</span>
+            <span className="text-base font-bold text-white whitespace-nowrap">{formatCurrency(priceBreakdown.finalTotal)}</span>
             <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${detailsExpanded ? 'rotate-180' : ''}`} />
           </div>
         </div>
