@@ -1,5 +1,5 @@
 import React from 'react';
-import { Calendar, Truck, Check, ArrowRight } from 'lucide-react';
+import { Calendar, Truck, Check } from 'lucide-react';
 import { SelectedWeek } from '../../../types/week';
 import { DeliveryOption } from '../../../types/deliveryOption';
 import { PendingOrderItem } from '../../../types/orderMenu';
@@ -74,7 +74,7 @@ const CustomerWeekSelector: React.FC<CustomerWeekSelectorProps> = ({
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {selectedWeeks.map((week) => {
+        {selectedWeeks.map((week, index) => {
           const totalCount = getTotalMealCountForWeek(orderItems, week.week.week_name);
           const hasDishes = totalCount > 0;
           const isActive = activeWeek?.tempId === week.tempId;
@@ -82,9 +82,10 @@ const CustomerWeekSelector: React.FC<CustomerWeekSelectorProps> = ({
           const isMonday = !!week.monday_delivery;
 
           return (
-            <div
+            <button
               key={week.tempId}
-              className={`rounded-xl border-2 transition-all duration-200 overflow-hidden ${
+              onClick={() => onWeekSelect(week)}
+              className={`rounded-xl border-2 transition-all duration-200 text-left p-4 ${
                 isActive
                   ? 'border-red-500 bg-red-50'
                   : hasDishes
@@ -92,75 +93,66 @@ const CustomerWeekSelector: React.FC<CustomerWeekSelectorProps> = ({
                   : 'border-gray-200 bg-white hover:border-red-300'
               }`}
             >
-              <button
-                onClick={() => onWeekSelect(week)}
-                className="w-full p-4 text-left"
-              >
-                <div className="flex items-start justify-between mb-1">
-                  <div className="flex-1">
-                    <p className="text-sm text-gray-500">{week.week.week_name}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      {week.week.menu_name || 'Sin menú'}
-                    </p>
-                  </div>
-                  <div className="flex items-center space-x-2 ml-2">
-                    {hasDishes && (
-                      <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
-                        <span className="text-sm font-bold text-white">{totalCount}</span>
-                      </div>
-                    )}
-                    {isActive && (
-                      <div className="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0">
-                        <Check className="w-4 h-4 text-white" />
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {displayDate && (
-                  <div className="mt-3 pt-3 border-t border-gray-200">
-                    <div className="flex items-center space-x-2 mb-1">
-                      <Truck className={`w-4 h-4 ${isMonday ? 'text-blue-600' : 'text-green-600'}`} />
-                      <span className={`text-xs font-medium ${isMonday ? 'text-blue-600' : 'text-green-600'}`}>
-                        Fecha de entrega
-                      </span>
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-medium text-gray-500">
+                  Semana {index + 1}
+                </span>
+                <div className="flex items-center space-x-2">
+                  {hasDishes && (
+                    <div className="w-7 h-7 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
+                      <span className="text-xs font-bold text-white">{totalCount}</span>
                     </div>
-                    <p className={`text-base font-semibold capitalize ${isMonday ? 'text-blue-900' : 'text-gray-900'}`}>
-                      {formatDate(displayDate)}
-                    </p>
-                    <p className={`text-xs mt-1 ${isMonday ? 'text-blue-600' : 'text-gray-500'}`}>
-                      {isMonday
-                        ? 'Entregas en lunes a partir de las 10:00 AM'
-                        : 'Entregas de 6:30 a 9:30 PM del domingo'}
-                    </p>
-                  </div>
-                )}
-              </button>
+                  )}
+                  {isActive && (
+                    <div className="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0">
+                      <Check className="w-4 h-4 text-white" />
+                    </div>
+                  )}
+                </div>
+              </div>
 
-              {week.week.week_date && (
-                <div className="px-4 pb-4">
-                  <button
-                    type="button"
+              {displayDate ? (
+                <div>
+                  <div className="flex items-center space-x-2 mb-1">
+                    <Truck className={`w-4 h-4 ${isMonday ? 'text-blue-600' : 'text-green-600'}`} />
+                    <span className={`text-xs font-medium ${isMonday ? 'text-blue-600' : 'text-green-600'}`}>
+                      Fecha de entrega
+                    </span>
+                  </div>
+                  <p className={`text-base font-semibold capitalize ${isMonday ? 'text-blue-900' : 'text-gray-900'}`}>
+                    {formatDate(displayDate)}
+                  </p>
+                  <p className={`text-xs mt-1 ${isMonday ? 'text-blue-600' : 'text-gray-500'}`}>
+                    {isMonday
+                      ? 'Entregas en lunes a partir de las 10:00 AM'
+                      : 'Entregas de 6:30 a 9:30 PM del domingo'}
+                  </p>
+
+                  <span
+                    role="button"
+                    tabIndex={0}
                     onClick={(e) => {
                       e.stopPropagation();
                       onToggleMondayDelivery(week.tempId);
                     }}
-                    className={`w-full flex items-center justify-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                      isMonday
-                        ? 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
-                        : 'bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200'
-                    }`}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        onToggleMondayDelivery(week.tempId);
+                      }
+                    }}
+                    className="inline-block mt-2 text-xs text-gray-400 hover:text-gray-600 underline underline-offset-2 cursor-pointer transition-colors"
                   >
-                    <ArrowRight className="w-4 h-4" />
-                    <span>
-                      {isMonday
-                        ? 'Cambiar a entrega en domingo'
-                        : 'Solicitar entrega en lunes'}
-                    </span>
-                  </button>
+                    {isMonday
+                      ? 'Cambiar a entrega en domingo'
+                      : 'Solicitar entrega en lunes'}
+                  </span>
                 </div>
+              ) : (
+                <p className="text-sm text-gray-400">Sin fecha de entrega</p>
               )}
-            </div>
+            </button>
           );
         })}
       </div>
