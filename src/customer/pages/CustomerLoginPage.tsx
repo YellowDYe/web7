@@ -37,7 +37,7 @@ export default function CustomerLoginPage() {
     setLoading(true);
 
     try {
-      await loginWithGoogle();
+      await loginWithGoogle(returnTo);
     } catch (err: any) {
       setError(err.message || 'Error al iniciar sesión con Google. Por favor, inténtalo de nuevo.');
       setLoading(false);

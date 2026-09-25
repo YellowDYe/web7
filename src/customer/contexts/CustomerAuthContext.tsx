@@ -8,7 +8,7 @@ interface CustomerAuthContextType {
   customer: Customer | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  loginWithGoogle: () => Promise<void>;
+  loginWithGoogle: (returnTo?: string) => Promise<void>;
   signup: (email: string, password: string, customerData: Partial<Customer>) => Promise<void>;
   logout: () => Promise<void>;
   checkEmailExists: (email: string) => Promise<{ exists: boolean; hasAuth: boolean; hasCustomer: boolean; customer?: Customer }>;
@@ -199,12 +199,13 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const loginWithGoogle = async () => {
+  const loginWithGoogle = async (returnTo?: string) => {
     try {
+      const destination = returnTo || '/account';
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/account`,
+          redirectTo: `${window.location.origin}${destination}`,
         },
       });
 
