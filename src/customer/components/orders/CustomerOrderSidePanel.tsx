@@ -109,9 +109,9 @@ const CustomerOrderSidePanel: React.FC<CustomerOrderSidePanelProps> = ({
         className="bg-gradient-to-r from-gray-900 to-gray-700 px-5 py-4 flex-shrink-0 w-full text-left"
       >
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <Receipt className="w-5 h-5 text-white" />
-            <h2 className="text-base font-semibold text-white">Resumen del Pedido</h2>
+          <div className="flex items-center space-x-2 min-w-0">
+            <Receipt className="w-5 h-5 text-white flex-shrink-0" />
+            <h2 className="text-base font-semibold text-white truncate">Resumen del Pedido</h2>
           </div>
           <div className="flex items-center space-x-3">
             <div className="text-right">

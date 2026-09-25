@@ -727,8 +727,8 @@ export const CustomerOrder: React.FC = () => {
             { num: 5, label: 'Resumen' }
           ].map((step, index) => (
             <React.Fragment key={step.num}>
-              <div className="flex items-center space-x-2">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium ${
+              <div className="flex items-center space-x-1 sm:space-x-2">
+                <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs sm:text-sm font-medium flex-shrink-0 ${
                   currentStep >= step.num ? 'bg-red-500 text-white' : 'bg-gray-300 text-gray-500'
                 }`}>
                   {step.num}
@@ -737,7 +737,7 @@ export const CustomerOrder: React.FC = () => {
                   currentStep >= step.num ? 'text-red-600' : 'text-gray-500'
                 }`}>{step.label}</span>
               </div>
-              {index < 4 && <div className="flex-1 h-px bg-gray-300 mx-2"></div>}
+              {index < 4 && <div className="flex-1 h-px bg-gray-300 mx-1 sm:mx-2"></div>}
             </React.Fragment>
           ))}
         </div>

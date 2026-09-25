@@ -636,7 +636,7 @@ const CustomerPackageSelector: React.FC<CustomerPackageSelectorProps> = ({
               const colors = getMealCategoryColor(entry.mealType);
               const Icon = getMealCategoryIcon(entry.mealType);
               return (
-                <div key={`${entry.planId}_${entry.mealType}`} className="flex items-center justify-between px-4 py-3">
+                <div key={`${entry.planId}_${entry.mealType}`} className="flex items-center justify-between px-3 sm:px-4 py-3 gap-2">
                   <div className="flex items-center space-x-3">
                     <div className={`p-1.5 rounded-lg ${colors.summaryIcon}`}>
                       <Icon className="w-4 h-4" />
@@ -646,10 +646,10 @@ const CustomerPackageSelector: React.FC<CustomerPackageSelectorProps> = ({
                       <p className={`text-xs font-medium ${colors.summaryText}`}>{entry.planName}</p>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-4">
+                  <div className="flex items-center space-x-3 sm:space-x-4 flex-shrink-0">
                     <div className="text-right">
-                      <p className="text-sm font-semibold text-gray-900">{entry.quantity} platillos</p>
-                      <p className="text-xs text-gray-500">{formatCurrency(entry.quantity * entry.pricePerDish)}</p>
+                      <p className="text-sm font-semibold text-gray-900 whitespace-nowrap">{entry.quantity} platillos</p>
+                      <p className="text-xs text-gray-500 whitespace-nowrap">{formatCurrency(entry.quantity * entry.pricePerDish)}</p>
                     </div>
                     <button
                       onClick={() => handleRemoveMealType(entry.mealType, entry.planId)}
@@ -680,15 +680,15 @@ const CustomerPackageSelector: React.FC<CustomerPackageSelectorProps> = ({
         const MINIMUM_TOTAL = 3;
         const meetsMinimum = grandTotal >= MINIMUM_TOTAL;
         return (
-          <div className={`mb-5 flex items-center justify-between px-4 py-3 rounded-xl border ${meetsMinimum ? 'bg-green-50 border-green-200' : 'bg-orange-50 border-orange-200'}`}>
-            <div className="flex items-center space-x-2">
+          <div className={`mb-5 flex flex-wrap items-center justify-between gap-2 px-4 py-3 rounded-xl border ${meetsMinimum ? 'bg-green-50 border-green-200' : 'bg-orange-50 border-orange-200'}`}>
+            <div className="flex-1 min-w-0">
               <span className={`text-sm font-medium ${meetsMinimum ? 'text-green-700' : 'text-orange-700'}`}>
                 {meetsMinimum
                   ? `Mínimo alcanzado — puedes combinar cualquier tiempo de comida`
                   : `Selecciona al menos 3 platillos en total (cualquier combinación)`}
               </span>
             </div>
-            <div className={`flex items-center space-x-1.5 px-3 py-1 rounded-full text-sm font-bold ${meetsMinimum ? 'bg-green-500 text-white' : 'bg-orange-200 text-orange-800'}`}>
+            <div className={`flex items-center space-x-1.5 px-3 py-1 rounded-full text-sm font-bold flex-shrink-0 ${meetsMinimum ? 'bg-green-500 text-white' : 'bg-orange-200 text-orange-800'}`}>
               <span>{grandTotal}</span>
               <span className="font-normal opacity-70">/ {MINIMUM_TOTAL}</span>
             </div>

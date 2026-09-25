@@ -52,21 +52,21 @@ const CustomerWeekSelector: React.FC<CustomerWeekSelectorProps> = ({
 
   return (
     <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center space-x-3">
-          <div className="bg-green-100 p-2 rounded-lg">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+        <div className="flex items-center space-x-3 min-w-0">
+          <div className="bg-green-100 p-2 rounded-lg flex-shrink-0">
             <Calendar className="w-5 h-5 text-green-600" />
           </div>
-          <div>
+          <div className="min-w-0">
             <h2 className="text-xl font-semibold text-gray-900">Semanas Seleccionadas</h2>
             <p className="text-sm text-gray-600">Haz clic en una semana para ver el menú</p>
           </div>
         </div>
 
         {deliveryOption && (
-          <div className="flex items-center space-x-2 px-4 py-2 bg-emerald-50 border border-emerald-200 rounded-lg">
+          <div className="flex items-center space-x-2 px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-lg flex-shrink-0">
             <Truck className="w-4 h-4 text-emerald-600" />
-            <span className="text-sm font-medium text-emerald-700">
+            <span className="text-sm font-medium text-emerald-700 truncate max-w-[10rem]">
               {deliveryOption.delivery_options_name}
             </span>
           </div>
