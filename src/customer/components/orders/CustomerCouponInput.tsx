@@ -38,14 +38,14 @@ const CustomerCouponInput: React.FC<CustomerCouponInputProps> = ({
     <div>
       {!appliedCoupon ? (
         <div>
-          <div className="flex space-x-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             <input
               type="text"
               value={couponCode}
               onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-              placeholder="Ingresa tu código de cupón"
+              placeholder="Código de cupón"
               disabled={disabled || validating}
-              className="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 disabled:bg-gray-50 uppercase"
+              className="flex-1 min-w-0 px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 disabled:bg-gray-50 uppercase"
               onKeyPress={(e) => {
                 if (e.key === 'Enter') {
                   handleApply();
@@ -55,7 +55,7 @@ const CustomerCouponInput: React.FC<CustomerCouponInputProps> = ({
             <button
               onClick={handleApply}
               disabled={!couponCode.trim() || disabled || validating}
-              className="px-6 py-3 bg-green-500 hover:bg-green-600 text-white rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+              className="px-4 py-3 bg-green-500 hover:bg-green-600 text-white rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shrink-0"
             >
               {validating ? (
                 <>

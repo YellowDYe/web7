@@ -401,28 +401,28 @@ export const CustomerCart: React.FC = () => {
                     {/* Subtotal (items before tax, after plan discounts) */}
                     <div className="flex justify-between text-gray-700">
                       <span>Subtotal</span>
-                      <span className="font-medium">${(priceBreakdown.subtotalAfterPlanDiscounts || 0).toFixed(2)}</span>
+                      <span className="font-medium">${Math.round(priceBreakdown.subtotalAfterPlanDiscounts || 0).toLocaleString()}</span>
                     </div>
 
                     {/* Plan Discount */}
                     {(priceBreakdown.planDiscountsTotal || 0) > 0 && (
                       <div className="flex justify-between text-green-600 text-sm">
                         <span>Descuento de Plan</span>
-                        <span className="font-medium">-${(priceBreakdown.planDiscountsTotal || 0).toFixed(2)}</span>
+                        <span className="font-medium">-${Math.round(priceBreakdown.planDiscountsTotal || 0).toLocaleString()}</span>
                       </div>
                     )}
 
                     {/* IVA on items */}
                     <div className="flex justify-between text-gray-700">
                       <span>IVA (16%)</span>
-                      <span className="font-medium">${(priceBreakdown.taxAmount || 0).toFixed(2)}</span>
+                      <span className="font-medium">${Math.round(priceBreakdown.taxAmount || 0).toLocaleString()}</span>
                     </div>
 
                     {/* Coupon Discount */}
                     {(priceBreakdown.couponDiscountAmount || 0) > 0 && (
                       <div className="flex justify-between text-green-600">
                         <span>Descuento Cupón</span>
-                        <span className="font-medium">-${(priceBreakdown.couponDiscountAmount || 0).toFixed(2)}</span>
+                        <span className="font-medium">-${Math.round(priceBreakdown.couponDiscountAmount || 0).toLocaleString()}</span>
                       </div>
                     )}
 
@@ -431,19 +431,19 @@ export const CustomerCart: React.FC = () => {
                     {/* Delivery Fee */}
                     <div className="flex justify-between text-gray-700">
                       <span>Envío</span>
-                      <span className="font-medium">${(priceBreakdown.deliveryPrice || 0).toFixed(2)}</span>
+                      <span className="font-medium">${Math.round(priceBreakdown.deliveryPrice || 0).toLocaleString()}</span>
                     </div>
 
                     {/* Delivery Tax */}
                     <div className="flex justify-between text-gray-700">
                       <span>IVA del Envío (16%)</span>
-                      <span className="font-medium">${(priceBreakdown.deliveryTaxAmount || 0).toFixed(2)}</span>
+                      <span className="font-medium">${Math.round(priceBreakdown.deliveryTaxAmount || 0).toLocaleString()}</span>
                     </div>
 
                     <div className="border-t pt-4 mt-1">
                       <div className="flex justify-between text-xl font-bold text-gray-900">
                         <span>Total</span>
-                        <span>${(priceBreakdown.finalTotal || 0).toFixed(2)}</span>
+                        <span>${Math.round(priceBreakdown.finalTotal || 0).toLocaleString()}</span>
                       </div>
                     </div>
 
