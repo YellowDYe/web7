@@ -19,6 +19,8 @@ export interface WeekWithDetails extends WeekWithMenu {
 export interface SelectedWeek {
   week: WeekWithMenu;
   tempId: string;
+  monday_delivery?: boolean;
+  original_week_date?: string | null;
 }
 
 export interface CreateWeekData {

@@ -366,6 +366,36 @@ export const CustomerOrder: React.FC = () => {
     }
   };
 
+  const handleToggleMondayDelivery = (weekTempId: string) => {
+    setSelectedWeeks(prev => prev.map(w => {
+      if (w.tempId !== weekTempId) return w;
+      const isCurrentlyMonday = !!w.monday_delivery;
+      const originalDate = w.original_week_date ?? w.week.week_date;
+
+      if (isCurrentlyMonday) {
+        return {
+          ...w,
+          monday_delivery: false,
+          week: { ...w.week, week_date: originalDate },
+          original_week_date: originalDate
+        };
+      }
+
+      if (!originalDate) return w;
+      const [year, month, day] = originalDate.split('-').map(Number);
+      const date = new Date(year, month - 1, day);
+      date.setDate(date.getDate() + 1);
+      const mondayDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+
+      return {
+        ...w,
+        monday_delivery: true,
+        original_week_date: originalDate,
+        week: { ...w.week, week_date: mondayDate }
+      };
+    }));
+  };
+
   const handleWeekSelect = (week: SelectedWeek) => {
     setActiveWeek(week);
     setSelectedPlan(null);
@@ -797,6 +827,7 @@ export const CustomerOrder: React.FC = () => {
           selectedWeeks={selectedWeeks}
           activeWeek={activeWeek}
           onWeekSelect={handleWeekSelect}
+          onToggleMondayDelivery={handleToggleMondayDelivery}
           deliveryOption={selectedDeliveryOption}
           orderItems={orderItems}
         />

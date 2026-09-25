@@ -1,5 +1,5 @@
 import React from 'react';
-import { Calendar, Truck, Check } from 'lucide-react';
+import { Calendar, Truck, Check, ArrowRight } from 'lucide-react';
 import { SelectedWeek } from '../../../types/week';
 import { DeliveryOption } from '../../../types/deliveryOption';
 import { PendingOrderItem } from '../../../types/orderMenu';
@@ -9,6 +9,7 @@ interface CustomerWeekSelectorProps {
   selectedWeeks: SelectedWeek[];
   activeWeek: SelectedWeek | null;
   onWeekSelect: (week: SelectedWeek) => void;
+  onToggleMondayDelivery: (weekTempId: string) => void;
   deliveryOption: DeliveryOption | null;
   orderItems?: PendingOrderItem[];
 }
@@ -17,11 +18,11 @@ const CustomerWeekSelector: React.FC<CustomerWeekSelectorProps> = ({
   selectedWeeks,
   activeWeek,
   onWeekSelect,
+  onToggleMondayDelivery,
   deliveryOption,
   orderItems = []
 }) => {
   const formatDate = (dateString: string) => {
-    // Parse date string manually to avoid timezone issues
     const [year, month, day] = dateString.split('-').map(Number);
     const date = new Date(year, month - 1, day);
     return date.toLocaleDateString('es-MX', {
@@ -30,6 +31,23 @@ const CustomerWeekSelector: React.FC<CustomerWeekSelectorProps> = ({
       month: 'long',
       day: 'numeric'
     });
+  };
+
+  const getDisplayDate = (week: SelectedWeek): string | null => {
+    const baseDate = week.original_week_date ?? week.week.week_date;
+    if (!baseDate) return null;
+
+    if (week.monday_delivery) {
+      const [year, month, day] = baseDate.split('-').map(Number);
+      const date = new Date(year, month - 1, day);
+      date.setDate(date.getDate() + 1);
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
+    return baseDate;
   };
 
   return (
@@ -46,9 +64,9 @@ const CustomerWeekSelector: React.FC<CustomerWeekSelectorProps> = ({
         </div>
 
         {deliveryOption && (
-          <div className="flex items-center space-x-2 px-4 py-2 bg-purple-50 border border-purple-200 rounded-lg">
-            <Truck className="w-4 h-4 text-purple-600" />
-            <span className="text-sm font-medium text-purple-700">
+          <div className="flex items-center space-x-2 px-4 py-2 bg-emerald-50 border border-emerald-200 rounded-lg">
+            <Truck className="w-4 h-4 text-emerald-600" />
+            <span className="text-sm font-medium text-emerald-700">
               {deliveryOption.delivery_options_name}
             </span>
           </div>
@@ -59,54 +77,90 @@ const CustomerWeekSelector: React.FC<CustomerWeekSelectorProps> = ({
         {selectedWeeks.map((week) => {
           const totalCount = getTotalMealCountForWeek(orderItems, week.week.week_name);
           const hasDishes = totalCount > 0;
+          const isActive = activeWeek?.tempId === week.tempId;
+          const displayDate = getDisplayDate(week);
+          const isMonday = !!week.monday_delivery;
 
           return (
-            <button
+            <div
               key={week.tempId}
-              onClick={() => onWeekSelect(week)}
-              className={`p-4 rounded-xl border-2 transition-all duration-200 text-left ${
-                activeWeek?.tempId === week.tempId
+              className={`rounded-xl border-2 transition-all duration-200 overflow-hidden ${
+                isActive
                   ? 'border-red-500 bg-red-50'
                   : hasDishes
                   ? 'border-green-500 bg-green-50'
-                  : 'border-gray-200 hover:border-red-300 bg-white'
+                  : 'border-gray-200 bg-white hover:border-red-300'
               }`}
             >
-              <div className="flex items-start justify-between mb-2">
-                <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900 text-lg">
-                    {week.week.week_name}
-                  </h3>
-                  <p className="text-sm text-gray-600 mt-1">
-                    {week.week.menu_name || 'Sin menú'}
-                  </p>
+              <button
+                onClick={() => onWeekSelect(week)}
+                className="w-full p-4 text-left"
+              >
+                <div className="flex items-start justify-between mb-1">
+                  <div className="flex-1">
+                    <p className="text-sm text-gray-500">{week.week.week_name}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      {week.week.menu_name || 'Sin menú'}
+                    </p>
+                  </div>
+                  <div className="flex items-center space-x-2 ml-2">
+                    {hasDishes && (
+                      <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
+                        <span className="text-sm font-bold text-white">{totalCount}</span>
+                      </div>
+                    )}
+                    {isActive && (
+                      <div className="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0">
+                        <Check className="w-4 h-4 text-white" />
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center space-x-2 ml-2">
-                  {hasDishes && (
-                    <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
-                      <span className="text-sm font-bold text-white">{totalCount}</span>
+
+                {displayDate && (
+                  <div className="mt-3 pt-3 border-t border-gray-200">
+                    <div className="flex items-center space-x-2 mb-1">
+                      <Truck className={`w-4 h-4 ${isMonday ? 'text-blue-600' : 'text-green-600'}`} />
+                      <span className={`text-xs font-medium ${isMonday ? 'text-blue-600' : 'text-green-600'}`}>
+                        Fecha de entrega
+                      </span>
                     </div>
-                  )}
-                  {activeWeek?.tempId === week.tempId && (
-                    <div className="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0">
-                      <Check className="w-4 h-4 text-white" />
-                    </div>
-                  )}
-                </div>
-              </div>
+                    <p className={`text-base font-semibold capitalize ${isMonday ? 'text-blue-900' : 'text-gray-900'}`}>
+                      {formatDate(displayDate)}
+                    </p>
+                    <p className={`text-xs mt-1 ${isMonday ? 'text-blue-600' : 'text-gray-500'}`}>
+                      {isMonday
+                        ? 'Entregas en lunes a partir de las 10:00 AM'
+                        : 'Entregas de 6:30 a 9:30 PM del domingo'}
+                    </p>
+                  </div>
+                )}
+              </button>
 
               {week.week.week_date && (
-                <div className="mt-3 pt-3 border-t border-gray-200">
-                  <div className="flex items-center space-x-2">
-                    <Truck className="w-4 h-4 text-gray-500" />
-                    <span className="text-xs text-gray-600">Entrega:</span>
-                  </div>
-                  <p className="text-sm font-medium text-gray-900 mt-1">
-                    {formatDate(week.week.week_date)}
-                  </p>
+                <div className="px-4 pb-4">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onToggleMondayDelivery(week.tempId);
+                    }}
+                    className={`w-full flex items-center justify-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                      isMonday
+                        ? 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
+                        : 'bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200'
+                    }`}
+                  >
+                    <ArrowRight className="w-4 h-4" />
+                    <span>
+                      {isMonday
+                        ? 'Cambiar a entrega en domingo'
+                        : 'Solicitar entrega en lunes'}
+                    </span>
+                  </button>
                 </div>
               )}
-            </button>
+            </div>
           );
         })}
       </div>
