@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Receipt, Trash2, Package, Users, ShoppingCart, Tag, Loader, LogIn } from 'lucide-react';
+import { Receipt, Trash2, Package, Users, ShoppingCart, Tag, Loader, LogIn, ChevronDown } from 'lucide-react';
 import { PendingOrderItem, BILLABLE_MEAL_TYPES } from '../../../types/orderMenu';
 import { DeliveryOption } from '../../../types/deliveryOption';
 import { Coupon } from '../../../types/coupon';
@@ -46,11 +46,13 @@ const CustomerOrderSidePanel: React.FC<CustomerOrderSidePanelProps> = ({
   canAddToCart,
   isLoggedIn,
 }) => {
-  const [confirmClear, setConfirmClear] = React.useState(false);
+  const [confirmClear, setConfirmClear] = useState(false);
+  const [detailsExpanded, setDetailsExpanded] = useState(false);
 
   const handleClearClick = () => setConfirmClear(true);
   const handleConfirmClear = () => { setConfirmClear(false); onClearOrder(); };
   const handleCancelClear = () => setConfirmClear(false);
+
   const itemsByWeek = orderItems.reduce((acc, item) => {
     const weekName = item.week_name || 'Sin semana';
     if (!acc[weekName]) acc[weekName] = [];
@@ -100,8 +102,12 @@ const CustomerOrderSidePanel: React.FC<CustomerOrderSidePanelProps> = ({
 
   return (
     <div className="bg-white rounded-2xl shadow-lg overflow-hidden flex flex-col">
-      {/* Header - always visible */}
-      <div className="bg-gradient-to-r from-gray-900 to-gray-700 px-5 py-4 flex-shrink-0">
+      {/* Header - always visible, clickable to toggle details */}
+      <button
+        type="button"
+        onClick={() => setDetailsExpanded(prev => !prev)}
+        className="bg-gradient-to-r from-gray-900 to-gray-700 px-5 py-4 flex-shrink-0 w-full text-left"
+      >
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <Receipt className="w-5 h-5 text-white" />
@@ -109,35 +115,33 @@ const CustomerOrderSidePanel: React.FC<CustomerOrderSidePanelProps> = ({
           </div>
           <div className="flex items-center space-x-3">
             <div className="text-right">
-              <p className="text-xs text-gray-300">{totalBillableMeals} comidas</p>
-              {totalMeals > totalBillableMeals && (
-                <p className="text-xs text-gray-400">+{totalMeals - totalBillableMeals} colaciones</p>
-              )}
+              <p className="text-xs text-gray-300">
+                {totalBillableMeals} comida{totalBillableMeals !== 1 ? 's' : ''}
+                {totalMeals > totalBillableMeals && ` + ${totalMeals - totalBillableMeals} col.`}
+              </p>
+              <p className="text-sm font-bold text-white">{formatCurrency(priceBreakdown.finalTotal)}</p>
             </div>
-            {!loading && (
-              <button
-                onClick={handleClearClick}
-                title="Vaciar pedido"
-                className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-white/10 rounded-lg transition-colors"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            )}
+            <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${detailsExpanded ? 'rotate-180' : ''}`} />
           </div>
         </div>
 
         {confirmClear && (
-          <div className="mt-3 bg-white/10 rounded-xl px-4 py-3">
+          <div
+            className="mt-3 bg-white/10 rounded-xl px-4 py-3"
+            onClick={e => e.stopPropagation()}
+          >
             <p className="text-xs text-white font-medium mb-2">¿Vaciar todos los platillos seleccionados?</p>
             <div className="flex space-x-2">
               <button
-                onClick={handleConfirmClear}
+                type="button"
+                onClick={(e) => { e.stopPropagation(); handleConfirmClear(); }}
                 className="flex-1 bg-red-500 hover:bg-red-600 text-white text-xs font-semibold py-1.5 rounded-lg transition-colors"
               >
                 Sí, vaciar
               </button>
               <button
-                onClick={handleCancelClear}
+                type="button"
+                onClick={(e) => { e.stopPropagation(); handleCancelClear(); }}
                 className="flex-1 bg-white/20 hover:bg-white/30 text-white text-xs font-semibold py-1.5 rounded-lg transition-colors"
               >
                 Cancelar
@@ -145,123 +149,147 @@ const CustomerOrderSidePanel: React.FC<CustomerOrderSidePanelProps> = ({
             </div>
           </div>
         )}
-      </div>
+      </button>
 
-      <div className="p-5 space-y-5">
-        {/* Items by Week */}
-        <div className="space-y-4">
-          {Object.entries(itemsByWeek).map(([weekName, items]) => {
-            const billableCount = getBillableMealCountForWeek(orderItems, weekName);
-            const totalCount = getTotalMealCountForWeek(orderItems, weekName);
+      {/* Collapsible detail section */}
+      <div
+        className={`transition-all duration-300 ease-in-out ${
+          detailsExpanded ? 'max-h-[5000px] opacity-100' : 'max-h-0 opacity-0 overflow-hidden'
+        }`}
+      >
+        <div className="p-5 space-y-5">
+          {/* Clear button inside expanded detail */}
+          {!loading && (
+            <div className="flex justify-end">
+              <button
+                onClick={handleClearClick}
+                title="Vaciar pedido"
+                className="flex items-center space-x-1.5 text-xs text-gray-400 hover:text-red-500 transition-colors"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Vaciar pedido</span>
+              </button>
+            </div>
+          )}
 
-            return (
-              <div key={weekName} className="border border-gray-200 rounded-xl overflow-hidden">
-                <div className="bg-gray-50 px-3 py-2 border-b border-gray-200 flex items-center justify-between">
-                  <div className="flex items-center space-x-1.5">
-                    <Package className="w-3.5 h-3.5 text-gray-500" />
-                    <span className="text-xs font-semibold text-gray-700">{weekName}</span>
+          {/* Items by Week */}
+          <div className="space-y-4">
+            {Object.entries(itemsByWeek).map(([weekName, items]) => {
+              const billableCount = getBillableMealCountForWeek(orderItems, weekName);
+              const totalCount = getTotalMealCountForWeek(orderItems, weekName);
+
+              return (
+                <div key={weekName} className="border border-gray-200 rounded-xl overflow-hidden">
+                  <div className="bg-gray-50 px-3 py-2 border-b border-gray-200 flex items-center justify-between">
+                    <div className="flex items-center space-x-1.5">
+                      <Package className="w-3.5 h-3.5 text-gray-500" />
+                      <span className="text-xs font-semibold text-gray-700">{weekName}</span>
+                    </div>
+                    <span className="text-xs text-gray-500">
+                      {billableCount} comida{billableCount !== 1 ? 's' : ''}
+                      {totalCount > billableCount && ` + ${totalCount - billableCount} col.`}
+                    </span>
                   </div>
-                  <span className="text-xs text-gray-500">
-                    {billableCount} comida{billableCount !== 1 ? 's' : ''}
-                    {totalCount > billableCount && ` + ${totalCount - billableCount} col.`}
-                  </span>
-                </div>
 
-                <div className="divide-y divide-gray-50">
-                  {items.map(item => (
-                    <div key={item.tempId} className="flex items-start justify-between px-3 py-2">
-                      <div className="flex-1 min-w-0 pr-2">
-                        <div className="flex items-center flex-wrap gap-1">
-                          <span className="text-xs font-medium text-gray-900 truncate">
-                            {item.day_of_week} · {item.meal_type}
-                          </span>
-                          {BILLABLE_MEAL_TYPES.includes(item.meal_type as any) && (
-                            <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-medium">
-                              {item.meal_plan_name}
+                  <div className="divide-y divide-gray-50">
+                    {items.map(item => (
+                      <div key={item.tempId} className="flex items-start justify-between px-3 py-2">
+                        <div className="flex-1 min-w-0 pr-2">
+                          <div className="flex items-center flex-wrap gap-1">
+                            <span className="text-xs font-medium text-gray-900 truncate">
+                              {item.day_of_week} · {item.meal_type}
                             </span>
-                          )}
-                          {item.family_member_name && (
-                            <span className="text-xs bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded inline-flex items-center gap-0.5">
-                              <Users className="w-2.5 h-2.5" />
-                              {item.family_member_name}
-                            </span>
+                            {BILLABLE_MEAL_TYPES.includes(item.meal_type as any) && (
+                              <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-medium">
+                                {item.meal_plan_name}
+                              </span>
+                            )}
+                            {item.family_member_name && (
+                              <span className="text-xs bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded inline-flex items-center gap-0.5">
+                                <Users className="w-2.5 h-2.5" />
+                                {item.family_member_name}
+                              </span>
+                            )}
+                          </div>
+                          {item.recipe_name && (
+                            <p className="text-xs text-gray-400 italic mt-0.5 truncate">{item.recipe_name}</p>
                           )}
                         </div>
-                        {item.recipe_name && (
-                          <p className="text-xs text-gray-400 italic mt-0.5 truncate">{item.recipe_name}</p>
-                        )}
-                      </div>
 
-                      <div className="flex items-center space-x-2 flex-shrink-0">
-                        {BILLABLE_MEAL_TYPES.includes(item.meal_type as any) ? (
-                          <span className="text-xs font-semibold text-gray-800">
-                            x{item.quantity}
-                          </span>
-                        ) : (
-                          <span className="text-xs text-green-600 font-medium italic">incluida</span>
-                        )}
-                        <button
-                          onClick={() => !loading && onRemoveItem(item.tempId!)}
-                          disabled={loading}
-                          className="p-1 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded transition-colors disabled:opacity-40"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
+                        <div className="flex items-center space-x-2 flex-shrink-0">
+                          {BILLABLE_MEAL_TYPES.includes(item.meal_type as any) ? (
+                            <span className="text-xs font-semibold text-gray-800">
+                              x{item.quantity}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-green-600 font-medium italic">incluida</span>
+                          )}
+                          <button
+                            onClick={() => !loading && onRemoveItem(item.tempId!)}
+                            disabled={loading}
+                            className="p-1 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded transition-colors disabled:opacity-40"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Price Breakdown */}
-        <div className="border-t border-gray-100 pt-4 space-y-2">
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-500">Subtotal</span>
-            <span className="font-medium text-gray-900">{formatCurrency(itemsTotal)}</span>
+              );
+            })}
           </div>
 
-          {appliedDiscounts.length > 0 && (
-            <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2">
-              <div className="flex justify-between items-center">
-                <div className="flex items-center space-x-1.5">
-                  <Tag className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />
-                  <span className="text-sm font-medium text-green-800">
-                    Descuento por cantidad
-                  </span>
-                </div>
-                <span className="text-sm font-bold text-green-700">-{formatCurrency(appliedDiscounts.reduce((sum, d) => sum + d.amount, 0))}</span>
-              </div>
-            </div>
-          )}
-
-          {selectedDeliveryOption && (
+          {/* Price Breakdown */}
+          <div className="border-t border-gray-100 pt-4 space-y-2">
             <div className="flex justify-between text-sm">
-              <span className="text-gray-500">Envío ({selectedDeliveryOption.delivery_options_name})</span>
-              <span className="font-medium text-gray-900">{formatCurrency(deliveryPrice)}</span>
+              <span className="text-gray-500">Subtotal</span>
+              <span className="font-medium text-gray-900">{formatCurrency(itemsTotal)}</span>
             </div>
-          )}
 
-          {appliedCoupon && couponDiscountAmount > 0 && (
-            <div className="flex justify-between text-sm text-green-600">
-              <span>Cupón ({appliedCoupon.code})</span>
-              <span>-{formatCurrency(couponDiscountAmount)}</span>
+            {appliedDiscounts.length > 0 && (
+              <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center space-x-1.5">
+                    <Tag className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />
+                    <span className="text-sm font-medium text-green-800">
+                      Descuento por cantidad
+                    </span>
+                  </div>
+                  <span className="text-sm font-bold text-green-700">-{formatCurrency(appliedDiscounts.reduce((sum, d) => sum + d.amount, 0))}</span>
+                </div>
+              </div>
+            )}
+
+            {selectedDeliveryOption && (
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Envío ({selectedDeliveryOption.delivery_options_name})</span>
+                <span className="font-medium text-gray-900">{formatCurrency(deliveryPrice)}</span>
+              </div>
+            )}
+
+            {appliedCoupon && couponDiscountAmount > 0 && (
+              <div className="flex justify-between text-sm text-green-600">
+                <span>Cupón ({appliedCoupon.code})</span>
+                <span>-{formatCurrency(couponDiscountAmount)}</span>
+              </div>
+            )}
+
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-500">IVA (16%)</span>
+              <span className="font-medium text-gray-900">{formatCurrency(priceBreakdown.taxAmount + priceBreakdown.deliveryTaxAmount)}</span>
             </div>
-          )}
 
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-500">IVA (16%)</span>
-            <span className="font-medium text-gray-900">{formatCurrency(priceBreakdown.taxAmount + priceBreakdown.deliveryTaxAmount)}</span>
-          </div>
-
-          <div className="pt-2 border-t border-gray-200 flex justify-between items-baseline">
-            <span className="text-base font-bold text-gray-900">Total</span>
-            <span className="text-xl font-bold text-red-600">{formatCurrency(priceBreakdown.finalTotal)}</span>
+            <div className="pt-2 border-t border-gray-200 flex justify-between items-baseline">
+              <span className="text-base font-bold text-gray-900">Total</span>
+              <span className="text-xl font-bold text-red-600">{formatCurrency(priceBreakdown.finalTotal)}</span>
+            </div>
           </div>
         </div>
+      </div>
 
+      {/* Always-visible footer: first-order banner, notes, and cart button */}
+      <div className="p-5 space-y-4 border-t border-gray-100">
         {/* First Order Banner */}
         {isFirstOrder && (
           <div className="bg-green-50 border border-green-200 rounded-xl p-3 flex items-start space-x-2">
@@ -276,7 +304,7 @@ const CustomerOrderSidePanel: React.FC<CustomerOrderSidePanelProps> = ({
         )}
 
         {/* Order Notes */}
-        <div className="border-t border-gray-100 pt-4">
+        <div>
           <p className="text-sm font-semibold text-gray-700 mb-2">Notas (Opcional)</p>
           <textarea
             value={orderNotes}
@@ -291,7 +319,7 @@ const CustomerOrderSidePanel: React.FC<CustomerOrderSidePanelProps> = ({
         </div>
 
         {/* Add to Cart Button */}
-        <div className="border-t border-gray-100 pt-4">
+        <div>
           <button
             onClick={onAddToCart}
             disabled={!canAddToCart || loading}
