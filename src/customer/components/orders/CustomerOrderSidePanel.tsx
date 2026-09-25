@@ -115,11 +115,11 @@ const CustomerOrderSidePanel: React.FC<CustomerOrderSidePanelProps> = ({
           </div>
           <div className="flex items-center space-x-3">
             <div className="text-right">
-              <p className="text-xs text-gray-300">
+              <p className="text-sm font-semibold text-gray-200">
                 {totalBillableMeals} comida{totalBillableMeals !== 1 ? 's' : ''}
                 {totalMeals > totalBillableMeals && ` + ${totalMeals - totalBillableMeals} col.`}
               </p>
-              <p className="text-sm font-bold text-white">{formatCurrency(priceBreakdown.finalTotal)}</p>
+              <p className="text-lg font-bold text-white">{formatCurrency(priceBreakdown.finalTotal)}</p>
             </div>
             <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${detailsExpanded ? 'rotate-180' : ''}`} />
           </div>
