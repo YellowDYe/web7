@@ -164,13 +164,13 @@ export const Footer: React.FC<FooterProps> = ({
             </p>
             <div className="flex space-x-6">
               <Link 
-                to="/privacy" 
+                to="/politica-de-privacidad" 
                 className="[font-family:'Inria_Serif',Helvetica] font-normal text-[#1d1c21] text-sm hover:text-black transition-colors"
               >
                 Política de Privacidad
               </Link>
               <Link 
-                to="/terms" 
+                to="/terminos-y-condiciones" 
                 className="[font-family:'Inria_Serif',Helvetica] font-normal text-[#1d1c21] text-sm hover:text-black transition-colors"
               >
                 Términos y Condiciones
