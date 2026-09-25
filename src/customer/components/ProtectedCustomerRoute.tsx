@@ -1,9 +1,10 @@
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import { ReactNode } from 'react';
 
 export function ProtectedCustomerRoute({ children }: { children: ReactNode }) {
   const { user, customer, loading } = useCustomerAuth();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -17,7 +18,8 @@ export function ProtectedCustomerRoute({ children }: { children: ReactNode }) {
   }
 
   if (!user) {
-    return <Navigate to="/login" replace />;
+    const returnTo = location.pathname + location.search;
+    return <Navigate to={`/login?returnTo=${encodeURIComponent(returnTo)}`} replace />;
   }
 
   if (!customer) {
