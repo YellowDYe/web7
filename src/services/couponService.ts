@@ -101,78 +101,44 @@ export class CouponService {
     }
   }
 
+  /**
+   * Validation happens entirely on the server: the coupon catalogue is not
+   * readable by shoppers, and the discount is computed there so it cannot be
+   * decided in the browser.
+   */
   async validateCoupon(
     code: string,
-    customerId: string | null,
+    _customerId: string | null,
     orderAmount: number
   ): Promise<ValidateCouponResult> {
-    const coupon = await this.getCouponByCode(code);
+    const { data, error } = await supabase.rpc('validate_coupon_for_customer', {
+      p_code: code,
+      p_order_amount: orderAmount,
+    });
 
-    if (!coupon) {
-      return {
-        valid: false,
-        message: 'Cupón no encontrado'
-      };
+    if (error) {
+      console.error('Error validating coupon:', error);
+      return { valid: false, message: 'No se pudo validar el cupón. Intenta de nuevo.' };
     }
 
-    if (!coupon.is_active) {
-      return {
-        valid: false,
-        message: 'Este cupón no está activo'
-      };
+    const result = data as any;
+
+    if (!result || !result.valid) {
+      return { valid: false, message: result?.message || 'Cupón no válido' };
     }
-
-    const now = new Date();
-    const validFrom = new Date(coupon.valid_from);
-    const validUntil = coupon.valid_until ? new Date(coupon.valid_until) : null;
-
-    if (now < validFrom) {
-      return {
-        valid: false,
-        message: 'Este cupón aún no es válido'
-      };
-    }
-
-    if (validUntil && now > validUntil) {
-      return {
-        valid: false,
-        message: 'Este cupón ha expirado'
-      };
-    }
-
-    if (coupon.min_purchase_amount && orderAmount < coupon.min_purchase_amount) {
-      return {
-        valid: false,
-        message: `Monto mínimo de compra requerido: $${coupon.min_purchase_amount}`
-      };
-    }
-
-    if (coupon.usage_limit) {
-      const totalUsage = await this.getCouponTotalUsage(coupon.id);
-      if (totalUsage >= coupon.usage_limit) {
-        return {
-          valid: false,
-          message: 'Este cupón ha alcanzado su límite de uso'
-        };
-      }
-    }
-
-    if (coupon.usage_limit_per_customer && customerId) {
-      const customerUsage = await this.getCouponCustomerUsage(coupon.id, customerId);
-      if (customerUsage >= coupon.usage_limit_per_customer) {
-        return {
-          valid: false,
-          message: 'Has alcanzado el límite de uso de este cupón'
-        };
-      }
-    }
-
-    const discountAmount = this.calculateDiscount(coupon, orderAmount);
 
     return {
       valid: true,
-      discount_amount: discountAmount,
-      coupon: coupon
+      discount_amount: Number(result.discount_amount) || 0,
+      coupon: {
+        id: result.coupon_id,
+        code: result.code,
+        description: result.description,
+        discount_type: result.discount_type,
+        discount_value: Number(result.discount_value) || 0,
+        max_discount_amount: result.max_discount_amount ?? null,
+        min_purchase_amount: result.min_purchase_amount ?? null,
+      } as Coupon,
     };
   }
 

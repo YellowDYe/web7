@@ -13,6 +13,7 @@ import DelegacionDropdown from '../../components/customers/DelegacionDropdown';
 import { Footer } from '../sections/Footer/Footer';
 import type { Customer } from '../../types/customer';
 import { supabase } from '../../config/supabase';
+import { friendlyError } from '../utils/friendlyError';
 
 const STEPS = [
   { id: 0, title: 'Cuenta', icon: Mail },
@@ -276,7 +277,7 @@ export default function CustomerSignupPage() {
           }
         } catch (err: any) {
           console.error('[SIGNUP] Error checking email:', err);
-          setError(err.message || 'Error al verificar el correo. Por favor intenta de nuevo.');
+          setError(friendlyError(err, 'Error al verificar el correo. Por favor intenta de nuevo.'));
           return false;
         }
 
@@ -364,7 +365,7 @@ export default function CustomerSignupPage() {
       localStorage.removeItem('customerSignupDraft');
       navigate(returnTo);
     } catch (err: any) {
-      setError(err.message || 'Error al crear la cuenta');
+      setError(friendlyError(err, 'Error al crear la cuenta'));
     } finally {
       setLoading(false);
     }

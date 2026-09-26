@@ -5,6 +5,7 @@ import { cmsApiDirect } from '../../shared/cms/cmsApiDirect';
 import { CMSRenderer } from '../../shared/cms/CMSRenderer';
 import { runDiagnostics, DiagnosticResult } from '../../utils/diagnostics';
 import '../../utils/supabaseDebug';
+import { friendlyError } from '../utils/friendlyError';
 
 const CMSPage: React.FC = () => {
   const location = useLocation();
@@ -93,7 +94,7 @@ const CMSPage: React.FC = () => {
       setLoading(false);
     } catch (error) {
       console.error('[CustomerHomePage] ERROR loading page content:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage = friendlyError(error, 'Unknown error');
       console.error('[CustomerHomePage] Error message:', errorMessage);
       console.error('[CustomerHomePage] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
       setError(`Failed to load page: ${errorMessage}`);
@@ -177,9 +178,9 @@ const CMSPage: React.FC = () => {
                       </span>
                     </div>
                     <p className="text-sm text-gray-600">{result.message}</p>
-                    {result.details && (
-                      <p className="text-xs text-gray-500 mt-1 font-mono">{result.details}</p>
-                    )}
+                    {/* Raw diagnostic details (database and policy error text, session ids)
+                        are intentionally not rendered; they are logged to the browser
+                        console for developers instead. */}
                   </div>
                 ))}
               </div>

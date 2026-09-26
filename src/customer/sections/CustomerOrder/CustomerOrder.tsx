@@ -28,6 +28,7 @@ import CustomerOrderSidePanel from '../../components/orders/CustomerOrderSidePan
 import CustomerFamilyMemberSelector from '../../components/orders/CustomerFamilyMemberSelector';
 import { FamilyMember } from '../../../types/familyMember';
 import { isCustomerFirstOrder } from '../../services/customerOrderService';
+import { friendlyError } from '../../utils/friendlyError';
 
 export const CustomerOrder: React.FC = () => {
   const navigate = useNavigate();
@@ -628,7 +629,7 @@ export const CustomerOrder: React.FC = () => {
       }
     } catch (err: any) {
       console.error('Error applying coupon:', err);
-      setCouponError(err.message || 'Error al validar el cupón');
+      setCouponError(friendlyError(err, 'Error al validar el cupón'));
     } finally {
       setValidatingCoupon(false);
     }

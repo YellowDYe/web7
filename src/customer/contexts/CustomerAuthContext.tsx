@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, useRef, ReactNode } fro
 import { supabase } from '../../config/supabase';
 import { User } from '@supabase/supabase-js';
 import type { Customer } from '../../types/customer';
+import { friendlyError } from '../utils/friendlyError';
 
 interface CustomerAuthContextType {
   user: User | null;
@@ -195,7 +196,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
       }
     } catch (error: any) {
       console.error('Login error:', error);
-      throw new Error(error.message || 'Error al iniciar sesión');
+      throw new Error(friendlyError(error, 'Error al iniciar sesión'));
     }
   };
 
@@ -212,7 +213,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
       if (error) throw error;
     } catch (error: any) {
       console.error('Google login error:', error);
-      throw new Error(error.message || 'Error al iniciar sesión con Google');
+      throw new Error(friendlyError(error, 'Error al iniciar sesión con Google'));
     }
   };
 
@@ -340,7 +341,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
       console.log('Signup completed successfully');
     } catch (error: any) {
       console.error('Signup error:', error);
-      throw new Error(error.message || 'Error al crear la cuenta');
+      throw new Error(friendlyError(error, 'Error al crear la cuenta'));
     }
   };
 
@@ -353,7 +354,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
       setCustomer(null);
     } catch (error: any) {
       console.error('Logout error:', error);
-      throw new Error(error.message || 'Error al cerrar sesión');
+      throw new Error(friendlyError(error, 'Error al cerrar sesión'));
     }
   };
 
@@ -371,7 +372,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
       setCustomer({ ...customer, ...data });
     } catch (error: any) {
       console.error('Update profile error:', error);
-      throw new Error(error.message || 'Error al actualizar perfil');
+      throw new Error(friendlyError(error, 'Error al actualizar perfil'));
     }
   };
 

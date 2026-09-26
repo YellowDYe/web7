@@ -7,6 +7,7 @@ import { DeliveryOption } from '../../types/deliveryOption';
 import { Coupon } from '../../types/coupon';
 import { buildQuantityUpdates } from '../../utils/orderWeeksTransformer';
 import { Customer } from '../../types/customer';
+import { friendlyError } from '../utils/friendlyError';
 
 
 interface OrderSubmissionData {
@@ -238,7 +239,7 @@ class CustomerOrderSubmissionService {
       return {
         success: false,
         message: 'Error al crear el pedido',
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: friendlyError(error, 'Unknown error')
       };
     }
   }
@@ -297,12 +298,13 @@ class CustomerOrderSubmissionService {
       const shopUrl = `${window.location.origin}`;
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const { data: { session: emailSession } } = await supabase.auth.getSession();
 
       const response = await fetch(`${supabaseUrl}/functions/v1/send-order-email`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabaseAnonKey}`,
+          'Authorization': `Bearer ${emailSession?.access_token || supabaseAnonKey}`,
         },
         body: JSON.stringify({
           customerName: `${customer.customer_name} ${customer.customer_lastname}`.trim(),

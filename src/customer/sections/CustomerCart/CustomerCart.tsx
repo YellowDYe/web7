@@ -9,6 +9,7 @@ import { calculatePriceBreakdown } from '../../../utils/priceCalculations';
 import { BILLABLE_MEAL_TYPES } from '../../../types/orderMenu';
 import { couponService } from '../../../services/couponService';
 import CustomerCouponInput from '../../components/orders/CustomerCouponInput';
+import { friendlyError } from '../../utils/friendlyError';
 
 export const CustomerCart: React.FC = () => {
 
@@ -102,7 +103,7 @@ export const CustomerCart: React.FC = () => {
         setCouponError(result.message || 'Cupón no válido');
       }
     } catch (err: any) {
-      setCouponError(err.message || 'Error al validar el cupón');
+      setCouponError(friendlyError(err, 'Error al validar el cupón'));
     } finally {
       setValidatingCoupon(false);
     }

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { cmsApi, Page, Module } from '../../shared/cms/cmsApi';
 import { CMSRenderer } from '../../shared/cms/CMSRenderer';
+import { friendlyError } from '../utils/friendlyError';
 
 export default function CustomerAccountPage() {
   const [page, setPage] = useState<Page | null>(null);
@@ -47,7 +48,7 @@ export default function CustomerAccountPage() {
       setLoading(false);
     } catch (err) {
       console.error('[CustomerAccountPage] Error loading page:', err);
-      setError(err instanceof Error ? err.message : 'Unknown error');
+      setError(friendlyError(err, 'Unknown error'));
       setLoading(false);
     }
   };

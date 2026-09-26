@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../config/supabase';
+import { friendlyError } from '../utils/friendlyError';
 
 export function useIngredientNames() {
   const [ingredientMap, setIngredientMap] = useState<Map<string, string>>(new Map());
@@ -33,7 +34,7 @@ export function useIngredientNames() {
 
       setIngredientMap(map);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load ingredients';
+      const errorMessage = friendlyError(err, 'Failed to load ingredients');
       setError(errorMessage);
       console.error('Error fetching ingredient names:', err);
     } finally {

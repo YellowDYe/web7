@@ -6,6 +6,7 @@ import { Card } from '../components/ui/card';
 import CustomerSiteHeader from '../components/CustomerSiteHeader';
 import { Footer } from '../sections/Footer/Footer';
 import { supabase } from '../../config/supabase';
+import { friendlyError } from '../utils/friendlyError';
 
 export default function CustomerForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -27,7 +28,7 @@ export default function CustomerForgotPasswordPage() {
 
       setSuccess(true);
     } catch (err: any) {
-      setError(err.message || 'Error al enviar el correo de restablecimiento');
+      setError(friendlyError(err, 'Error al enviar el correo de restablecimiento'));
     } finally {
       setLoading(false);
     }

@@ -10,6 +10,7 @@ import {
 import { BILLABLE_MEAL_TYPES } from '../../../types/orderMenu';
 import { calculatePriceBreakdown } from '../../../utils/priceCalculations';
 import { supabase } from '../../../config/supabase';
+import { friendlyError } from '../../utils/friendlyError';
 
 
 declare global {
@@ -72,6 +73,7 @@ export const CustomerCheckout: React.FC = () => {
   const [paymentTotalAmount, setPaymentTotalAmount] = useState(0);
   const [confirmationDetails, setConfirmationDetails] = useState<ConfirmationDetails | null>(null);
 
+  const paymentQuoteIdRef = useRef<string | null>(null);
   const brickControllerRef = useRef<any>(null);
   const brickContainerRef = useRef<HTMLDivElement>(null);
   const brickInitializedRef = useRef(false);
@@ -304,11 +306,12 @@ export const CustomerCheckout: React.FC = () => {
               };
               const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
               const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+              const { data: { session: emailSession } } = await supabase.auth.getSession();
               const emailResp = await fetch(`${supabaseUrl}/functions/v1/send-order-email`, {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${supabaseAnonKey}`,
+                  'Authorization': `Bearer ${emailSession?.access_token || supabaseAnonKey}`,
                 },
                 body: JSON.stringify({
                   customerName: `${customer.customer_name} ${customer.customer_lastname}`.trim(),
@@ -427,6 +430,7 @@ export const CustomerCheckout: React.FC = () => {
                 body: JSON.stringify({
                   action: 'process-payment',
                   payment_data: formData,
+                  quote_id: paymentQuoteIdRef.current,
                 }),
               });
 
@@ -461,7 +465,7 @@ export const CustomerCheckout: React.FC = () => {
               }
             } catch (err: any) {
               console.error('Payment processing error:', err);
-              setSubmitError(err.message || 'Error al procesar el pago');
+              setSubmitError(friendlyError(err, 'Error al procesar el pago'));
             }
           },
           onError: (error: any) => {
@@ -561,6 +565,8 @@ export const CustomerCheckout: React.FC = () => {
         throw new Error(prefData.error || 'No se pudo crear la preferencia de pago');
       }
 
+      paymentQuoteIdRef.current = prefData.quote_id || null;
+
       setStep('payment');
 
       setTimeout(() => {
@@ -569,7 +575,7 @@ export const CustomerCheckout: React.FC = () => {
 
     } catch (err: any) {
       console.error('Error preparing payment:', err);
-      setSubmitError(err.message || 'Error al preparar el pago. Por favor intenta de nuevo.');
+      setSubmitError(friendlyError(err, 'Error al preparar el pago. Por favor intenta de nuevo.'));
     } finally {
       setSubmitting(false);
     }
@@ -604,7 +610,7 @@ export const CustomerCheckout: React.FC = () => {
       setStep('success');
     } catch (err: any) {
       console.error('Simulate payment error:', err);
-      setSubmitError(err.message || 'Error en la simulacion de pago');
+      setSubmitError(friendlyError(err, 'Error en la simulacion de pago'));
     } finally {
       setSubmitting(false);
     }

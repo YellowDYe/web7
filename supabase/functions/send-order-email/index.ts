@@ -7,6 +7,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
+const STAFF_ROLES = ["admin", "super_admin", "manager", "staff"];
+
 interface OrderEmailRequest {
   customerName: string;
   customerEmail: string;
@@ -36,13 +38,36 @@ Deno.serve(async (req: Request) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // This function sends mail on the shop's behalf, so it needs a real session.
+    // The published anon key is not one.
+    const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
+    if (!token || token === supabaseKey) {
+      return new Response(
+        JSON.stringify({ success: false, error: "No autorizado" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const { data: authData, error: authError } = await supabase.auth.getUser(token);
+    const callerId = authData?.user?.id;
+    if (authError || !callerId) {
+      return new Response(
+        JSON.stringify({ success: false, error: "No autorizado" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Load Mailgun config from database
     const { data: configRows, error: configError } = await supabase
       .from("email_configuration")
       .select("config_key, config_value");
 
     if (configError || !configRows || configRows.length === 0) {
-      throw new Error("Email configuration not found in database.");
+      console.error("Email configuration not found", configError);
+      return new Response(
+        JSON.stringify({ success: false, error: "No se pudo enviar el correo" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     const configMap: Record<string, string> = {};
@@ -54,7 +79,11 @@ Deno.serve(async (req: Request) => {
     const mailgunDomain = configMap["mailgun_domain"] || "mg.holadieta.mx";
 
     if (!mailgunApiKey) {
-      throw new Error("Mailgun API key not configured.");
+      console.error("Mailgun API key not configured");
+      return new Response(
+        JSON.stringify({ success: false, error: "No se pudo enviar el correo" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     // Parse request body
@@ -65,6 +94,35 @@ Deno.serve(async (req: Request) => {
         JSON.stringify({ success: false, error: "Customer email and order number are required." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // The caller may only mail their own address, unless they are staff. Without
+    // this the endpoint is an open mailer that will send shop-branded mail to
+    // any address an attacker names.
+    const { data: staffRow } = await supabase
+      .from("app_users")
+      .select("role_id, is_active")
+      .eq("auth_user_id", callerId)
+      .maybeSingle();
+
+    const isStaff =
+      !!staffRow && staffRow.is_active !== false &&
+      STAFF_ROLES.includes(String(staffRow.role_id).toLowerCase());
+
+    if (!isStaff) {
+      const { data: ownRow } = await supabase
+        .from("customers")
+        .select("customer_email")
+        .eq("auth_user_id", callerId)
+        .maybeSingle();
+
+      const ownEmail = (ownRow?.customer_email || "").trim().toLowerCase();
+      if (!ownEmail || ownEmail !== String(params.customerEmail).trim().toLowerCase()) {
+        return new Response(
+          JSON.stringify({ success: false, error: "No autorizado" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
     // Build the email HTML
@@ -115,7 +173,7 @@ Deno.serve(async (req: Request) => {
   } catch (error: any) {
     console.error("Error in send-order-email:", error);
     return new Response(
-      JSON.stringify({ success: false, error: error.message || "Failed to send order email" }),
+      JSON.stringify({ success: false, error: "No se pudo enviar el correo" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

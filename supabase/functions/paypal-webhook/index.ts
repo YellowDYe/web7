@@ -52,6 +52,94 @@ interface PayPalWebhookEvent {
   }>
 }
 
+/**
+ * Asks PayPal whether this delivery really came from PayPal.
+ *
+ * This endpoint is deliberately unauthenticated so PayPal can reach it, which
+ * means the transmission signature is the only evidence that the payload is
+ * genuine. Without this check anyone could post an "invoice paid" event.
+ */
+async function verifyPayPalSignature(
+  supabase: any,
+  req: Request,
+  rawBody: string,
+): Promise<boolean> {
+  const transmissionId = req.headers.get('paypal-transmission-id')
+  const transmissionTime = req.headers.get('paypal-transmission-time')
+  const transmissionSig = req.headers.get('paypal-transmission-sig')
+  const certUrl = req.headers.get('paypal-cert-url')
+  const authAlgo = req.headers.get('paypal-auth-algo')
+
+  if (!transmissionId || !transmissionTime || !transmissionSig || !certUrl || !authAlgo) {
+    console.error('[PayPal Webhook] Missing transmission headers')
+    return false
+  }
+
+  // PayPal only serves its signing certificates from its own domains.
+  let certHost: string
+  try {
+    certHost = new URL(certUrl).hostname
+  } catch {
+    return false
+  }
+  if (!/(^|\.)paypal\.com$/i.test(certHost)) {
+    console.error('[PayPal Webhook] Certificate URL is not a PayPal host')
+    return false
+  }
+
+  const { data: config } = await supabase
+    .from('paypal_config')
+    .select('client_id, client_secret, base_url, webhook_id')
+    .eq('is_active', true)
+    .maybeSingle()
+
+  const webhookId = config?.webhook_id || Deno.env.get('PAYPAL_WEBHOOK_ID')
+  const baseUrl = (config?.base_url || 'https://api-m.paypal.com').replace(/\/$/, '')
+
+  if (!config?.client_id || !config?.client_secret || !webhookId) {
+    console.error('[PayPal Webhook] PayPal credentials or webhook id not configured')
+    return false
+  }
+
+  const basic = btoa(`${config.client_id}:${config.client_secret}`)
+
+  const tokenRes = await fetch(`${baseUrl}/v1/oauth2/token`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Basic ${basic}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: 'grant_type=client_credentials',
+  })
+  if (!tokenRes.ok) {
+    console.error('[PayPal Webhook] Could not obtain a PayPal access token')
+    return false
+  }
+  const { access_token } = await tokenRes.json()
+
+  const verifyRes = await fetch(`${baseUrl}/v1/notifications/verify-webhook-signature`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${access_token}`,
+      'Content-Type': 'application/json',
+    },
+    // webhook_event must be the parsed body; PayPal re-serialises it its own way.
+    body: `{"auth_algo":${JSON.stringify(authAlgo)},"cert_url":${JSON.stringify(certUrl)},` +
+      `"transmission_id":${JSON.stringify(transmissionId)},` +
+      `"transmission_sig":${JSON.stringify(transmissionSig)},` +
+      `"transmission_time":${JSON.stringify(transmissionTime)},` +
+      `"webhook_id":${JSON.stringify(webhookId)},"webhook_event":${rawBody}}`,
+  })
+
+  if (!verifyRes.ok) {
+    console.error('[PayPal Webhook] Verification request failed:', verifyRes.status)
+    return false
+  }
+
+  const verification = await verifyRes.json()
+  return verification?.verification_status === 'SUCCESS'
+}
+
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -90,6 +178,16 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
+
+    // Nothing below this point may run on an unverified payload: the handlers
+    // mark invoices as paid using service-role rights.
+    if (!(await verifyPayPalSignature(supabase, req, body))) {
+      console.error('[PayPal Webhook] Signature verification failed; rejecting event')
+      return new Response(
+        JSON.stringify({ error: 'Invalid signature' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
 
     // Process different event types
     switch (event.event_type) {

@@ -3,6 +3,7 @@ import { Users, AlertCircle, Loader2, User } from 'lucide-react';
 import { FamilyMember } from '../../../types/familyMember';
 import { familyMemberService } from '../../../services/familyMemberService';
 import { supabase } from '../../../config/supabase';
+import { friendlyError } from '../../utils/friendlyError';
 
 interface CustomerFamilyMemberSelectorProps {
   customerId: string;
@@ -51,7 +52,7 @@ const CustomerFamilyMemberSelector: React.FC<CustomerFamilyMemberSelectorProps> 
       }
     } catch (err: any) {
       console.error('Error loading family members:', err);
-      setError(err.message || 'Error al cargar miembros familiares');
+      setError(friendlyError(err, 'Error al cargar miembros familiares'));
     } finally {
       setLoading(false);
     }

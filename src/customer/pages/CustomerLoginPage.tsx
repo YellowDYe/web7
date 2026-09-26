@@ -6,6 +6,7 @@ import { Card } from '../components/ui/card';
 import { Mail, Lock, LogIn, UserPlus } from 'lucide-react';
 import CustomerSiteHeader from '../components/CustomerSiteHeader';
 import { Footer } from '../sections/Footer/Footer';
+import { friendlyError } from '../utils/friendlyError';
 
 export default function CustomerLoginPage() {
   const [email, setEmail] = useState('');
@@ -26,7 +27,7 @@ export default function CustomerLoginPage() {
       await login(email, password);
       navigate(returnTo);
     } catch (err: any) {
-      setError(err.message || 'Correo electrónico o contraseña inválidos');
+      setError(friendlyError(err, 'Correo electrónico o contraseña inválidos'));
     } finally {
       setLoading(false);
     }
@@ -39,7 +40,7 @@ export default function CustomerLoginPage() {
     try {
       await loginWithGoogle(returnTo);
     } catch (err: any) {
-      setError(err.message || 'Error al iniciar sesión con Google. Por favor, inténtalo de nuevo.');
+      setError(friendlyError(err, 'Error al iniciar sesión con Google. Por favor, inténtalo de nuevo.'));
       setLoading(false);
     }
   };

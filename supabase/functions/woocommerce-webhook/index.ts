@@ -181,6 +181,13 @@ function sanitizePhone(phone: string): string {
   return phone.replace(/\D/g, "");
 }
 
+function timingSafeEqualStrings(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
 async function verifySignature(
   rawBody: string,
   signature: string | null,
@@ -197,7 +204,7 @@ async function verifySignature(
   );
   const sig = await crypto.subtle.sign("HMAC", key, encoder.encode(rawBody));
   const expected = btoa(String.fromCharCode(...new Uint8Array(sig)));
-  return expected === signature;
+  return timingSafeEqualStrings(expected, signature.trim());
 }
 
 function chooseWeekIndex(cutoffDay: number, cutoffHour: number): number {
@@ -275,7 +282,18 @@ Deno.serve(async (req: Request) => {
     .eq("is_active", true)
     .maybeSingle() as { data: WooConfig | null };
 
-  if (config?.webhook_secret) {
+  // This endpoint is public, so the shared secret is the only thing telling a
+  // real WooCommerce delivery apart from a forged order. Refuse to process
+  // anything when no secret is configured instead of trusting the payload.
+  if (!config?.webhook_secret) {
+    console.error("[WooCommerce Webhook] No webhook secret configured; rejecting delivery");
+    return new Response(JSON.stringify({ error: "Webhook not configured" }), {
+      status: 503,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  {
     const signature = req.headers.get("x-wc-webhook-signature");
     const valid = await verifySignature(rawBody, signature, config.webhook_secret);
     if (!valid) {

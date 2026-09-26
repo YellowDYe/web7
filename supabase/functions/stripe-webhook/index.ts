@@ -7,6 +7,56 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey, stripe-signature",
 };
 
+// Stripe signs every webhook with an HMAC-SHA256 over `${timestamp}.${body}`.
+// Verifying it is the only thing that distinguishes a real Stripe event from a
+// forged POST, because this endpoint is deliberately unauthenticated.
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+async function verifyStripeSignature(
+  body: string,
+  header: string | null,
+  secret: string,
+): Promise<boolean> {
+  if (!header) return false;
+
+  let timestamp = "";
+  const candidates: string[] = [];
+  for (const part of header.split(",")) {
+    const [key, value] = part.trim().split("=");
+    if (key === "t") timestamp = value ?? "";
+    if (key === "v1" && value) candidates.push(value);
+  }
+
+  if (!timestamp || candidates.length === 0) return false;
+
+  // Reject replays of an old, legitimately signed payload.
+  const age = Math.abs(Math.floor(Date.now() / 1000) - Number(timestamp));
+  if (!Number.isFinite(age) || age > 300) return false;
+
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const mac = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    new TextEncoder().encode(`${timestamp}.${body}`),
+  );
+  const expected = Array.from(new Uint8Array(mac))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+
+  return candidates.some((c) => timingSafeEqual(expected, c));
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, {
@@ -29,8 +79,22 @@ Deno.serve(async (req: Request) => {
       .eq("is_active", true)
       .maybeSingle();
 
+    // Without a configured secret there is nothing to verify against, so refuse
+    // rather than acting on an unauthenticated payment event.
     if (!stripeConfig || !stripeConfig.webhook_secret) {
-      console.warn("Stripe webhook secret not configured, skipping signature verification");
+      console.error("Stripe webhook secret not configured; rejecting event");
+      return new Response(
+        JSON.stringify({ error: "Webhook not configured" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    if (!(await verifyStripeSignature(body, signature, stripeConfig.webhook_secret))) {
+      console.error("Stripe webhook signature verification failed");
+      return new Response(
+        JSON.stringify({ error: "Invalid signature" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
 
     let event;

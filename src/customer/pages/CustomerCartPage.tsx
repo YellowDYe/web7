@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { cmsApiDirect } from '../../shared/cms/cmsApiDirect';
 import { CMSRenderer } from '../../shared/cms/CMSRenderer';
 import { Page, Module } from '../../shared/cms/cmsApi';
+import { friendlyError } from '../utils/friendlyError';
 
 const CustomerCartPage: React.FC = () => {
   const location = useLocation();
@@ -59,7 +60,7 @@ const CustomerCartPage: React.FC = () => {
       setLoading(false);
     } catch (error) {
       console.error('[CustomerCartPage] Error loading page content:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+      const errorMessage = friendlyError(error, 'Error desconocido');
       setError(`Error al cargar la página: ${errorMessage}`);
       setLoading(false);
     }

@@ -12,6 +12,50 @@ interface VerificationRequest {
   siteUrl: string;
 }
 
+// Most requests a single address may trigger inside the window below.
+const MAX_REQUESTS_PER_WINDOW = 3;
+const WINDOW_MINUTES = 15;
+
+/**
+ * The verification link must point at this shop. Building it from a value in
+ * the request body lets anyone mail a branded "verify your email" link that
+ * hands the token to a site they control.
+ */
+function resolveSiteUrl(requested: unknown, req: Request): string | null {
+  const allowed = (Deno.env.get("ALLOWED_RETURN_ORIGINS") || "")
+    .split(",")
+    .map((o) => o.trim().replace(/\/$/, ""))
+    .filter(Boolean);
+  const configured = (Deno.env.get("SITE_URL") || "").trim().replace(/\/$/, "");
+  if (configured) allowed.unshift(configured);
+
+  let requestedOrigin: string | null = null;
+  if (typeof requested === "string" && requested.trim()) {
+    try {
+      requestedOrigin = new URL(requested.trim()).origin;
+    } catch {
+      requestedOrigin = null;
+    }
+  }
+
+  if (allowed.length > 0) {
+    return requestedOrigin && allowed.includes(requestedOrigin) ? requestedOrigin : allowed[0];
+  }
+
+  // No allowlist configured: trust the browser-asserted Origin rather than the
+  // request body, since a browser sets that header itself.
+  const headerOrigin = req.headers.get("origin");
+  if (headerOrigin) {
+    try {
+      const parsed = new URL(headerOrigin);
+      if (parsed.protocol === "https:" || parsed.protocol === "http:") return parsed.origin;
+    } catch {
+      /* ignore */
+    }
+  }
+  return null;
+}
+
 Deno.serve(async (req: Request) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
@@ -35,19 +79,54 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
 
     if (configError || !emailConfig?.mailgun_api_key) {
-      throw new Error("Email configuration not found. Please configure Mailgun in admin settings.");
+      console.error("Email configuration missing", configError);
+      return new Response(
+        JSON.stringify({ success: false, error: "No se pudo enviar el correo de verificacion" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     // Parse request body
-    const { email, siteUrl }: VerificationRequest = await req.json();
+    const { email: rawEmail, siteUrl }: VerificationRequest = await req.json();
+    const email = typeof rawEmail === "string" ? rawEmail.trim().toLowerCase() : "";
 
-    if (!email || !email.includes("@")) {
+    if (!email || !/^[^@\s]+@[^@\s.]+\.[^@\s]+$/.test(email) || email.length > 254) {
       return new Response(
         JSON.stringify({ success: false, error: "Valid email is required" }),
         {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
+      );
+    }
+
+    const siteBase = resolveSiteUrl(siteUrl, req);
+    if (!siteBase) {
+      console.error("No site URL configured for verification links");
+      return new Response(
+        JSON.stringify({ success: false, error: "No se pudo enviar el correo de verificacion" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Throttle: one address cannot be used to flood a mailbox, and the endpoint
+    // cannot be hammered to farm tokens.
+    const windowStart = new Date(Date.now() - WINDOW_MINUTES * 60 * 1000).toISOString();
+    const { count: recentCount } = await supabase
+      .from("customer_email_verifications")
+      .select("id", { count: "exact", head: true })
+      .eq("email", email)
+      .gte("created_at", windowStart);
+
+    if ((recentCount ?? 0) >= MAX_REQUESTS_PER_WINDOW) {
+      // Same shape as success so the caller learns nothing from being throttled.
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: "Verification email sent successfully",
+          email,
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -58,14 +137,18 @@ Deno.serve(async (req: Request) => {
       })
       .single();
 
-    if (verificationError || !verificationData.success) {
-      throw new Error(verificationData?.error || "Failed to create verification token");
+    if (verificationError || !verificationData?.success) {
+      console.error("Could not create verification token", verificationError, verificationData?.error);
+      return new Response(
+        JSON.stringify({ success: false, error: "No se pudo enviar el correo de verificacion" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     const { token, is_existing_customer } = verificationData;
 
-    // Build magic link
-    const magicLink = `${siteUrl}/shop/verify-email?token=${token}`;
+    // Build magic link from the server-side base URL only.
+    const magicLink = `${siteBase}/shop/verify-email?token=${encodeURIComponent(token)}`;
 
     // Get site branding
     const { data: siteSettings } = await supabase
@@ -189,18 +272,20 @@ Si no solicitaste esta verificación, puedes ignorar este correo.
     if (!mailgunResponse.ok) {
       const errorText = await mailgunResponse.text();
       console.error("Mailgun error:", errorText);
-      throw new Error(`Failed to send email: ${mailgunResponse.statusText}`);
+      return new Response(
+        JSON.stringify({ success: false, error: "No se pudo enviar el correo de verificacion" }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    const mailgunData = await mailgunResponse.json();
+    await mailgunResponse.json().catch(() => ({}));
 
+    // Deliberately does NOT report whether the address already has an account.
     return new Response(
       JSON.stringify({
         success: true,
         message: "Verification email sent successfully",
         email,
-        is_existing_customer,
-        mailgun_id: mailgunData.id,
       }),
       {
         status: 200,
@@ -212,7 +297,7 @@ Si no solicitaste esta verificación, puedes ignorar este correo.
     return new Response(
       JSON.stringify({
         success: false,
-        error: error.message || "Failed to send verification email",
+        error: "No se pudo enviar el correo de verificacion",
       }),
       {
         status: 500,

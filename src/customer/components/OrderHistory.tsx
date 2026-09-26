@@ -8,6 +8,7 @@ import { CustomerOrderDetailsModal } from './CustomerOrderDetailsModal';
 import { CustomerInvoiceDetailsModal } from './CustomerInvoiceDetailsModal';
 import { buildRepeatOrderCart } from '../services/repeatOrderService';
 import { useCart } from '../contexts/CartContext';
+import { friendlyError } from '../utils/friendlyError';
 
 interface OrderHistoryProps {
   customerId: string;
@@ -132,7 +133,7 @@ export function OrderHistory({ customerId }: OrderHistoryProps) {
       navigate('/order');
     } catch (err) {
       console.error('Error repeating order:', err);
-      setRepeatError(err instanceof Error ? err.message : 'No se pudo repetir el pedido');
+      setRepeatError(friendlyError(err, 'No se pudo repetir el pedido'));
     } finally {
       setRepeatLoading(null);
     }

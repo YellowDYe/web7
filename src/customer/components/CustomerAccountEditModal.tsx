@@ -9,6 +9,7 @@ import TaxRegimeDropdown from '../../components/customers/TaxRegimeDropdown';
 import DelegacionDropdown from '../../components/customers/DelegacionDropdown';
 import FamilyMembersList from '../../components/customers/FamilyMembersList';
 import type { Customer } from '../../types/customer';
+import { friendlyError } from '../utils/friendlyError';
 
 interface CustomerAccountEditModalProps {
   customer: Customer;
@@ -84,7 +85,7 @@ export function CustomerAccountEditModal({ customer, onClose, onSave }: Customer
         onSave();
       }, 1500);
     } catch (err: any) {
-      setError(err.message || 'Failed to update profile');
+      setError(friendlyError(err, 'Failed to update profile'));
     } finally {
       setLoading(false);
     }

@@ -11,6 +11,7 @@ import { familyMemberService } from '../../../services/familyMemberService';
 import RestrictionSelector from '../../../components/customers/RestrictionSelector';
 import { FamilyMember } from '../../../types/familyMember';
 import { User, Mail, Phone, MapPin, FileText, CircleAlert as AlertCircle, CreditCard as Edit, Package, IdCard, Users, X, Save, Trash2 } from 'lucide-react';
+import { friendlyError } from '../../utils/friendlyError';
 
 export const CustomerProfile: React.FC = () => {
   const { customer, user, loading, logout } = useCustomerAuth();
@@ -523,7 +524,7 @@ function RestrictionsEditModal({
       await updateCustomerProfile({ customer_restrictions: restrictions });
       onSave();
     } catch (err: any) {
-      setError(err.message || 'No se pudo guardar');
+      setError(friendlyError(err, 'No se pudo guardar'));
     } finally {
       setSaving(false);
     }
@@ -635,7 +636,7 @@ function DeleteAccountModal({
 
       onDeleted();
     } catch (err: any) {
-      setError(err.message || 'No se pudo eliminar la cuenta');
+      setError(friendlyError(err, 'No se pudo eliminar la cuenta'));
     } finally {
       setDeleting(false);
     }
