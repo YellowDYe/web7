@@ -145,7 +145,8 @@ Deno.serve(async (req: Request) => {
           payment_provider: "mercadopago",
           mp_payment_id: String(paymentId),
         })
-        .eq("id", orderId);
+        .eq("id", orderId)
+        .in("order_status", ["pending", "pending_cash_payment", "processing"]);
 
       // Also update related invoice if exists
       const { data: invoice } = await supabase

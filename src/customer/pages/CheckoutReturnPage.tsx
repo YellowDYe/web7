@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { CircleCheck as CheckCircle, Circle as XCircle, Clock, Loader as Loader2, Package, Chrome as Home, Calendar, MapPin, User, Phone, Mail, CircleAlert as AlertCircle } from 'lucide-react';
+import { CircleCheck as CheckCircle, Circle as XCircle, Clock, Loader as Loader2, Package, Chrome as Home, Calendar, MapPin, User, Phone, Mail, CircleAlert as AlertCircle, ExternalLink, Store } from 'lucide-react';
 import { customerOrderSubmissionService, OrderConfirmationData } from '../services/customerOrderSubmissionService';
 import { supabase } from '../../config/supabase';
 import { useCart } from '../contexts/CartContext';
@@ -18,6 +18,7 @@ export const CheckoutReturn: React.FC = () => {
   const [orderNumber, setOrderNumber] = useState<string | null>(null);
   const [totals, setTotals] = useState<OrderConfirmationData['totals'] | null>(null);
   const [failureDetail, setFailureDetail] = useState('');
+  const [ticketUrl, setTicketUrl] = useState<string | null>(null);
   const processedRef = useRef(false);
 
   const { clearCart, clearProteinCart } = useCart();
@@ -113,6 +114,10 @@ export const CheckoutReturn: React.FC = () => {
               await saveProteinOrders(createdOrderId, customer, proteinCart);
             }
 
+            // Detect cash payment from URL params
+            const urlPaymentType = searchParams.get('payment_type') || '';
+            const isCashType = urlPaymentType === 'ticket' || urlPaymentType === 'atm';
+
             // Update order with MP payment info
             await supabase
               .from('orders')
@@ -123,7 +128,10 @@ export const CheckoutReturn: React.FC = () => {
                   order_status: 'completed',
                   stripe_payment_status: 'succeeded',
                   stripe_paid_at: new Date().toISOString(),
-                } : {}),
+                } : {
+                  order_status: isCashType ? 'pending_cash_payment' : 'pending',
+                  stripe_payment_status: 'pending',
+                }),
               })
               .eq('id', createdOrderId);
 
@@ -157,7 +165,7 @@ export const CheckoutReturn: React.FC = () => {
                 customer_id: customer.customer_id,
                 order_customer_name: `${customer.customer_name} ${customer.customer_lastname}`.trim(),
                 order_customer_email: customer.customer_email,
-                order_status: mpStatus === 'approved' ? 'completed' : 'pending',
+                order_status: mpStatus === 'approved' ? 'completed' : (urlPaymentType === 'ticket' || urlPaymentType === 'atm') ? 'pending_cash_payment' : 'pending',
                 order_notes: 'Pedido de proteinas',
                 order_total_price: totalAmount,
                 order_invoice_number: '',
@@ -342,18 +350,45 @@ export const CheckoutReturn: React.FC = () => {
 
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-        <div className="max-w-md mx-auto text-center">
-          <div className="w-20 h-20 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Clock className="w-12 h-12 text-yellow-600" />
+        <div className="max-w-md mx-auto">
+          <div className="text-center">
+            <div className={`w-20 h-20 ${isCashPayment ? 'bg-orange-100' : 'bg-yellow-100'} rounded-full flex items-center justify-center mx-auto mb-6`}>
+              {isCashPayment ? <Store className="w-12 h-12 text-orange-600" /> : <Clock className="w-12 h-12 text-yellow-600" />}
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">
+              {isCashPayment ? 'Pago pendiente en efectivo' : 'Pago en proceso'}
+            </h2>
+            <p className="text-gray-500 mb-6">
+              {isCashPayment
+                ? 'Tu pedido esta reservado. Completa el pago en una tienda participante.'
+                : 'Tu pago esta siendo procesado por el banco. Te notificaremos cuando se confirme. Esto puede tomar unos minutos.'}
+            </p>
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            {isCashPayment ? 'Pago pendiente en efectivo' : 'Pago en proceso'}
-          </h2>
-          <p className="text-gray-500 mb-8">
-            {isCashPayment
-              ? 'Tu pedido esta reservado. Tienes 24 horas para completar el pago en tu punto de pago mas cercano (OXXO, 7-Eleven, etc.). Recibiremos la confirmacion automaticamente.'
-              : 'Tu pago esta siendo procesado por el banco. Te notificaremos cuando se confirme. Esto puede tomar unos minutos.'}
-          </p>
+
+          {isCashPayment && (
+            <div className="bg-orange-50 border border-orange-200 rounded-xl p-5 mb-6 space-y-3">
+              <h3 className="font-semibold text-orange-900 flex items-center gap-2">
+                <Store className="w-5 h-5" /> Instrucciones de pago
+              </h3>
+              <ol className="text-sm text-orange-800 space-y-2 list-decimal list-inside">
+                <li>Revisa tu correo electronico para obtener el comprobante de pago.</li>
+                <li>Presentalo en OXXO, 7-Eleven u otra tienda participante.</li>
+                <li>Tienes <strong>24 horas</strong> para completar el pago.</li>
+                <li>Una vez pagado, recibiremos la confirmacion automaticamente y te notificaremos por correo.</li>
+              </ol>
+              {ticketUrl && (
+                <a
+                  href={ticketUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-2 w-full flex items-center justify-center gap-2 bg-orange-600 hover:bg-orange-700 text-white py-3 rounded-lg font-semibold transition-colors"
+                >
+                  <ExternalLink className="w-4 h-4" /> Ver comprobante de pago
+                </a>
+              )}
+            </div>
+          )}
+
           {orderNumber && (
             <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6 text-left">
               <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Numero de Orden</p>

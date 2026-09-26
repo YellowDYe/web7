@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { CircleCheck as CheckCircle, Circle as XCircle, Loader as Loader2, Trash2, ArrowLeft, CreditCard, Calendar, MapPin, User, Phone, Zap, ShieldCheck, Mail, CircleAlert as AlertCircle, Wallet } from 'lucide-react';
+import { CircleCheck as CheckCircle, Circle as XCircle, Loader as Loader2, Trash2, ArrowLeft, CreditCard, Calendar, MapPin, User, Phone, Zap, ShieldCheck, Mail, CircleAlert as AlertCircle, Wallet, ExternalLink, Store } from 'lucide-react';
 import { useCart } from '../../contexts/CartContext';
 import { useCustomerAuth } from '../../contexts/CustomerAuthContext';
 import {
@@ -221,7 +221,10 @@ export const CustomerCheckout: React.FC = () => {
     }
   };
 
-  const createOrderAfterPayment = useCallback(async (mpPaymentId: string, mpStatus: string): Promise<{ orderId: string; orderNumber: string } | null> => {
+  const createOrderAfterPayment = useCallback(async (mpPaymentId: string, mpStatus: string, mpPaymentTypeId?: string): Promise<{ orderId: string; orderNumber: string } | null> => {
+    const isCashPayment = mpPaymentTypeId === 'ticket' || mpPaymentTypeId === 'atm';
+    const orderStatus = mpStatus === 'approved' ? 'completed' : isCashPayment ? 'pending_cash_payment' : 'pending';
+    const paymentStatus = mpStatus === 'approved' ? 'succeeded' : 'pending';
     if (!customer) return null;
 
     const snappedCart = cartSnapshotRef.current;
@@ -270,6 +273,18 @@ export const CustomerCheckout: React.FC = () => {
           couponCode: snappedCart.appliedCoupon?.code,
         };
 
+        // Update order with payment info
+        await supabase
+          .from('orders')
+          .update({
+            payment_provider: 'mercadopago',
+            mp_payment_id: mpPaymentId || null,
+            order_status: orderStatus,
+            stripe_payment_status: paymentStatus,
+            ...(mpStatus === 'approved' ? { stripe_paid_at: new Date().toISOString() } : {}),
+          })
+          .eq('id', orderId);
+
         if (mpStatus === 'approved') {
           try {
             await customerOrderSubmissionService.markOrderAsPaid(confirmData);
@@ -314,11 +329,11 @@ export const CustomerCheckout: React.FC = () => {
             customer_id: customer.customer_id,
             order_customer_name: `${customer.customer_name} ${customer.customer_lastname}`.trim(),
             order_customer_email: customer.customer_email,
-            order_status: mpStatus === 'approved' ? 'completed' : 'pending',
+            order_status: orderStatus,
             order_notes: 'Pedido de proteinas',
             order_total_price: totalAmount,
             order_invoice_number: '',
-            stripe_payment_status: mpStatus === 'approved' ? 'succeeded' : 'pending',
+            stripe_payment_status: paymentStatus,
             stripe_paid_at: mpStatus === 'approved' ? new Date().toISOString() : null,
             payment_provider: 'mercadopago',
             mp_payment_id: mpPaymentId || null,
@@ -483,7 +498,7 @@ export const CustomerCheckout: React.FC = () => {
 
               if (result.status === 'approved' || result.status === 'pending' || result.status === 'in_process') {
                 // Step 2: Payment succeeded/pending -> NOW create the order
-                const orderResult = await createOrderAfterPayment(result.payment_id, result.status);
+                const orderResult = await createOrderAfterPayment(result.payment_id, result.status, result.payment_type_id);
 
                 if (orderResult) {
                   setCreatedOrderNumber(orderResult.orderNumber);
@@ -771,6 +786,8 @@ export const CustomerCheckout: React.FC = () => {
   // --- SUCCESS SCREEN ---
   if (step === 'success') {
     const isApproved = paymentResult?.status === 'approved';
+    const isCashPending = !isApproved && (paymentResult?.payment_type_id === 'ticket' || paymentResult?.payment_type_id === 'atm');
+    const ticketUrl = paymentResult?.transaction_details?.external_resource_url;
     const cd = confirmationDetails;
 
     const formatDeliveryDate = (dateString: string | null): string => {
@@ -784,22 +801,49 @@ export const CustomerCheckout: React.FC = () => {
       <div className="min-h-screen bg-gray-50 py-12 px-4">
         <div className="max-w-lg mx-auto">
           {/* Header */}
-          <div className={`rounded-2xl shadow-lg overflow-hidden ${isApproved ? 'bg-white' : 'bg-white'}`}>
-            <div className={`px-8 py-10 text-center ${isApproved ? 'bg-gradient-to-br from-green-500 to-emerald-600' : 'bg-gradient-to-br from-yellow-400 to-amber-500'}`}>
+          <div className="rounded-2xl shadow-lg overflow-hidden bg-white">
+            <div className={`px-8 py-10 text-center ${isApproved ? 'bg-gradient-to-br from-green-500 to-emerald-600' : isCashPending ? 'bg-gradient-to-br from-orange-400 to-amber-500' : 'bg-gradient-to-br from-yellow-400 to-amber-500'}`}>
               <div className="w-20 h-20 rounded-full bg-white/20 flex items-center justify-center mx-auto mb-5">
-                <CheckCircle className="w-10 h-10 text-white" />
+                {isCashPending ? <Store className="w-10 h-10 text-white" /> : <CheckCircle className="w-10 h-10 text-white" />}
               </div>
               <h2 className="text-2xl font-bold text-white mb-1">
-                {isApproved ? 'Pedido Confirmado' : 'Pago en Proceso'}
+                {isApproved ? 'Pedido Confirmado' : isCashPending ? 'Pago Pendiente en Efectivo' : 'Pago en Proceso'}
               </h2>
               <p className="text-white/90 text-sm">
                 {isApproved
                   ? 'Tu pago ha sido procesado exitosamente'
-                  : 'Tu pago esta siendo procesado. Te notificaremos cuando se confirme.'}
+                  : isCashPending
+                    ? 'Tu pedido esta reservado. Completa el pago en una tienda participante.'
+                    : 'Tu pago esta siendo procesado. Te notificaremos cuando se confirme.'}
               </p>
             </div>
 
             <div className="px-8 py-8 space-y-6">
+              {/* Cash payment instructions */}
+              {isCashPending && (
+                <div className="bg-orange-50 border border-orange-200 rounded-xl p-5 space-y-3">
+                  <h3 className="font-semibold text-orange-900 flex items-center gap-2">
+                    <Store className="w-5 h-5" /> Instrucciones de pago
+                  </h3>
+                  <ol className="text-sm text-orange-800 space-y-2 list-decimal list-inside">
+                    <li>Abre o descarga tu comprobante de pago usando el boton de abajo.</li>
+                    <li>Presentalo en OXXO, 7-Eleven u otra tienda participante.</li>
+                    <li>Tienes <strong>24 horas</strong> para completar el pago.</li>
+                    <li>Una vez pagado, recibiremos la confirmacion automaticamente y te notificaremos por correo.</li>
+                  </ol>
+                  {ticketUrl && (
+                    <a
+                      href={ticketUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-2 w-full flex items-center justify-center gap-2 bg-orange-600 hover:bg-orange-700 text-white py-3 rounded-lg font-semibold transition-colors"
+                    >
+                      <ExternalLink className="w-4 h-4" /> Ver comprobante de pago
+                    </a>
+                  )}
+                </div>
+              )}
+
               {/* Order number */}
               {(cd?.orderNumber || createdOrderNumber) && (
                 <div className="bg-gray-50 rounded-xl p-5 text-center border border-gray-100">
@@ -872,7 +916,7 @@ export const CustomerCheckout: React.FC = () => {
                       </div>
                     </div>
                     <div className="bg-gray-900 px-4 py-4 flex justify-between items-center">
-                      <span className="text-sm font-bold text-white">Total Pagado</span>
+                      <span className="text-sm font-bold text-white">{isApproved ? 'Total Pagado' : 'Total a Pagar'}</span>
                       <span className="text-xl font-bold text-white">${Math.round(cd.totals.finalTotal).toLocaleString()} MXN</span>
                     </div>
                   </div>

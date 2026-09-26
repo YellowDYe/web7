@@ -54,6 +54,8 @@ export function OrderHistory({ customerId }: OrderHistoryProps) {
         return 'bg-green-100 text-green-800 border-green-200';
       case 'pending':
         return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'pending_cash_payment':
+        return 'bg-orange-100 text-orange-800 border-orange-200';
       case 'processing':
         return 'bg-blue-100 text-blue-800 border-blue-200';
       case 'cancelled':
@@ -71,6 +73,8 @@ export function OrderHistory({ customerId }: OrderHistoryProps) {
         return 'Entregado';
       case 'pending':
         return 'Pendiente';
+      case 'pending_cash_payment':
+        return 'Esperando pago en efectivo';
       case 'processing':
         return 'Procesando';
       case 'cancelled':
