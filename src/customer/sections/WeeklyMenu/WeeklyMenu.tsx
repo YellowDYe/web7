@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar, UtensilsCrossed, Coffee, Moon, Apple, Loader } from 'lucide-react';
+import { Calendar, UtensilsCrossed, Coffee, Moon, Apple, Loader, Flame, Wheat, Beef, Droplets } from 'lucide-react';
 import { supabase } from '../../../config/supabase';
 import { DAYS_OF_WEEK, MEAL_TYPES, dayToColumnPrefix, DayOfWeek, MealTypeKey } from '../../../types/mealTypes';
 import { getCurrentMexicoDateString } from '../../../utils/timezone';
@@ -9,11 +9,21 @@ interface RecipeInfo {
   recipe_id: string;
   recipe_name: string;
   recipe_image: string;
+  recipe_total_calories: number | null;
+  recipe_total_carbohydrates: number | null;
+  recipe_total_proteins: number | null;
+  recipe_total_fats: number | null;
 }
 
 interface DayMenu {
   day: DayOfWeek;
   meals: { label: string; key: MealTypeKey; recipe: RecipeInfo | null }[];
+}
+
+interface WeeklyMenuProps {
+  showImages?: boolean;
+  showNutrition?: boolean;
+  [key: string]: any;
 }
 
 const MEAL_ICONS: Record<MealTypeKey, React.ReactNode> = {
@@ -24,7 +34,10 @@ const MEAL_ICONS: Record<MealTypeKey, React.ReactNode> = {
   cena: <Moon className="w-4 h-4" />,
 };
 
-export const WeeklyMenu: React.FC = () => {
+export const WeeklyMenu: React.FC<WeeklyMenuProps> = ({
+  showImages = true,
+  showNutrition = false,
+}) => {
   const [loading, setLoading] = useState(true);
   const [weekName, setWeekName] = useState('');
   const [weekDate, setWeekDate] = useState('');
@@ -141,7 +154,7 @@ export const WeeklyMenu: React.FC = () => {
       if (uniqueIds.length > 0) {
         const { data: recipes } = await supabase
           .from('recipes')
-          .select('recipe_id, recipe_name, recipe_image')
+          .select('recipe_id, recipe_name, recipe_image, recipe_total_calories, recipe_total_carbohydrates, recipe_total_proteins, recipe_total_fats')
           .in('recipe_id', uniqueIds);
 
         if (recipes) {
@@ -185,6 +198,11 @@ export const WeeklyMenu: React.FC = () => {
     const start = date.toLocaleDateString('es-MX', options);
     const end = endDate.toLocaleDateString('es-MX', { ...options, year: 'numeric' });
     return `${start} - ${end}`;
+  };
+
+  const formatNumber = (val: number | null): string => {
+    if (val == null || isNaN(val)) return '—';
+    return Math.round(Number(val)).toString();
   };
 
   if (loading) {
@@ -274,10 +292,10 @@ export const WeeklyMenu: React.FC = () => {
                     </span>
                     {dayMenu.day}
                   </h2>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+                  <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4`}>
                     {dayMenu.meals.map(meal => {
                       if (!meal.recipe) return null;
-                      const imgUrl = meal.recipe.recipe_image
+                      const imgUrl = showImages && meal.recipe.recipe_image
                         ? resolveImage(meal.recipe.recipe_image)
                         : '';
 
@@ -286,27 +304,55 @@ export const WeeklyMenu: React.FC = () => {
                           key={`${dayMenu.day}-${meal.key}`}
                           className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow group"
                         >
-                          <div className="aspect-[4/3] bg-gray-100 relative overflow-hidden">
-                            {imgUrl ? (
-                              <img
-                                src={imgUrl}
-                                alt={meal.recipe.recipe_name}
-                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                              />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center">
-                                <UtensilsCrossed className="w-10 h-10 text-gray-300" />
-                              </div>
-                            )}
-                            <span className="absolute top-2 left-2 inline-flex items-center gap-1 bg-white/90 backdrop-blur-sm text-gray-700 text-xs font-medium px-2.5 py-1 rounded-full shadow-sm">
-                              {MEAL_ICONS[meal.key]}
-                              {meal.label}
-                            </span>
-                          </div>
+                          {showImages && (
+                            <div className="aspect-[4/3] bg-gray-100 relative overflow-hidden">
+                              {imgUrl ? (
+                                <img
+                                  src={imgUrl}
+                                  alt={meal.recipe.recipe_name}
+                                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <UtensilsCrossed className="w-10 h-10 text-gray-300" />
+                                </div>
+                              )}
+                              <span className="absolute top-2 left-2 inline-flex items-center gap-1 bg-white/90 backdrop-blur-sm text-gray-700 text-xs font-medium px-2.5 py-1 rounded-full shadow-sm">
+                                {MEAL_ICONS[meal.key]}
+                                {meal.label}
+                              </span>
+                            </div>
+                          )}
                           <div className="p-3">
+                            {!showImages && (
+                              <span className="inline-flex items-center gap-1 text-gray-500 text-xs font-medium mb-1">
+                                {MEAL_ICONS[meal.key]}
+                                {meal.label}
+                              </span>
+                            )}
                             <p className="text-sm font-medium text-gray-800 leading-tight line-clamp-2">
                               {meal.recipe.recipe_name}
                             </p>
+                            {showNutrition && (
+                              <div className="mt-2 grid grid-cols-2 gap-1.5">
+                                <div className="flex items-center gap-1 text-xs text-gray-500">
+                                  <Flame className="w-3 h-3 text-orange-400 flex-shrink-0" />
+                                  <span className="truncate">{formatNumber(meal.recipe.recipe_total_calories)} kcal</span>
+                                </div>
+                                <div className="flex items-center gap-1 text-xs text-gray-500">
+                                  <Wheat className="w-3 h-3 text-amber-500 flex-shrink-0" />
+                                  <span className="truncate">{formatNumber(meal.recipe.recipe_total_carbohydrates)}g carbs</span>
+                                </div>
+                                <div className="flex items-center gap-1 text-xs text-gray-500">
+                                  <Beef className="w-3 h-3 text-red-400 flex-shrink-0" />
+                                  <span className="truncate">{formatNumber(meal.recipe.recipe_total_proteins)}g prot</span>
+                                </div>
+                                <div className="flex items-center gap-1 text-xs text-gray-500">
+                                  <Droplets className="w-3 h-3 text-blue-400 flex-shrink-0" />
+                                  <span className="truncate">{formatNumber(meal.recipe.recipe_total_fats)}g grasas</span>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </div>
                       );

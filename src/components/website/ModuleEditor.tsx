@@ -61,6 +61,8 @@ export const ModuleEditor: React.FC = () => {
 
   const systemModuleTypes = systemModuleTypesList.map(t => t.value);
 
+  const configurableSystemModules = ['WeeklyMenu'];
+
   useEffect(() => {
     loadPages();
     loadMedia();
@@ -242,9 +244,9 @@ export const ModuleEditor: React.FC = () => {
       return;
     }
 
-    // Prevent editing system modules
+    // Prevent editing system modules (except configurable ones)
     const isSystemModule = systemModuleTypes.includes(selectedModule.type);
-    if (isSystemModule) {
+    if (isSystemModule && !configurableSystemModules.includes(selectedModule.type)) {
       setSaveStatus({ type: 'error', message: 'Los módulos del sistema no se pueden editar. Solo se pueden reordenar en la página.' });
       setTimeout(() => setSaveStatus({ type: null, message: '' }), 5000);
       return;
@@ -543,7 +545,7 @@ export const ModuleEditor: React.FC = () => {
       } else if (type === 'CustomerCheckout') {
         defaultContent = { isSystemModule: true };
       } else if (type === 'WeeklyMenu') {
-        defaultContent = { isSystemModule: true };
+        defaultContent = { isSystemModule: true, showImages: true, showNutrition: false };
       } else if (type === 'ProteinShakes') {
         defaultContent = { isSystemModule: true };
       } else if (type === 'Footer') {
@@ -684,8 +686,52 @@ export const ModuleEditor: React.FC = () => {
     }
   };
 
+  const renderWeeklyMenuEditor = () => (
+    <div className="space-y-5">
+      <p className="text-sm text-gray-500">Configura las opciones de visualización del menú semanal para tus clientes.</p>
+      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+        <div>
+          <div className="font-medium text-gray-800 text-sm">Mostrar imágenes de platillos</div>
+          <div className="text-xs text-gray-500">Muestra la foto de cada receta en el menú</div>
+        </div>
+        <button
+          type="button"
+          onClick={() => handleContentChange('showImages', !editingContent.showImages)}
+          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 ${
+            editingContent.showImages ? 'bg-green-500 focus:ring-green-400' : 'bg-gray-300 focus:ring-gray-400'
+          }`}
+        >
+          <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+            editingContent.showImages ? 'translate-x-5' : 'translate-x-1'
+          }`} />
+        </button>
+      </div>
+      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+        <div>
+          <div className="font-medium text-gray-800 text-sm">Mostrar información nutricional</div>
+          <div className="text-xs text-gray-500">Muestra calorías, carbohidratos, proteínas y grasas</div>
+        </div>
+        <button
+          type="button"
+          onClick={() => handleContentChange('showNutrition', !editingContent.showNutrition)}
+          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 ${
+            editingContent.showNutrition ? 'bg-green-500 focus:ring-green-400' : 'bg-gray-300 focus:ring-gray-400'
+          }`}
+        >
+          <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+            editingContent.showNutrition ? 'translate-x-5' : 'translate-x-1'
+          }`} />
+        </button>
+      </div>
+    </div>
+  );
+
   const renderContentEditor = () => {
     if (!selectedModule) return null;
+
+    if (selectedModule.type === 'WeeklyMenu') {
+      return renderWeeklyMenuEditor();
+    }
 
     return (
       <ContentFieldRenderer

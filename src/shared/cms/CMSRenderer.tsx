@@ -97,7 +97,7 @@ export const CMSRenderer: React.FC<CMSRendererProps> = ({ modules, basePath = ''
       case 'TitleBlock':
         return <TitleBlock key={module.id} {...content} />;
       case 'WeeklyMenu':
-        return <WeeklyMenu key={module.id} />;
+        return <WeeklyMenu key={module.id} {...content} />;
       case 'Footer':
         return <Footer key={module.id} {...content} />;
       default:
