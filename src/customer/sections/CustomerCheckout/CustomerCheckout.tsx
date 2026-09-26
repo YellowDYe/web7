@@ -96,7 +96,8 @@ export const CustomerCheckout: React.FC = () => {
       try {
         const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
         const { data: { session } } = await supabase.auth.getSession();
-        const token = session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY;
+        const token = session?.access_token;
+        if (!token) return;
         const res = await fetch(`${supabaseUrl}/functions/v1/mercado-pago-checkout`, {
           method: 'POST',
           headers: {
@@ -575,13 +576,21 @@ export const CustomerCheckout: React.FC = () => {
 
       // Create MercadoPago preference (no DB order)
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const { data: { session: prefSession } } = await supabase.auth.getSession();
+
+      // Ensure the session is fresh — an expired JWT causes a silent 401
+      const { data: { session: prefSession }, error: sessionError } = await supabase.auth.refreshSession();
+      if (sessionError || !prefSession?.access_token) {
+        setSubmitError('Tu sesion ha expirado. Por favor vuelve a iniciar sesion.');
+        setSubmitting(false);
+        return;
+      }
+
       const currentOrigin = window.location.origin;
 
       const response = await fetch(`${supabaseUrl}/functions/v1/mercado-pago-checkout`, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${prefSession?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          Authorization: `Bearer ${prefSession.access_token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -596,7 +605,10 @@ export const CustomerCheckout: React.FC = () => {
         }),
       });
 
-      if (!response.ok) throw new Error(`Error al crear preferencia de pago (${response.status})`);
+      if (!response.ok) {
+        const errBody = await response.json().catch(() => ({}));
+        throw new Error(errBody?.error || `Error al crear preferencia de pago (${response.status})`);
+      }
 
       const prefData = await response.json();
       if (!prefData.success) {

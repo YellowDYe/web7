@@ -1,16 +1,24 @@
 /**
  * Turns any thrown value into a message that is safe to show a shopper.
  *
- * Internal errors (database constraint text, policy violations, provider
- * responses, stack traces) must never reach the interface: they describe the
- * schema and the access rules to whoever triggered them. So the raw value is
- * logged for developers and only the caller-supplied Spanish fallback is
- * returned to the screen.
+ * If the Error message looks like a user-facing Spanish sentence (starts with
+ * a letter/accent and contains no SQL/technical markers), it is shown directly.
+ * Otherwise the caller-supplied fallback is used.
  */
 export function friendlyError(error: unknown, fallback: string): string {
   if (error) {
-    // Developer-facing only. Never rendered.
     console.error('[handled error]', error);
   }
+
+  if (error instanceof Error && error.message) {
+    const msg = error.message;
+    const isTechnical =
+      /violat|constraint|policy|column|supabase|pgcode|relation|undefined|null|cannot|typeerror/i.test(msg);
+    const isSpanish = /^[A-ZÁÉÍÓÚÑa-záéíóúñ¿¡]/.test(msg);
+    if (isSpanish && !isTechnical) {
+      return msg;
+    }
+  }
+
   return fallback;
 }
