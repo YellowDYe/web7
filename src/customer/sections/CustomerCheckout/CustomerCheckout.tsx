@@ -826,7 +826,7 @@ export const CustomerCheckout: React.FC = () => {
                     <Store className="w-5 h-5" /> Instrucciones de pago
                   </h3>
                   <ol className="text-sm text-orange-800 space-y-2 list-decimal list-inside">
-                    <li>Abre o descarga tu comprobante de pago usando el boton de abajo.</li>
+                    <li>Abre o descarga tu ticket de pago usando el boton de abajo.</li>
                     <li>Presentalo en OXXO, 7-Eleven u otra tienda participante.</li>
                     <li>Tienes <strong>24 horas</strong> para completar el pago.</li>
                     <li>Una vez pagado, recibiremos la confirmacion automaticamente y te notificaremos por correo.</li>
@@ -838,7 +838,7 @@ export const CustomerCheckout: React.FC = () => {
                       rel="noopener noreferrer"
                       className="mt-2 w-full flex items-center justify-center gap-2 bg-orange-600 hover:bg-orange-700 text-white py-3 rounded-lg font-semibold transition-colors"
                     >
-                      <ExternalLink className="w-4 h-4" /> Ver comprobante de pago
+                      <ExternalLink className="w-4 h-4" /> Ver ticket de pago
                     </a>
                   )}
                 </div>
