@@ -248,6 +248,13 @@ export const CustomerCheckout: React.FC = () => {
           selectedDeliveryOption: snappedCart.selectedDeliveryOption!,
           appliedCoupon: snappedCart.appliedCoupon,
           couponDiscountAmount: snappedCart.couponDiscountAmount,
+          paymentOverrides: {
+            order_status: orderStatus,
+            stripe_payment_status: paymentStatus,
+            stripe_paid_at: mpStatus === 'approved' ? new Date().toISOString() : null,
+            payment_provider: 'mercadopago',
+            mp_payment_id: mpPaymentId || null,
+          },
         });
 
         if (!result.success || !result.orderId || !result.orderNumber) {
@@ -273,21 +280,9 @@ export const CustomerCheckout: React.FC = () => {
           couponCode: snappedCart.appliedCoupon?.code,
         };
 
-        // Update order with payment info
-        await supabase
-          .from('orders')
-          .update({
-            payment_provider: 'mercadopago',
-            mp_payment_id: mpPaymentId || null,
-            order_status: orderStatus,
-            stripe_payment_status: paymentStatus,
-            ...(mpStatus === 'approved' ? { stripe_paid_at: new Date().toISOString() } : {}),
-          })
-          .eq('id', orderId);
-
         if (mpStatus === 'approved') {
           try {
-            await customerOrderSubmissionService.markOrderAsPaid(confirmData);
+            await customerOrderSubmissionService.sendOrderConfirmationEmail(confirmData);
             emailSent = true;
           } catch (err: any) {
             emailError = 'No pudimos enviar el correo de confirmacion.';

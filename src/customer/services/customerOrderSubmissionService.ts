@@ -19,6 +19,13 @@ interface OrderSubmissionData {
   selectedDeliveryOption: DeliveryOption;
   appliedCoupon: Coupon | null;
   couponDiscountAmount: number;
+  paymentOverrides?: {
+    order_status: string;
+    stripe_payment_status: string;
+    stripe_paid_at?: string | null;
+    payment_provider?: string;
+    mp_payment_id?: string | null;
+  };
 }
 
 interface OrderSubmissionResult {
@@ -100,10 +107,14 @@ class CustomerOrderSubmissionService {
         customer_id: customer.customer_id,
         order_customer_name: `${customer.customer_name} ${customer.customer_lastname}`.trim(),
         order_customer_email: customer.customer_email,
-        order_status: 'pending',
+        order_status: data.paymentOverrides?.order_status || 'pending',
         order_notes: orderNotes || null,
         order_total_price: Math.round(finalTotal),
-        order_invoice_number: ''
+        order_invoice_number: '',
+        ...(data.paymentOverrides?.stripe_payment_status ? { stripe_payment_status: data.paymentOverrides.stripe_payment_status } : {}),
+        ...(data.paymentOverrides?.stripe_paid_at ? { stripe_paid_at: data.paymentOverrides.stripe_paid_at } : {}),
+        ...(data.paymentOverrides?.payment_provider ? { payment_provider: data.paymentOverrides.payment_provider } : {}),
+        ...(data.paymentOverrides?.mp_payment_id ? { mp_payment_id: data.paymentOverrides.mp_payment_id } : {})
       } as any);
 
       // Create order weeks with quantities embedded (same as admin flow)
@@ -244,22 +255,8 @@ class CustomerOrderSubmissionService {
     }
   }
 
-  async markOrderAsPaid(data: OrderConfirmationData): Promise<void> {
+  async sendOrderConfirmationEmail(data: OrderConfirmationData): Promise<void> {
     const { orderId, orderNumber, customer, selectedWeeks, totals, deliveryOptionName, couponCode } = data;
-
-    try {
-      await supabase
-        .from('orders')
-        .update({
-          order_status: 'completed',
-          stripe_payment_status: 'succeeded',
-          stripe_paid_at: new Date().toISOString(),
-          payment_provider: 'mercadopago',
-        })
-        .eq('id', orderId);
-    } catch (err) {
-      console.warn('Could not mark order as paid in DB:', err);
-    }
 
     try {
       const { data: invoiceRows } = await supabase

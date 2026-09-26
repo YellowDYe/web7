@@ -146,7 +146,7 @@ export const CheckoutReturn: React.FC = () => {
                 couponCode: cart.appliedCoupon?.code,
               };
               try {
-                await customerOrderSubmissionService.markOrderAsPaid(confirmData);
+                await customerOrderSubmissionService.sendOrderConfirmationEmail(confirmData);
                 orderEmailSent = true;
               } catch (err) {
                 console.warn('Could not send confirmation email:', err);
@@ -248,7 +248,7 @@ export const CheckoutReturn: React.FC = () => {
 
         if (isApproved) {
           try {
-            await customerOrderSubmissionService.markOrderAsPaid(existingOrderData);
+            await customerOrderSubmissionService.sendOrderConfirmationEmail(existingOrderData);
             setEmailSent(true);
           } catch (err) {
             console.warn('Could not send confirmation email:', err);
