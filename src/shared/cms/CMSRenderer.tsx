@@ -67,11 +67,11 @@ export const CMSRenderer: React.FC<CMSRendererProps> = ({ modules, basePath = ''
       case 'StepsFeature':
         return <StepsFeature key={module.id} {...content} />;
       case 'FeatureFullImage':
-        return <FeatureFullImage key={module.id} {...content} />;
+        return <FeatureFullImage key={module.id} {...content} leftImage={content.leftImageUrl ?? content.leftImage} />;
       case 'FeatureSquareImage':
-        return <FeatureSquareImage key={module.id} {...content} />;
+        return <FeatureSquareImage key={module.id} {...content} leftImage={content.leftImageUrl ?? content.leftImage} />;
       case 'FeaturePillImage':
-        return <FeaturePillImage key={module.id} {...content} />;
+        return <FeaturePillImage key={module.id} {...content} leftImage={content.leftImageUrl ?? content.leftImage} iconImage={content.iconImageUrl ?? content.iconImage} />;
       case 'Gallery':
         return <Gallery key={module.id} {...content} />;
       case 'StructuredGallery':

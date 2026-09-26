@@ -124,7 +124,23 @@ export const ModuleEditor: React.FC = () => {
     if (module.type === 'MainHero' || module.type === 'FeatureFullImage') {
       return {
         buttonLink: '',
-        ...content
+        ...content,
+        leftImage: content.leftImageUrl ?? content.leftImage ?? '',
+      };
+    }
+
+    if (module.type === 'FeatureSquareImage') {
+      return {
+        ...content,
+        leftImage: content.leftImageUrl ?? content.leftImage ?? '',
+      };
+    }
+
+    if (module.type === 'FeaturePillImage') {
+      return {
+        ...content,
+        leftImage: content.leftImageUrl ?? content.leftImage ?? '',
+        iconImage: content.iconImageUrl ?? content.iconImage ?? '',
       };
     }
 
@@ -393,13 +409,13 @@ export const ModuleEditor: React.FC = () => {
           description: "This feature will help you achieve your goals with ease and efficiency.",
           buttonText: "Discover More",
           buttonLink: "",
-          leftImageUrl: "",
+          leftImage: "",
           rightBackgroundColor: "#2563eb"
         };
       } else if (type === 'FeatureSquareImage') {
         defaultContent = {
           title: "Why Choose Us",
-          leftImageUrl: "",
+          leftImage: "",
           rightBackgroundColor: "#ffffff",
           benefits: [
             {
@@ -426,9 +442,9 @@ export const ModuleEditor: React.FC = () => {
         defaultContent = {
           title: "Get In Touch",
           description: "We're here to answer your questions and provide support.",
-          leftImageUrl: "",
+          leftImage: "",
           backgroundColor: "#f9fafb",
-          iconImageUrl: "",
+          iconImage: "",
           contactInfo: {
             phone: "123-456-7890",
             email: "info@example.com"
