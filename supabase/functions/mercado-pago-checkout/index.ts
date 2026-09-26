@@ -90,6 +90,28 @@ Deno.serve(async (req: Request) => {
     const body = await req.json();
     const { action } = body;
 
+    // get-checkout-config returns only non-sensitive settings and does not
+    // need access_token to be configured, so handle it before the guard.
+    if (action === "get-checkout-config") {
+      const { data: cfg } = await supabase
+        .from("mercado_pago_config")
+        .select("is_active, test_mode, public_key, enable_credit_card, enable_debit_card, enable_ticket, enable_bank_transfer, enable_mercado_pago_wallet, max_installments")
+        .maybeSingle();
+
+      return jsonResponse({
+        success: true,
+        is_active: cfg?.is_active ?? false,
+        test_mode: cfg?.test_mode ?? true,
+        public_key: cfg?.public_key || null,
+        enable_credit_card: cfg?.enable_credit_card ?? true,
+        enable_debit_card: cfg?.enable_debit_card ?? true,
+        enable_ticket: cfg?.enable_ticket ?? true,
+        enable_bank_transfer: cfg?.enable_bank_transfer ?? true,
+        enable_mercado_pago_wallet: cfg?.enable_mercado_pago_wallet ?? true,
+        max_installments: cfg?.max_installments ?? 12,
+      });
+    }
+
     const { data: config, error: configErr } = await supabase
       .from("mercado_pago_config")
       .select("*")

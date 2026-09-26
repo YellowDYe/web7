@@ -11,7 +11,6 @@ import { BILLABLE_MEAL_TYPES } from '../../../types/orderMenu';
 import { calculatePriceBreakdown } from '../../../utils/priceCalculations';
 import { supabase } from '../../../config/supabase';
 import { friendlyError } from '../../utils/friendlyError';
-import { mercadoPagoConfigService } from '../../../services/mercadoPagoConfigService';
 
 
 declare global {
@@ -91,18 +90,34 @@ export const CustomerCheckout: React.FC = () => {
   // Snapshot cart data at the moment user clicks "Proceed to Payment"
   // so it stays available inside the brick callback even after React state changes
   useEffect(() => {
-    mercadoPagoConfigService.getConfig().then(cfg => {
-      if (cfg) {
-        setMpTestMode(cfg.test_mode);
-        setMpPaymentMethods({
-          creditCard: cfg.enable_credit_card ? 'all' : [],
-          debitCard: cfg.enable_debit_card ? 'all' : [],
-          ticket: cfg.enable_ticket ? 'all' : [],
-          bankTransfer: cfg.enable_bank_transfer ? 'all' : [],
-          mercadoPago: cfg.enable_mercado_pago_wallet ? 'all' : [],
+    const fetchCheckoutConfig = async () => {
+      try {
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY;
+        const res = await fetch(`${supabaseUrl}/functions/v1/mercado-pago-checkout`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ action: 'get-checkout-config' }),
         });
-      }
-    }).catch(() => {});
+        if (!res.ok) return;
+        const cfg = await res.json();
+        if (cfg?.success) {
+          setMpTestMode(cfg.test_mode ?? false);
+          setMpPaymentMethods({
+            creditCard: cfg.enable_credit_card ? 'all' : [],
+            debitCard: cfg.enable_debit_card ? 'all' : [],
+            ticket: cfg.enable_ticket ? 'all' : [],
+            bankTransfer: cfg.enable_bank_transfer ? 'all' : [],
+            mercadoPago: cfg.enable_mercado_pago_wallet ? 'all' : [],
+          });
+        }
+      } catch (_) {}
+    };
+    fetchCheckoutConfig();
   }, []);
 
   const cartSnapshotRef = useRef<typeof cart>(null);
