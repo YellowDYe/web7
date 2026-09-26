@@ -416,7 +416,7 @@ export const CustomerCheckout: React.FC = () => {
     }
   }, [customer]);
 
-  const initializeBrick = useCallback(async (amount: number, prefId: string, pubKey: string) => {
+  const initializeBrick = useCallback(async (amount: number, prefId: string, pubKey: string, paymentMethodsConfig: Record<string, string | string[]> | null) => {
     if (brickInitializedRef.current) return;
     brickInitializedRef.current = true;
 
@@ -452,7 +452,7 @@ export const CustomerCheckout: React.FC = () => {
             hideFormTitle: true,
             hidePaymentButton: false,
           },
-          paymentMethods: mpPaymentMethods || {
+          paymentMethods: paymentMethodsConfig || {
             creditCard: 'all',
             debitCard: 'all',
             ticket: 'all',
@@ -716,7 +716,7 @@ export const CustomerCheckout: React.FC = () => {
       setStep('payment');
 
       setTimeout(() => {
-        initializeBrick(totalAmount, prefData.preference_id, prefData.public_key);
+        initializeBrick(totalAmount, prefData.preference_id, prefData.public_key, mpPaymentMethods);
       }, 100);
 
     } catch (err: any) {
