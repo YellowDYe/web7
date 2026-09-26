@@ -46,8 +46,6 @@ function resolveBackUrl(requested: unknown, req: Request): string | null {
     return requestedOrigin && allowed.includes(requestedOrigin) ? requestedOrigin : allowed[0];
   }
 
-  // No allowlist configured: fall back to the browser-asserted Origin, which a
-  // real browser sets itself, rather than to the freely chosen request body.
   const headerOrigin = req.headers.get("origin");
   if (headerOrigin) {
     try {
@@ -72,8 +70,6 @@ Deno.serve(async (req: Request) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Every action below moves money or reads payment state, so the caller must
-    // present a real user session. The published anon key is not a session.
     const token = (req.headers.get("Authorization") ?? "")
       .replace(/^Bearer\s+/i, "")
       .trim();
@@ -90,8 +86,6 @@ Deno.serve(async (req: Request) => {
     const body = await req.json();
     const { action } = body;
 
-    // get-checkout-config returns only non-sensitive settings and does not
-    // need access_token to be configured, so handle it before the guard.
     if (action === "get-checkout-config") {
       const { data: cfg } = await supabase
         .from("mercado_pago_config")
@@ -134,7 +128,6 @@ Deno.serve(async (req: Request) => {
     }
 
     const accessToken = config.access_token;
-
     const publicKey = config.public_key || null;
 
     switch (action) {
@@ -174,13 +167,12 @@ async function handleCreatePreference(
   req: Request,
   config: any,
 ) {
-  const { items, payer, external_reference, installments, back_url } = body;
+  const { items, payer, installments, back_url, shipment_cost, description } = body;
 
   if (!items || !Array.isArray(items) || items.length === 0 || items.length > 50) {
     return jsonResponse({ error: "Se requieren items para la preferencia" }, 400);
   }
 
-  // Validate and bound every line before anything is quoted to the provider.
   const normalizedItems = [];
   let quotedTotal = 0;
   for (const item of items) {
@@ -195,6 +187,7 @@ async function handleCreatePreference(
     quotedTotal += unitPrice * quantity;
     normalizedItems.push({
       title: typeof item?.title === "string" && item.title.trim() ? item.title.trim().slice(0, 120) : "Pedido",
+      description: typeof item?.description === "string" && item.description.trim() ? item.description.trim().slice(0, 256) : undefined,
       quantity,
       unit_price: Math.round(unitPrice * 100) / 100,
       currency_id: "MXN",
@@ -212,10 +205,26 @@ async function handleCreatePreference(
     return jsonResponse({ error: "La tienda no esta configurada para recibir pagos" }, 500);
   }
 
-  const reference = typeof external_reference === "string" ? external_reference.slice(0, 120) : "";
-  const successUrl = `${baseUrl}/checkout/return?status=approved&order_id=${encodeURIComponent(reference)}`;
-  const failureUrl = `${baseUrl}/checkout/return?status=failure&order_id=${encodeURIComponent(reference)}`;
-  const pendingUrl = `${baseUrl}/checkout/return?status=pending&order_id=${encodeURIComponent(reference)}`;
+  // Record the amount server-side FIRST so we can use the quote_id as external_reference
+  const { data: quote, error: quoteError } = await supabase
+    .from("payment_quotes")
+    .insert({
+      auth_user_id: callerId,
+      amount: quotedTotal,
+    })
+    .select("id")
+    .maybeSingle();
+
+  if (quoteError || !quote) {
+    console.error("Could not record payment quote:", quoteError);
+    return jsonResponse({ error: "Error al preparar el pago" }, 500);
+  }
+
+  const externalReference = `quote_${quote.id}`;
+
+  const successUrl = `${baseUrl}/checkout/return?status=approved&ref=${encodeURIComponent(externalReference)}`;
+  const failureUrl = `${baseUrl}/checkout/return?status=failure&ref=${encodeURIComponent(externalReference)}`;
+  const pendingUrl = `${baseUrl}/checkout/return?status=pending&ref=${encodeURIComponent(externalReference)}`;
 
   const requestedInstallments = Number(installments);
   const safeInstallments =
@@ -223,7 +232,6 @@ async function handleCreatePreference(
       ? requestedInstallments
       : 6;
 
-  // Build excluded payment types from config
   const excludedTypes: { id: string }[] = [];
   if (config.enable_credit_card === false) excludedTypes.push({ id: "credit_card" });
   if (config.enable_debit_card === false) excludedTypes.push({ id: "debit_card" });
@@ -233,35 +241,66 @@ async function handleCreatePreference(
   const maxInstallments = Number(config.max_installments) || safeInstallments;
   const descriptor = (config.statement_descriptor || "Pedido Comida").slice(0, 22);
 
-  // Build notification URL for webhook
   const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
   const notificationUrl = supabaseUrl ? `${supabaseUrl}/functions/v1/mercado-pago-webhook` : undefined;
 
+  // Preference expiration: valid for 2 hours (matches quote TTL)
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+
+  // Cash payment expiration: 24 hours
+  const cashExpiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
+  // Build payer object with address if provided
+  let payerObj: any = undefined;
+  if (payer) {
+    payerObj = {
+      name: payer.name || "",
+      surname: payer.surname || "",
+      email: payer.email || "",
+      phone: payer.phone ? { number: payer.phone } : undefined,
+    };
+    if (payer.address) {
+      payerObj.address = {
+        street_name: payer.address.street_name || "",
+        street_number: payer.address.street_number ? Number(payer.address.street_number) : undefined,
+        zip_code: payer.address.zip_code || "",
+      };
+    }
+  }
+
+  // Build shipments if delivery cost is provided
+  const safeShipmentCost = Number(shipment_cost);
+  const shipments = Number.isFinite(safeShipmentCost) && safeShipmentCost > 0
+    ? { cost: Math.round(safeShipmentCost * 100) / 100, mode: "not_specified" as const }
+    : undefined;
+
   const preferenceBody: any = {
     items: normalizedItems,
-    payer: payer
-      ? {
-          name: payer.name || "",
-          surname: payer.surname || "",
-          email: payer.email || "",
-          phone: payer.phone ? { number: payer.phone } : undefined,
-        }
-      : undefined,
+    payer: payerObj,
     back_urls: {
       success: successUrl,
       failure: failureUrl,
       pending: pendingUrl,
     },
     auto_return: "approved",
+    binary_mode: true,
     notification_url: notificationUrl,
     payment_methods: {
       excluded_payment_types: excludedTypes,
       installments: maxInstallments,
       default_installments: 1,
     },
-    external_reference: reference || undefined,
+    external_reference: externalReference,
     statement_descriptor: descriptor,
+    expires: true,
+    expiration_date_from: now.toISOString(),
+    expiration_date_to: expiresAt.toISOString(),
+    date_of_expiration: cashExpiresAt.toISOString(),
+    ...(shipments ? { shipments } : {}),
   };
+
+  console.log("Creating MP preference with external_reference:", externalReference);
 
   const response = await fetch(`${MP_API_BASE}/checkout/preferences`, {
     method: "POST",
@@ -280,22 +319,11 @@ async function handleCreatePreference(
 
   const preference = await response.json();
 
-  // Record the amount server-side. The capture step charges this figure, not
-  // whatever the browser posts later.
-  const { data: quote, error: quoteError } = await supabase
+  // Update the quote with the preference_id now that we have it
+  await supabase
     .from("payment_quotes")
-    .insert({
-      auth_user_id: callerId,
-      amount: quotedTotal,
-      preference_id: preference.id,
-    })
-    .select("id")
-    .maybeSingle();
-
-  if (quoteError || !quote) {
-    console.error("Could not record payment quote:", quoteError);
-    return jsonResponse({ error: "Error al preparar el pago" }, 500);
-  }
+    .update({ preference_id: preference.id })
+    .eq("id", quote.id);
 
   return jsonResponse({
     success: true,
@@ -304,6 +332,7 @@ async function handleCreatePreference(
     init_point: preference.init_point,
     sandbox_init_point: preference.sandbox_init_point,
     public_key: publicKey,
+    external_reference: externalReference,
   });
 }
 
@@ -323,8 +352,6 @@ async function handleProcessPayment(
     return jsonResponse({ error: "Falta la referencia del pago" }, 400);
   }
 
-  // Atomically claim the quote: this both pins the amount and stops the same
-  // quote from being charged twice by two concurrent requests.
   const { data: claimed, error: claimError } = await supabase
     .from("payment_quotes")
     .update({ status: "claimed", claimed_at: new Date().toISOString() })
@@ -356,6 +383,8 @@ async function handleProcessPayment(
     payment_method_id: payment_data.payment_method_id,
     issuer_id: payment_data.issuer_id,
     statement_descriptor: (config.statement_descriptor || "Pedido Comida").slice(0, 22),
+    binary_mode: true,
+    external_reference: `quote_${quote_id}`,
     payer: {
       email: payment_data.payer?.email,
       identification: payment_data.payer?.identification,
@@ -375,7 +404,6 @@ async function handleProcessPayment(
   if (!response.ok) {
     const errText = await response.text();
     console.error("MP payment error:", errText);
-    // Release the quote so the shopper can retry with another card.
     await supabase
       .from("payment_quotes")
       .update({ status: "pending", claimed_at: null })
@@ -438,7 +466,6 @@ async function handleGetPaymentStatus(
       return jsonResponse({ error: "Pedido no encontrado" }, 404);
     }
 
-    // The caller must own the order, or be staff.
     if (!(await isStaff(supabase, callerId))) {
       const { data: ownsIt } = await supabase
         .from("customers")
@@ -451,7 +478,6 @@ async function handleGetPaymentStatus(
       }
     }
 
-    // The payment must actually belong to this order, and must cover it.
     const paidAmount = Number(payment.transaction_amount);
     const orderTotal = Number(order.order_total_price);
     const referenceMatches =

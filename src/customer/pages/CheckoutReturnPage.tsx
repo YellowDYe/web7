@@ -17,6 +17,7 @@ export const CheckoutReturn: React.FC = () => {
   const [emailError, setEmailError] = useState(false);
   const [orderNumber, setOrderNumber] = useState<string | null>(null);
   const [totals, setTotals] = useState<OrderConfirmationData['totals'] | null>(null);
+  const [failureDetail, setFailureDetail] = useState('');
   const processedRef = useRef(false);
 
   const { clearCart, clearProteinCart } = useCart();
@@ -53,6 +54,9 @@ export const CheckoutReturn: React.FC = () => {
 
       if (urlStatus === 'failure' || urlStatus === 'rejected') {
         setConfirmationData(existingOrderData);
+        // Extract status_detail from URL if present for better messaging
+        const detail = searchParams.get('status_detail') || '';
+        setFailureDetail(detail);
         setStatus('failure');
         return;
       }
@@ -292,6 +296,22 @@ export const CheckoutReturn: React.FC = () => {
     );
   }
 
+  const failureMessage = (() => {
+    const d = failureDetail;
+    if (d.includes('insufficient_amount')) return 'Tu tarjeta no tiene fondos suficientes. Intenta con otra tarjeta o metodo de pago.';
+    if (d.includes('bad_filled_card_number')) return 'El numero de tarjeta es incorrecto. Verifica los datos e intenta de nuevo.';
+    if (d.includes('bad_filled_date')) return 'La fecha de vencimiento de la tarjeta es incorrecta.';
+    if (d.includes('bad_filled_security_code')) return 'El codigo de seguridad (CVV) es incorrecto.';
+    if (d.includes('bad_filled_other')) return 'Algunos datos de la tarjeta son incorrectos. Revisalos e intenta de nuevo.';
+    if (d.includes('call_for_authorize')) return 'Tu banco necesita que autorices este pago. Llama al numero que aparece detras de tu tarjeta.';
+    if (d.includes('card_disabled')) return 'Tu tarjeta esta deshabilitada. Contacta a tu banco o usa otro metodo de pago.';
+    if (d.includes('duplicated_payment')) return 'Ya se proceso un pago por este monto. Revisa tus movimientos antes de intentar de nuevo.';
+    if (d.includes('high_risk')) return 'El pago fue rechazado por seguridad. Intenta con otro metodo de pago.';
+    if (d.includes('max_attempts')) return 'Alcanzaste el limite de intentos con esta tarjeta. Usa otra tarjeta o espera 24 horas.';
+    if (d.includes('expired')) return 'El tiempo para completar el pago ha expirado. Vuelve a generar tu pedido.';
+    return 'Tu pago no pudo ser procesado. Puedes intentar de nuevo o elegir otro metodo de pago.';
+  })();
+
   if (status === 'failure') {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
@@ -301,7 +321,7 @@ export const CheckoutReturn: React.FC = () => {
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Pago no completado</h2>
           <p className="text-gray-500 mb-8">
-            Tu pago no pudo ser procesado. Puedes intentar de nuevo o elegir otro metodo de pago.
+            {failureMessage}
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link to="/order" className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl font-semibold transition-colors text-center">
@@ -317,15 +337,22 @@ export const CheckoutReturn: React.FC = () => {
   }
 
   if (status === 'pending') {
+    const paymentMethod = searchParams.get('payment_type') || '';
+    const isCashPayment = paymentMethod === 'ticket' || paymentMethod === 'atm';
+
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
         <div className="max-w-md mx-auto text-center">
           <div className="w-20 h-20 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-6">
             <Clock className="w-12 h-12 text-yellow-600" />
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Pago en proceso</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            {isCashPayment ? 'Pago pendiente en efectivo' : 'Pago en proceso'}
+          </h2>
           <p className="text-gray-500 mb-8">
-            Tu pago esta siendo procesado. Te notificaremos cuando se confirme. Si pagaste con OXXO, recuerda completar el pago en la tienda.
+            {isCashPayment
+              ? 'Tu pedido esta reservado. Tienes 24 horas para completar el pago en tu punto de pago mas cercano (OXXO, 7-Eleven, etc.). Recibiremos la confirmacion automaticamente.'
+              : 'Tu pago esta siendo procesado por el banco. Te notificaremos cuando se confirme. Esto puede tomar unos minutos.'}
           </p>
           {orderNumber && (
             <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6 text-left">

@@ -541,9 +541,10 @@ export const CustomerCheckout: React.FC = () => {
       setSubmitting(true);
       setSubmitError(null);
 
-      // Calculate the total amount WITHOUT creating any order in DB
+      // Build itemized list and calculate total
       let totalAmount = 0;
-      let itemLabel = 'Pedido';
+      const mpItems: { title: string; description: string; quantity: number; unit_price: number }[] = [];
+      let deliveryPrice = 0;
 
       if (cart && cart.orderItems.length > 0) {
         const itemsTotal = cart.orderItems.reduce((total, item) => {
@@ -552,19 +553,80 @@ export const CustomerCheckout: React.FC = () => {
           return total;
         }, 0);
 
+        // Group billable items by meal plan for cleaner MP line items
+        const planGroups: Record<string, { name: string; count: number; total: number }> = {};
+        for (const item of cart.orderItems) {
+          if (!BILLABLE_MEAL_TYPES.includes(item.meal_type as any)) continue;
+          const key = item.meal_plan_name || 'Plan';
+          if (!planGroups[key]) planGroups[key] = { name: key, count: 0, total: 0 };
+          planGroups[key].count += item.quantity;
+          planGroups[key].total += item.meal_plan_price * item.quantity;
+        }
+        for (const g of Object.values(planGroups)) {
+          const unitPrice = Math.round((g.total / g.count) * 100) / 100;
+          mpItems.push({
+            title: g.name,
+            description: `${g.count} platillo(s) - ${g.name}`,
+            quantity: g.count,
+            unit_price: unitPrice,
+          });
+        }
+
+        // Add protein items as separate lines
+        if (hasProteinItems) {
+          for (const pi of proteinCart) {
+            mpItems.push({
+              title: pi.proteinPlan.protein_plans_name,
+              description: `Proteina - ${pi.proteinPlan.protein_plans_name}`,
+              quantity: pi.quantity,
+              unit_price: Math.round(pi.proteinPlan.protein_plans_price * 100) / 100,
+            });
+          }
+        }
+
         const totalPlanDiscount = planDiscounts.reduce((sum, d) => sum + d.amount, 0);
-        const deliveryPrice = cart.selectedDeliveryOption?.delivery_options_price || 0;
+        deliveryPrice = cart.selectedDeliveryOption?.delivery_options_price || 0;
         const couponDiscount = Math.min(cart.couponDiscountAmount || 0, itemsTotal - totalPlanDiscount + deliveryPrice);
 
         let subtotalBase = itemsTotal + proteinSubtotal;
         const subtotalAfterDiscount = subtotalBase - totalPlanDiscount + deliveryPrice - couponDiscount;
         const taxAmount = subtotalAfterDiscount * 0.16;
         totalAmount = Math.round((subtotalAfterDiscount + taxAmount) * 100) / 100;
-        itemLabel = `Pedido de comida`;
+
+        // If there are discounts, adjust items so MP total matches our total
+        // We send one consolidated item with the final pre-tax amount and a tax line
+        if (totalPlanDiscount > 0 || couponDiscount > 0) {
+          const preDiscountTotal = mpItems.reduce((s, i) => s + i.unit_price * i.quantity, 0);
+          if (preDiscountTotal !== subtotalAfterDiscount) {
+            mpItems.length = 0;
+            mpItems.push({
+              title: 'Pedido de comida',
+              description: `Pedido con ${Object.keys(planGroups).length} plan(es)`,
+              quantity: 1,
+              unit_price: totalAmount,
+            });
+            deliveryPrice = 0; // already included
+          }
+        }
       } else if (hasProteinItems) {
+        for (const pi of proteinCart) {
+          mpItems.push({
+            title: pi.proteinPlan.protein_plans_name,
+            description: `Proteina - ${pi.proteinPlan.protein_plans_name}`,
+            quantity: pi.quantity,
+            unit_price: Math.round(pi.proteinPlan.protein_plans_price * 100) / 100,
+          });
+        }
         const taxAmount = proteinSubtotal * 0.16;
         totalAmount = Math.round((proteinSubtotal + taxAmount) * 100) / 100;
-        itemLabel = 'Pedido de proteinas';
+        // Consolidate with tax for MP
+        mpItems.length = 0;
+        mpItems.push({
+          title: 'Pedido de proteinas',
+          description: `${proteinCart.length} producto(s) de proteina`,
+          quantity: 1,
+          unit_price: totalAmount,
+        });
       }
 
       // Snapshot cart data so the brick callback can use it later
@@ -595,11 +657,19 @@ export const CustomerCheckout: React.FC = () => {
         },
         body: JSON.stringify({
           action: 'create-preference',
-          items: [{ title: itemLabel, quantity: 1, unit_price: totalAmount }],
+          items: mpItems,
           payer: {
-            name: customer.customer_name, surname: customer.customer_lastname,
-            email: customer.customer_email, phone: customer.customer_phone,
+            name: customer.customer_name,
+            surname: customer.customer_lastname,
+            email: customer.customer_email,
+            phone: customer.customer_phone,
+            address: {
+              street_name: [customer.customer_street, customer.customer_colonia].filter(Boolean).join(', '),
+              street_number: customer.customer_street_number || undefined,
+              zip_code: customer.customer_postal_code || undefined,
+            },
           },
+          shipment_cost: deliveryPrice > 0 ? deliveryPrice : undefined,
           installments: 6,
           back_url: currentOrigin,
         }),
@@ -899,12 +969,21 @@ export const CustomerCheckout: React.FC = () => {
                     }}
                     className="w-full flex items-center justify-center gap-3 bg-[#009ee3] hover:bg-[#007eb5] text-white py-4 rounded-xl font-semibold text-base transition-colors shadow-md hover:shadow-lg"
                   >
-                    <Wallet className="w-5 h-5" />
-                    Pagar con tu cuenta de Mercado Pago
+                    <img
+                      src="https://www.mercadopago.com/org-img/MP3/home/logomp3.gif"
+                      alt="Mercado Pago"
+                      className="h-5 w-auto"
+                    />
+                    Pagar con Mercado Pago
                   </button>
-                  <p className="text-xs text-center text-gray-500 mt-2">
-                    Usa tu saldo de Mercado Pago, tarjetas guardadas o cualquier otro metodo disponible en tu cuenta
-                  </p>
+                  <div className="flex items-center justify-center gap-1.5 mt-2">
+                    <svg className="w-3.5 h-3.5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+                    </svg>
+                    <p className="text-xs text-gray-500">
+                      Pago seguro con saldo, tarjetas guardadas o cualquier metodo de tu cuenta
+                    </p>
+                  </div>
 
                   <div className="relative my-6">
                     <div className="absolute inset-0 flex items-center">
