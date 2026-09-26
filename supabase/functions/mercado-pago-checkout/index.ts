@@ -116,13 +116,13 @@ Deno.serve(async (req: Request) => {
 
     switch (action) {
       case "create-preference":
-        return await handleCreatePreference(supabase, accessToken, body, publicKey, callerId, req);
+        return await handleCreatePreference(supabase, accessToken, body, publicKey, callerId, req, config);
 
       case "get-payment-status":
         return await handleGetPaymentStatus(supabase, accessToken, body, callerId);
 
       case "process-payment":
-        return await handleProcessPayment(supabase, accessToken, body, callerId);
+        return await handleProcessPayment(supabase, accessToken, body, callerId, config);
 
       default:
         return jsonResponse({ error: "Accion no reconocida" }, 400);
@@ -148,7 +148,8 @@ async function handleCreatePreference(
   body: any,
   publicKey: string | null,
   callerId: string,
-  req: Request
+  req: Request,
+  config: any,
 ) {
   const { items, payer, external_reference, installments, back_url } = body;
 
@@ -199,6 +200,20 @@ async function handleCreatePreference(
       ? requestedInstallments
       : 6;
 
+  // Build excluded payment types from config
+  const excludedTypes: { id: string }[] = [];
+  if (config.enable_credit_card === false) excludedTypes.push({ id: "credit_card" });
+  if (config.enable_debit_card === false) excludedTypes.push({ id: "debit_card" });
+  if (config.enable_ticket === false) excludedTypes.push({ id: "ticket" });
+  if (config.enable_bank_transfer === false) excludedTypes.push({ id: "bank_transfer" });
+
+  const maxInstallments = Number(config.max_installments) || safeInstallments;
+  const descriptor = (config.statement_descriptor || "Pedido Comida").slice(0, 22);
+
+  // Build notification URL for webhook
+  const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+  const notificationUrl = supabaseUrl ? `${supabaseUrl}/functions/v1/mercado-pago-webhook` : undefined;
+
   const preferenceBody: any = {
     items: normalizedItems,
     payer: payer
@@ -215,13 +230,14 @@ async function handleCreatePreference(
       pending: pendingUrl,
     },
     auto_return: "approved",
+    notification_url: notificationUrl,
     payment_methods: {
-      excluded_payment_types: [],
-      installments: safeInstallments,
+      excluded_payment_types: excludedTypes,
+      installments: maxInstallments,
       default_installments: 1,
     },
     external_reference: reference || undefined,
-    statement_descriptor: "Pedido Comida",
+    statement_descriptor: descriptor,
   };
 
   const response = await fetch(`${MP_API_BASE}/checkout/preferences`, {
@@ -272,7 +288,8 @@ async function handleProcessPayment(
   supabase: any,
   accessToken: string,
   body: any,
-  callerId: string
+  callerId: string,
+  config: any,
 ) {
   const { payment_data, quote_id, order_id } = body;
 
@@ -309,13 +326,13 @@ async function handleProcessPayment(
   }
 
   const paymentBody: any = {
-    // Server-side amount. payment_data.transaction_amount is deliberately ignored.
     transaction_amount: amount,
     token: payment_data.token,
-    description: payment_data.description || "Pedido",
+    description: payment_data.description || (config.statement_descriptor || "Pedido"),
     installments: Number(payment_data.installments) > 0 ? Number(payment_data.installments) : 1,
     payment_method_id: payment_data.payment_method_id,
     issuer_id: payment_data.issuer_id,
+    statement_descriptor: (config.statement_descriptor || "Pedido Comida").slice(0, 22),
     payer: {
       email: payment_data.payer?.email,
       identification: payment_data.payer?.identification,

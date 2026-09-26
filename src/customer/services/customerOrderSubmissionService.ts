@@ -253,7 +253,8 @@ class CustomerOrderSubmissionService {
         .update({
           order_status: 'completed',
           stripe_payment_status: 'succeeded',
-          stripe_paid_at: new Date().toISOString()
+          stripe_paid_at: new Date().toISOString(),
+          payment_provider: 'mercadopago',
         })
         .eq('id', orderId);
     } catch (err) {

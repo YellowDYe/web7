@@ -11,6 +11,7 @@ import { BILLABLE_MEAL_TYPES } from '../../../types/orderMenu';
 import { calculatePriceBreakdown } from '../../../utils/priceCalculations';
 import { supabase } from '../../../config/supabase';
 import { friendlyError } from '../../utils/friendlyError';
+import { mercadoPagoConfigService } from '../../../services/mercadoPagoConfigService';
 
 
 declare global {
@@ -72,6 +73,8 @@ export const CustomerCheckout: React.FC = () => {
   const [createdOrderNumber, setCreatedOrderNumber] = useState<string | null>(null);
   const [paymentTotalAmount, setPaymentTotalAmount] = useState(0);
   const [confirmationDetails, setConfirmationDetails] = useState<ConfirmationDetails | null>(null);
+  const [mpTestMode, setMpTestMode] = useState(false);
+  const [mpPaymentMethods, setMpPaymentMethods] = useState<any>(null);
 
   const paymentQuoteIdRef = useRef<string | null>(null);
   const brickControllerRef = useRef<any>(null);
@@ -87,6 +90,21 @@ export const CustomerCheckout: React.FC = () => {
 
   // Snapshot cart data at the moment user clicks "Proceed to Payment"
   // so it stays available inside the brick callback even after React state changes
+  useEffect(() => {
+    mercadoPagoConfigService.getConfig().then(cfg => {
+      if (cfg) {
+        setMpTestMode(cfg.test_mode);
+        setMpPaymentMethods({
+          creditCard: cfg.enable_credit_card ? 'all' : [],
+          debitCard: cfg.enable_debit_card ? 'all' : [],
+          ticket: cfg.enable_ticket ? 'all' : [],
+          bankTransfer: cfg.enable_bank_transfer ? 'all' : [],
+          mercadoPago: cfg.enable_mercado_pago_wallet ? 'all' : [],
+        });
+      }
+    }).catch(() => {});
+  }, []);
+
   const cartSnapshotRef = useRef<typeof cart>(null);
   const proteinCartSnapshotRef = useRef<typeof proteinCart>([]);
   const proteinSubtotalSnapshotRef = useRef(0);
@@ -283,6 +301,8 @@ export const CustomerCheckout: React.FC = () => {
             order_invoice_number: '',
             stripe_payment_status: mpStatus === 'approved' ? 'succeeded' : 'pending',
             stripe_paid_at: mpStatus === 'approved' ? new Date().toISOString() : null,
+            payment_provider: 'mercadopago',
+            mp_payment_id: mpPaymentId || null,
           })
           .select('id, order_id')
           .single();
@@ -404,7 +424,7 @@ export const CustomerCheckout: React.FC = () => {
             hideFormTitle: true,
             hidePaymentButton: false,
           },
-          paymentMethods: {
+          paymentMethods: mpPaymentMethods || {
             creditCard: 'all',
             debitCard: 'all',
             ticket: 'all',
@@ -566,6 +586,19 @@ export const CustomerCheckout: React.FC = () => {
       }
 
       paymentQuoteIdRef.current = prefData.quote_id || null;
+
+      // Save cart snapshot to localStorage for the redirect return page
+      try {
+        const pendingOrderData = {
+          customer,
+          cart: cartSnapshotRef.current,
+          proteinCart: proteinCartSnapshotRef.current,
+          proteinSubtotal: proteinSubtotalSnapshotRef.current,
+          planDiscounts: planDiscountsSnapshotRef.current,
+          totalAmount,
+        };
+        localStorage.setItem('mp_pending_order_data', JSON.stringify(pendingOrderData));
+      } catch (_) {}
 
       setStep('payment');
 
@@ -834,7 +867,8 @@ export const CustomerCheckout: React.FC = () => {
                 style={{ minHeight: brickLoading ? 0 : 200 }}
               />
 
-              {/* TEST ONLY - Simulate Payment Block */}
+              {/* TEST ONLY - Simulate Payment Block (visible only when test mode is on) */}
+              {mpTestMode && (
               <div className="mt-6 border-2 border-dashed border-yellow-400 bg-yellow-50 rounded-xl p-5">
                 <div className="flex items-center gap-2 mb-3">
                   <Zap className="w-5 h-5 text-yellow-600" />
@@ -870,6 +904,7 @@ export const CustomerCheckout: React.FC = () => {
                   </button>
                 </div>
               </div>
+              )}
             </div>
           </div>
         </div>

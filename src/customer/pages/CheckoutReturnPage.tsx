@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { CircleCheck as CheckCircle, Circle as XCircle, Clock, Loader as Loader2, Package, Chrome as Home, Calendar, MapPin, User, Phone } from 'lucide-react';
+import { CircleCheck as CheckCircle, Circle as XCircle, Clock, Loader as Loader2, Package, Chrome as Home, Calendar, MapPin, User, Phone, Mail, CircleAlert as AlertCircle } from 'lucide-react';
 import { customerOrderSubmissionService, OrderConfirmationData } from '../services/customerOrderSubmissionService';
 import { supabase } from '../../config/supabase';
 
@@ -10,6 +10,8 @@ export const CheckoutReturn: React.FC = () => {
   const [searchParams] = useSearchParams();
   const [status, setStatus] = useState<PaymentStatus>('loading');
   const [confirmationData, setConfirmationData] = useState<OrderConfirmationData | null>(null);
+  const [emailSent, setEmailSent] = useState(false);
+  const [emailError, setEmailError] = useState(false);
 
   const formatDate = (dateString: string) => {
     const [year, month, day] = dateString.split('-').map(Number);
@@ -25,6 +27,7 @@ export const CheckoutReturn: React.FC = () => {
       const paymentId = searchParams.get('payment_id') || searchParams.get('collection_id');
       const orderId = searchParams.get('order_id') || searchParams.get('external_reference');
 
+      // Try to recover stored order confirmation data
       const stored = localStorage.getItem('mp_pending_order');
       let orderData: OrderConfirmationData | null = null;
       if (stored) {
@@ -32,29 +35,54 @@ export const CheckoutReturn: React.FC = () => {
       }
 
       if (urlStatus === 'approved' || urlStatus === 'success') {
-        if (orderData) {
+        // Verify payment server-side if we have a payment ID and order ID
+        if (paymentId && orderId) {
           try {
-            await customerOrderSubmissionService.markOrderAsPaid(orderData);
+            const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+            const { data: { session } } = await supabase.auth.getSession();
+            const token = session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+            const response = await fetch(`${supabaseUrl}/functions/v1/mercado-pago-checkout`, {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                action: 'get-payment-status',
+                payment_id: paymentId,
+                order_id: orderId,
+              }),
+            });
+
+            const result = await response.json();
+            if (response.ok && result.success && result.status === 'approved') {
+              // Server confirmed and updated the order
+            } else if (result.status === 'pending' || result.status === 'in_process') {
+              setConfirmationData(orderData);
+              setStatus('pending');
+              return;
+            }
           } catch (err) {
-            console.warn('Could not mark order as paid via service:', err);
+            console.warn('Could not verify payment server-side:', err);
           }
         }
 
-        if (orderId) {
-          await supabase
-            .from('orders')
-            .update({
-              stripe_payment_status: 'succeeded',
-              stripe_paid_at: new Date().toISOString(),
-              order_status: 'completed',
-              mp_payment_id: paymentId || null,
-            })
-            .eq('id', orderId);
+        // Send confirmation email via markOrderAsPaid if we have stored order data
+        if (orderData) {
+          try {
+            await customerOrderSubmissionService.markOrderAsPaid(orderData);
+            setEmailSent(true);
+          } catch (err) {
+            console.warn('Could not send confirmation email:', err);
+            setEmailError(true);
+          }
         }
 
         setConfirmationData(orderData);
         setStatus('approved');
         localStorage.removeItem('mp_pending_order');
+        localStorage.removeItem('mp_pending_order_data');
       } else if (urlStatus === 'pending' || urlStatus === 'in_process') {
         setConfirmationData(orderData);
         setStatus('pending');
@@ -157,12 +185,24 @@ export const CheckoutReturn: React.FC = () => {
               <CheckCircle className="w-14 h-14 text-green-600" />
             </div>
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">!Pedido Confirmado!</h1>
-          {c && (
-            <p className="text-gray-500 text-base">
-              Te hemos enviado una confirmacion a{' '}
-              <span className="font-medium text-gray-700">{c.customer_email}</span>
-            </p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Pedido Confirmado</h1>
+          {emailSent && c && (
+            <div className="flex items-center justify-center gap-2 mt-3">
+              <Mail className="w-4 h-4 text-blue-600" />
+              <p className="text-gray-500 text-base">
+                Te hemos enviado una confirmacion a{' '}
+                <span className="font-medium text-gray-700">{c.customer_email}</span>
+              </p>
+            </div>
+          )}
+          {emailError && (
+            <div className="flex items-center justify-center gap-2 mt-3 text-yellow-700">
+              <AlertCircle className="w-4 h-4" />
+              <p className="text-sm">No pudimos enviar el correo de confirmacion, pero tu pedido esta confirmado.</p>
+            </div>
+          )}
+          {!emailSent && !emailError && c && (
+            <p className="text-gray-500 text-sm mt-2">Tu pedido ha sido procesado exitosamente.</p>
           )}
         </div>
 
