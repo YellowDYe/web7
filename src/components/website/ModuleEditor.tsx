@@ -61,7 +61,7 @@ export const ModuleEditor: React.FC = () => {
 
   const systemModuleTypes = systemModuleTypesList.map(t => t.value);
 
-  const configurableSystemModules = ['WeeklyMenu'];
+  const configurableSystemModules = ['WeeklyMenu', 'BlogGrid', 'Objectives', 'FAQ', 'TitleBlock'];
 
   useEffect(() => {
     loadPages();
