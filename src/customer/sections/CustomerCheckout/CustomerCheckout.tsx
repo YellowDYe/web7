@@ -110,13 +110,12 @@ export const CustomerCheckout: React.FC = () => {
         const cfg = await res.json();
         if (cfg?.success) {
           setMpTestMode(cfg.test_mode ?? false);
-          setMpPaymentMethods({
-            creditCard: cfg.enable_credit_card ? 'all' : [],
-            debitCard: cfg.enable_debit_card ? 'all' : [],
-            ticket: cfg.enable_ticket ? 'all' : [],
-            bankTransfer: cfg.enable_bank_transfer ? 'all' : [],
-            mercadoPago: cfg.enable_mercado_pago_wallet ? 'all' : [],
-          });
+          const methods: Record<string, string | string[]> = {};
+          if (cfg.enable_credit_card) methods.creditCard = 'all';
+          if (cfg.enable_debit_card) methods.debitCard = 'all';
+          if (cfg.enable_ticket) methods.ticket = 'all';
+          if (cfg.enable_mercado_pago_wallet) methods.mercadoPago = 'all';
+          setMpPaymentMethods(methods);
           setMpCheckoutProEnabled(cfg.enable_checkout_pro ?? false);
         }
       } catch (_) {}
@@ -457,7 +456,6 @@ export const CustomerCheckout: React.FC = () => {
             creditCard: 'all',
             debitCard: 'all',
             ticket: 'all',
-            mercadoPago: 'all',
           },
         },
         callbacks: {

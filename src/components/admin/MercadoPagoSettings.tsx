@@ -155,9 +155,8 @@ const MercadoPagoSettings: React.FC = () => {
     { key: 'enable_credit_card' as const, label: 'Tarjeta de Credito', icon: CreditCard, desc: 'Visa, Mastercard, AMEX' },
     { key: 'enable_debit_card' as const, label: 'Tarjeta de Debito', icon: CreditCard, desc: 'Visa Debito, Mastercard Debito' },
     { key: 'enable_ticket' as const, label: 'Efectivo (OXXO)', icon: Store, desc: 'Pago en tiendas de conveniencia' },
-    { key: 'enable_bank_transfer' as const, label: 'Transferencia Bancaria', icon: Banknote, desc: 'SPEI / Transferencia' },
-    { key: 'enable_mercado_pago_wallet' as const, label: 'Mercado Pago Wallet', icon: Wallet, desc: 'Saldo de Mercado Pago (dentro del formulario)' },
-    { key: 'enable_checkout_pro' as const, label: 'Checkout Pro (Redireccionar a MP)', icon: Globe, desc: 'Redirige al cliente a Mercado Pago para pagar con saldo, tarjetas guardadas y mas' },
+    { key: 'enable_mercado_pago_wallet' as const, label: 'Mercado Pago Wallet', icon: Wallet, desc: 'Saldo de Mercado Pago dentro del formulario de pago' },
+    { key: 'enable_checkout_pro' as const, label: 'Checkout Pro (Redireccionar a MP)', icon: Globe, desc: 'Redirige al cliente a Mercado Pago para pagar con saldo, tarjetas guardadas, SPEI y mas' },
   ];
 
   if (configLoading) {
