@@ -1004,7 +1004,7 @@ export const CustomerCheckout: React.FC = () => {
                     onClick={() => {
                       window.location.href = mpInitPoint!;
                     }}
-                    className="w-full flex items-center justify-center gap-3 bg-[#009ee3] hover:bg-[#007eb5] text-white py-4 rounded-xl font-semibold text-base transition-colors shadow-md hover:shadow-lg"
+                    className="w-full flex items-center justify-center gap-3 bg-[#FFE600] hover:bg-[#E6CF00] text-gray-900 py-4 rounded-xl font-semibold text-base transition-colors shadow-md hover:shadow-lg"
                   >
                     <img
                       src="https://www.mercadopago.com/org-img/MP3/home/logomp3.gif"
