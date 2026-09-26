@@ -248,16 +248,16 @@ export const PageManager: React.FC = () => {
 
   const handleAddCustomModule = async (customModule: Module) => {
     if (!selectedPage) return;
+    if (selectedPage.module_order?.includes(customModule.id)) {
+      setActionStatus({ type: 'error', message: 'Este módulo ya está en la página.' });
+      setTimeout(() => setActionStatus({ type: null, message: '' }), 3000);
+      return;
+    }
     setAddingModule(true);
     try {
-      const newModule = await websiteService.createModule({
-        type: customModule.type,
-        content: customModule.content,
-        name: customModule.name,
-      });
-      const newOrder = [...(selectedPage.module_order || []), newModule.id];
+      const newOrder = [...(selectedPage.module_order || []), customModule.id];
       await websiteService.updatePage(selectedPage.id, { module_order: newOrder });
-      setModules([...modules, newModule]);
+      setModules([...modules, customModule]);
       setPages(pages.map(p => p.id === selectedPage.id ? { ...p, module_order: newOrder } : p));
       setSelectedPage({ ...selectedPage, module_order: newOrder });
       setShowAddModule(false);
@@ -277,9 +277,9 @@ export const PageManager: React.FC = () => {
     setAddingModule(true);
     try {
       const newModule = await websiteService.createModule({
+        page_id: selectedPage.id,
         type,
         content: {},
-        name: label,
       });
       const newOrder = [...(selectedPage.module_order || []), newModule.id];
       await websiteService.updatePage(selectedPage.id, { module_order: newOrder });
