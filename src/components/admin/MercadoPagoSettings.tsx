@@ -18,6 +18,7 @@ const MercadoPagoSettings: React.FC = () => {
     enable_ticket: true,
     enable_bank_transfer: true,
     enable_mercado_pago_wallet: true,
+    enable_checkout_pro: true,
     max_installments: 12,
     statement_descriptor: '',
     webhook_secret: '',
@@ -64,6 +65,7 @@ const MercadoPagoSettings: React.FC = () => {
           enable_ticket: fullConfig.enable_ticket,
           enable_bank_transfer: fullConfig.enable_bank_transfer,
           enable_mercado_pago_wallet: fullConfig.enable_mercado_pago_wallet,
+          enable_checkout_pro: fullConfig.enable_checkout_pro,
           max_installments: fullConfig.max_installments,
           statement_descriptor: fullConfig.statement_descriptor || '',
           webhook_secret: fullConfig.webhook_secret || '',
@@ -154,7 +156,8 @@ const MercadoPagoSettings: React.FC = () => {
     { key: 'enable_debit_card' as const, label: 'Tarjeta de Debito', icon: CreditCard, desc: 'Visa Debito, Mastercard Debito' },
     { key: 'enable_ticket' as const, label: 'Efectivo (OXXO)', icon: Store, desc: 'Pago en tiendas de conveniencia' },
     { key: 'enable_bank_transfer' as const, label: 'Transferencia Bancaria', icon: Banknote, desc: 'SPEI / Transferencia' },
-    { key: 'enable_mercado_pago_wallet' as const, label: 'Mercado Pago Wallet', icon: Wallet, desc: 'Saldo de Mercado Pago' },
+    { key: 'enable_mercado_pago_wallet' as const, label: 'Mercado Pago Wallet', icon: Wallet, desc: 'Saldo de Mercado Pago (dentro del formulario)' },
+    { key: 'enable_checkout_pro' as const, label: 'Checkout Pro (Redireccionar a MP)', icon: Globe, desc: 'Redirige al cliente a Mercado Pago para pagar con saldo, tarjetas guardadas y mas' },
   ];
 
   if (configLoading) {

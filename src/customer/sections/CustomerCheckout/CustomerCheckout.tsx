@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { CircleCheck as CheckCircle, Circle as XCircle, Loader as Loader2, Trash2, ArrowLeft, CreditCard, Calendar, MapPin, User, Phone, Zap, ShieldCheck, Mail, CircleAlert as AlertCircle } from 'lucide-react';
+import { CircleCheck as CheckCircle, Circle as XCircle, Loader as Loader2, Trash2, ArrowLeft, CreditCard, Calendar, MapPin, User, Phone, Zap, ShieldCheck, Mail, CircleAlert as AlertCircle, Wallet } from 'lucide-react';
 import { useCart } from '../../contexts/CartContext';
 import { useCustomerAuth } from '../../contexts/CustomerAuthContext';
 import {
@@ -74,6 +74,8 @@ export const CustomerCheckout: React.FC = () => {
   const [confirmationDetails, setConfirmationDetails] = useState<ConfirmationDetails | null>(null);
   const [mpTestMode, setMpTestMode] = useState(false);
   const [mpPaymentMethods, setMpPaymentMethods] = useState<any>(null);
+  const [mpCheckoutProEnabled, setMpCheckoutProEnabled] = useState(false);
+  const [mpInitPoint, setMpInitPoint] = useState<string | null>(null);
 
   const paymentQuoteIdRef = useRef<string | null>(null);
   const brickControllerRef = useRef<any>(null);
@@ -114,6 +116,7 @@ export const CustomerCheckout: React.FC = () => {
             bankTransfer: cfg.enable_bank_transfer ? 'all' : [],
             mercadoPago: cfg.enable_mercado_pago_wallet ? 'all' : [],
           });
+          setMpCheckoutProEnabled(cfg.enable_checkout_pro ?? false);
         }
       } catch (_) {}
     };
@@ -602,6 +605,10 @@ export const CustomerCheckout: React.FC = () => {
 
       paymentQuoteIdRef.current = prefData.quote_id || null;
 
+      // Store Checkout Pro redirect URL
+      const initPointUrl = mpTestMode ? prefData.sandbox_init_point : prefData.init_point;
+      setMpInitPoint(initPointUrl || null);
+
       // Save cart snapshot to localStorage for the redirect return page
       try {
         const pendingOrderData = {
@@ -613,6 +620,7 @@ export const CustomerCheckout: React.FC = () => {
           totalAmount,
         };
         localStorage.setItem('mp_pending_order_data', JSON.stringify(pendingOrderData));
+        localStorage.setItem('mp_pending_quote_id', prefData.quote_id || '');
       } catch (_) {}
 
       setStep('payment');
@@ -870,6 +878,33 @@ export const CustomerCheckout: React.FC = () => {
             )}
 
             <div className="p-6">
+              {/* Checkout Pro - Redirect to Mercado Pago */}
+              {mpCheckoutProEnabled && mpInitPoint && (
+                <div className="mb-6">
+                  <button
+                    onClick={() => {
+                      window.location.href = mpInitPoint!;
+                    }}
+                    className="w-full flex items-center justify-center gap-3 bg-[#009ee3] hover:bg-[#007eb5] text-white py-4 rounded-xl font-semibold text-base transition-colors shadow-md hover:shadow-lg"
+                  >
+                    <Wallet className="w-5 h-5" />
+                    Pagar con tu cuenta de Mercado Pago
+                  </button>
+                  <p className="text-xs text-center text-gray-500 mt-2">
+                    Usa tu saldo de Mercado Pago, tarjetas guardadas o cualquier otro metodo disponible en tu cuenta
+                  </p>
+
+                  <div className="relative my-6">
+                    <div className="absolute inset-0 flex items-center">
+                      <div className="w-full border-t border-gray-200" />
+                    </div>
+                    <div className="relative flex justify-center text-sm">
+                      <span className="bg-white px-4 text-gray-400 font-medium">o paga directamente aqui</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {brickLoading && (
                 <div className="flex flex-col items-center justify-center py-12">
                   <Loader2 className="w-8 h-8 animate-spin text-blue-500 mb-4" />

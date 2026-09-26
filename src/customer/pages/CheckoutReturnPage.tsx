@@ -1,8 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { CircleCheck as CheckCircle, Circle as XCircle, Clock, Loader as Loader2, Package, Chrome as Home, Calendar, MapPin, User, Phone, Mail, CircleAlert as AlertCircle } from 'lucide-react';
 import { customerOrderSubmissionService, OrderConfirmationData } from '../services/customerOrderSubmissionService';
 import { supabase } from '../../config/supabase';
+import { useCart } from '../contexts/CartContext';
+import { BILLABLE_MEAL_TYPES } from '../../types/orderMenu';
+import { friendlyError } from '../utils/friendlyError';
 
 type PaymentStatus = 'loading' | 'approved' | 'pending' | 'failure';
 
@@ -12,6 +15,11 @@ export const CheckoutReturn: React.FC = () => {
   const [confirmationData, setConfirmationData] = useState<OrderConfirmationData | null>(null);
   const [emailSent, setEmailSent] = useState(false);
   const [emailError, setEmailError] = useState(false);
+  const [orderNumber, setOrderNumber] = useState<string | null>(null);
+  const [totals, setTotals] = useState<OrderConfirmationData['totals'] | null>(null);
+  const processedRef = useRef(false);
+
+  const { clearCart, clearProteinCart } = useCart();
 
   const formatDate = (dateString: string) => {
     const [year, month, day] = dateString.split('-').map(Number);
@@ -22,21 +30,179 @@ export const CheckoutReturn: React.FC = () => {
   };
 
   useEffect(() => {
+    if (processedRef.current) return;
+    processedRef.current = true;
+
     const handleReturn = async () => {
       const urlStatus = searchParams.get('status') || searchParams.get('collection_status');
       const paymentId = searchParams.get('payment_id') || searchParams.get('collection_id');
-      const orderId = searchParams.get('order_id') || searchParams.get('external_reference');
 
-      // Try to recover stored order confirmation data
-      const stored = localStorage.getItem('mp_pending_order');
-      let orderData: OrderConfirmationData | null = null;
-      if (stored) {
-        try { orderData = JSON.parse(stored); } catch (_) {}
+      // Try to recover stored order data (already created before redirect - legacy flow)
+      const storedOrder = localStorage.getItem('mp_pending_order');
+      let existingOrderData: OrderConfirmationData | null = null;
+      if (storedOrder) {
+        try { existingOrderData = JSON.parse(storedOrder); } catch (_) {}
       }
 
-      if (urlStatus === 'approved' || urlStatus === 'success') {
-        // Verify payment server-side if we have a payment ID and order ID
-        if (paymentId && orderId) {
+      // Try to recover the cart snapshot (Checkout Pro flow - order not yet created)
+      const storedCartData = localStorage.getItem('mp_pending_order_data');
+      let pendingCartData: any = null;
+      if (storedCartData) {
+        try { pendingCartData = JSON.parse(storedCartData); } catch (_) {}
+      }
+
+      if (urlStatus === 'failure' || urlStatus === 'rejected') {
+        setConfirmationData(existingOrderData);
+        setStatus('failure');
+        return;
+      }
+
+      const isPending = urlStatus === 'pending' || urlStatus === 'in_process';
+      const isApproved = urlStatus === 'approved' || urlStatus === 'success';
+
+      if (!isApproved && !isPending) {
+        setConfirmationData(existingOrderData);
+        setStatus('failure');
+        return;
+      }
+
+      // --- Checkout Pro flow: create order from saved cart data ---
+      if (pendingCartData && !existingOrderData) {
+        try {
+          const { customer, cart, proteinCart, proteinSubtotal, planDiscounts } = pendingCartData;
+          const mpPaymentId = paymentId || `MP-redirect-${Date.now()}`;
+          const mpStatus = isApproved ? 'approved' : 'pending';
+
+          let createdOrderId = '';
+          let createdOrderNumber = '';
+          let orderEmailSent = false;
+          let orderEmailError = false;
+          let orderTotals: OrderConfirmationData['totals'] | null = null;
+
+          const hasProtein = proteinCart && proteinCart.length > 0;
+
+          if (cart && cart.orderItems && cart.orderItems.length > 0) {
+            const result = await customerOrderSubmissionService.submitOrder({
+              customer,
+              planDuration: cart.planDuration,
+              selectedWeeks: cart.selectedWeeks,
+              orderItems: cart.orderItems,
+              orderNotes: cart.orderNotes,
+              selectedDeliveryOption: cart.selectedDeliveryOption!,
+              appliedCoupon: cart.appliedCoupon,
+              couponDiscountAmount: cart.couponDiscountAmount,
+            });
+
+            if (!result.success || !result.orderId || !result.orderNumber) {
+              console.error('Order creation failed after redirect:', result.message);
+              setStatus('failure');
+              return;
+            }
+
+            createdOrderId = result.orderId;
+            createdOrderNumber = result.orderNumber;
+            orderTotals = result.totals!;
+
+            if (hasProtein) {
+              orderTotals.subtotal += proteinSubtotal;
+              orderTotals.finalTotal += proteinSubtotal * 1.16;
+              await saveProteinOrders(createdOrderId, customer, proteinCart);
+            }
+
+            // Update order with MP payment info
+            await supabase
+              .from('orders')
+              .update({
+                payment_provider: 'mercadopago',
+                mp_payment_id: mpPaymentId,
+                ...(mpStatus === 'approved' ? {
+                  order_status: 'completed',
+                  stripe_payment_status: 'succeeded',
+                  stripe_paid_at: new Date().toISOString(),
+                } : {}),
+              })
+              .eq('id', createdOrderId);
+
+            if (mpStatus === 'approved') {
+              const confirmData: OrderConfirmationData = {
+                orderId: createdOrderId,
+                orderNumber: createdOrderNumber,
+                customer,
+                selectedWeeks: cart.selectedWeeks,
+                totals: orderTotals,
+                deliveryOptionName: cart.selectedDeliveryOption?.delivery_options_name ?? '',
+                couponCode: cart.appliedCoupon?.code,
+              };
+              try {
+                await customerOrderSubmissionService.markOrderAsPaid(confirmData);
+                orderEmailSent = true;
+              } catch (err) {
+                console.warn('Could not send confirmation email:', err);
+                orderEmailError = true;
+              }
+              setConfirmationData(confirmData);
+            }
+          } else if (hasProtein) {
+            const taxAmount = proteinSubtotal * 0.16;
+            const finalTotal = proteinSubtotal + taxAmount;
+            const totalAmount = Math.round(finalTotal * 100) / 100;
+
+            const { data: orderRow } = await supabase
+              .from('orders')
+              .insert({
+                customer_id: customer.customer_id,
+                order_customer_name: `${customer.customer_name} ${customer.customer_lastname}`.trim(),
+                order_customer_email: customer.customer_email,
+                order_status: mpStatus === 'approved' ? 'completed' : 'pending',
+                order_notes: 'Pedido de proteinas',
+                order_total_price: totalAmount,
+                order_invoice_number: '',
+                stripe_payment_status: mpStatus === 'approved' ? 'succeeded' : 'pending',
+                stripe_paid_at: mpStatus === 'approved' ? new Date().toISOString() : null,
+                payment_provider: 'mercadopago',
+                mp_payment_id: mpPaymentId || null,
+              })
+              .select('id, order_id')
+              .single();
+
+            if (orderRow) {
+              createdOrderId = orderRow.id;
+              createdOrderNumber = orderRow.order_id;
+              await saveProteinOrders(createdOrderId, customer, proteinCart);
+            }
+
+            orderTotals = {
+              subtotal: proteinSubtotal,
+              planDiscount: 0,
+              deliveryPrice: 0,
+              couponDiscount: 0,
+              taxAmount: proteinSubtotal * 0.16,
+              finalTotal: proteinSubtotal * 1.16,
+            };
+          }
+
+          setOrderNumber(createdOrderNumber);
+          setTotals(orderTotals);
+          setEmailSent(orderEmailSent);
+          setEmailError(orderEmailError);
+
+          clearCart();
+          clearProteinCart();
+          localStorage.removeItem('mp_pending_order_data');
+          localStorage.removeItem('mp_pending_quote_id');
+
+          setStatus(isApproved ? 'approved' : 'pending');
+          return;
+        } catch (err) {
+          console.error('Error creating order after redirect:', err);
+          setStatus('failure');
+          return;
+        }
+      }
+
+      // --- Legacy flow: order already existed before redirect ---
+      if (existingOrderData) {
+        if (paymentId && existingOrderData.orderId) {
           try {
             const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
             const { data: { session } } = await supabase.auth.getSession();
@@ -51,15 +217,15 @@ export const CheckoutReturn: React.FC = () => {
               body: JSON.stringify({
                 action: 'get-payment-status',
                 payment_id: paymentId,
-                order_id: orderId,
+                order_id: existingOrderData.orderId,
               }),
             });
 
             const result = await response.json();
-            if (response.ok && result.success && result.status === 'approved') {
-              // Server confirmed and updated the order
-            } else if (result.status === 'pending' || result.status === 'in_process') {
-              setConfirmationData(orderData);
+            if (result.status === 'pending' || result.status === 'in_process') {
+              setConfirmationData(existingOrderData);
+              setOrderNumber(existingOrderData.orderNumber);
+              setTotals(existingOrderData.totals);
               setStatus('pending');
               return;
             }
@@ -68,10 +234,9 @@ export const CheckoutReturn: React.FC = () => {
           }
         }
 
-        // Send confirmation email via markOrderAsPaid if we have stored order data
-        if (orderData) {
+        if (isApproved) {
           try {
-            await customerOrderSubmissionService.markOrderAsPaid(orderData);
+            await customerOrderSubmissionService.markOrderAsPaid(existingOrderData);
             setEmailSent(true);
           } catch (err) {
             console.warn('Could not send confirmation email:', err);
@@ -79,21 +244,39 @@ export const CheckoutReturn: React.FC = () => {
           }
         }
 
-        setConfirmationData(orderData);
-        setStatus('approved');
+        setConfirmationData(existingOrderData);
+        setOrderNumber(existingOrderData.orderNumber);
+        setTotals(existingOrderData.totals);
+        setStatus(isApproved ? 'approved' : 'pending');
         localStorage.removeItem('mp_pending_order');
         localStorage.removeItem('mp_pending_order_data');
-      } else if (urlStatus === 'pending' || urlStatus === 'in_process') {
-        setConfirmationData(orderData);
-        setStatus('pending');
-      } else {
-        setConfirmationData(orderData);
-        setStatus('failure');
+        return;
       }
+
+      // No stored data at all -- just show status based on URL
+      setStatus(isApproved ? 'approved' : isPending ? 'pending' : 'failure');
     };
 
     handleReturn();
   }, [searchParams]);
+
+  async function saveProteinOrders(orderId: string, customer: any, proteinItems: any[]) {
+    try {
+      const rows = proteinItems.map((item: any) => ({
+        order_id: orderId,
+        customer_id: customer.customer_id,
+        protein_plan_id: item.proteinPlan.id,
+        protein_plan_name: item.proteinPlan.protein_plans_name,
+        quantity: item.quantity,
+        unit_price: item.proteinPlan.protein_plans_price,
+        total_price: item.proteinPlan.protein_plans_price * item.quantity,
+        status: 'pending',
+      }));
+      await supabase.from('protein_orders').insert(rows);
+    } catch (err) {
+      console.warn('Could not save protein orders:', err);
+    }
+  }
 
   if (status === 'loading') {
     return (
@@ -144,10 +327,10 @@ export const CheckoutReturn: React.FC = () => {
           <p className="text-gray-500 mb-8">
             Tu pago esta siendo procesado. Te notificaremos cuando se confirme. Si pagaste con OXXO, recuerda completar el pago en la tienda.
           </p>
-          {confirmationData && (
+          {orderNumber && (
             <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6 text-left">
               <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Numero de Orden</p>
-              <p className="text-2xl font-bold text-red-600">#{confirmationData.orderNumber}</p>
+              <p className="text-2xl font-bold text-red-600">#{orderNumber}</p>
             </div>
           )}
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
@@ -165,7 +348,8 @@ export const CheckoutReturn: React.FC = () => {
 
   // status === 'approved'
   const c = confirmationData?.customer;
-  const totals = confirmationData?.totals;
+  const displayTotals = totals || confirmationData?.totals;
+  const displayOrderNumber = orderNumber || confirmationData?.orderNumber;
   const address = c ? (() => {
     const parts: string[] = [];
     if (c.customer_street && c.customer_street_number) parts.push(`${c.customer_street} ${c.customer_street_number}`);
@@ -206,101 +390,101 @@ export const CheckoutReturn: React.FC = () => {
           )}
         </div>
 
-        {confirmationData && (
-          <>
-            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 mb-5 text-center">
-              <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-1">Numero de Orden</p>
-              <p className="text-4xl font-bold text-red-600 tracking-wide">#{confirmationData.orderNumber}</p>
-            </div>
+        {displayOrderNumber && (
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 mb-5 text-center">
+            <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-1">Numero de Orden</p>
+            <p className="text-4xl font-bold text-red-600 tracking-wide">#{displayOrderNumber}</p>
+          </div>
+        )}
 
-            {confirmationData.selectedWeeks.length > 0 && (
-              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 mb-5">
-                <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 mb-4 flex items-center gap-2">
-                  <Calendar className="w-4 h-4" /> Fechas de Entrega
-                </h2>
-                <div className="space-y-3">
-                  {confirmationData.selectedWeeks.map((week, index) => (
-                    <div key={week.tempId} className="flex items-start justify-between py-3 border-b border-gray-100 last:border-0">
-                      <div>
-                        <p className="text-xs text-gray-400 mb-0.5">Semana {index + 1}</p>
-                        <p className="font-semibold text-gray-800">{week.week.week_name}</p>
-                      </div>
-                      <div className="text-right">
-                        {week.week.week_date ? (
-                          <p className="text-sm font-bold text-green-700 bg-green-50 px-3 py-1.5 rounded-lg">{formatDate(week.week.week_date)}</p>
-                        ) : (
-                          <p className="text-sm text-gray-400 italic">Por confirmar</p>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {c && (
-              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 mb-5">
-                <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 mb-4 flex items-center gap-2">
-                  <MapPin className="w-4 h-4" /> Direccion de Entrega
-                </h2>
-                <div className="flex items-start gap-3">
-                  <div className="w-9 h-9 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <User className="w-4 h-4 text-gray-500" />
-                  </div>
+        {confirmationData && confirmationData.selectedWeeks && confirmationData.selectedWeeks.length > 0 && (
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 mb-5">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 mb-4 flex items-center gap-2">
+              <Calendar className="w-4 h-4" /> Fechas de Entrega
+            </h2>
+            <div className="space-y-3">
+              {confirmationData.selectedWeeks.map((week: any, index: number) => (
+                <div key={week.tempId || index} className="flex items-start justify-between py-3 border-b border-gray-100 last:border-0">
                   <div>
-                    <p className="font-semibold text-gray-900">{c.customer_name} {c.customer_lastname}</p>
-                    <p className="text-sm text-gray-500 mt-0.5">{address || 'Direccion registrada en tu cuenta'}</p>
-                    {c.customer_phone && (
-                      <p className="text-sm text-gray-500 mt-1 flex items-center gap-1.5">
-                        <Phone className="w-3.5 h-3.5" /> {c.customer_phone}
-                      </p>
+                    <p className="text-xs text-gray-400 mb-0.5">Semana {index + 1}</p>
+                    <p className="font-semibold text-gray-800">{week.week.week_name}</p>
+                  </div>
+                  <div className="text-right">
+                    {week.week.week_date ? (
+                      <p className="text-sm font-bold text-green-700 bg-green-50 px-3 py-1.5 rounded-lg">{formatDate(week.week.week_date)}</p>
+                    ) : (
+                      <p className="text-sm text-gray-400 italic">Por confirmar</p>
                     )}
-                    <p className="text-xs text-gray-400 mt-2 bg-gray-50 inline-block px-2 py-1 rounded">
-                      Metodo: {confirmationData.deliveryOptionName}
-                    </p>
                   </div>
                 </div>
-              </div>
-            )}
+              ))}
+            </div>
+          </div>
+        )}
 
-            {totals && (
-              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 mb-6">
-                <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 mb-4 flex items-center gap-2">
-                  <Package className="w-4 h-4" /> Resumen del Pedido
-                </h2>
-                <div className="space-y-2.5 text-sm">
-                  <div className="flex justify-between text-gray-600">
-                    <span>Subtotal</span>
-                    <span className="font-medium text-gray-800">${Math.round(totals.subtotal).toFixed(0)} MXN</span>
-                  </div>
-                  {totals.planDiscount > 0 && (
-                    <div className="flex justify-between text-green-600">
-                      <span>Descuento por volumen</span>
-                      <span className="font-medium">-${Math.round(totals.planDiscount).toFixed(0)} MXN</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between text-gray-600">
-                    <span>Envio ({confirmationData.deliveryOptionName})</span>
-                    <span className="font-medium text-gray-800">${Math.round(totals.deliveryPrice).toFixed(0)} MXN</span>
-                  </div>
-                  {totals.couponDiscount > 0 && confirmationData.couponCode && (
-                    <div className="flex justify-between text-green-600">
-                      <span>Cupon {confirmationData.couponCode}</span>
-                      <span className="font-medium">-${Math.round(totals.couponDiscount).toFixed(0)} MXN</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between text-gray-600">
-                    <span>IVA (16%)</span>
-                    <span className="font-medium text-gray-800">${Math.round(totals.taxAmount).toFixed(0)} MXN</span>
-                  </div>
-                  <div className="pt-3 mt-1 border-t border-gray-200 flex justify-between">
-                    <span className="font-bold text-gray-900 text-base">Total</span>
-                    <span className="font-bold text-xl text-red-600">${Math.round(totals.finalTotal).toFixed(0)} MXN</span>
-                  </div>
-                </div>
+        {c && (
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 mb-5">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 mb-4 flex items-center gap-2">
+              <MapPin className="w-4 h-4" /> Direccion de Entrega
+            </h2>
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                <User className="w-4 h-4 text-gray-500" />
               </div>
-            )}
-          </>
+              <div>
+                <p className="font-semibold text-gray-900">{c.customer_name} {c.customer_lastname}</p>
+                <p className="text-sm text-gray-500 mt-0.5">{address || 'Direccion registrada en tu cuenta'}</p>
+                {c.customer_phone && (
+                  <p className="text-sm text-gray-500 mt-1 flex items-center gap-1.5">
+                    <Phone className="w-3.5 h-3.5" /> {c.customer_phone}
+                  </p>
+                )}
+                {confirmationData?.deliveryOptionName && (
+                  <p className="text-xs text-gray-400 mt-2 bg-gray-50 inline-block px-2 py-1 rounded">
+                    Metodo: {confirmationData.deliveryOptionName}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {displayTotals && (
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 mb-6">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 mb-4 flex items-center gap-2">
+              <Package className="w-4 h-4" /> Resumen del Pedido
+            </h2>
+            <div className="space-y-2.5 text-sm">
+              <div className="flex justify-between text-gray-600">
+                <span>Subtotal</span>
+                <span className="font-medium text-gray-800">${Math.round(displayTotals.subtotal).toFixed(0)} MXN</span>
+              </div>
+              {displayTotals.planDiscount > 0 && (
+                <div className="flex justify-between text-green-600">
+                  <span>Descuento por volumen</span>
+                  <span className="font-medium">-${Math.round(displayTotals.planDiscount).toFixed(0)} MXN</span>
+                </div>
+              )}
+              <div className="flex justify-between text-gray-600">
+                <span>Envio{confirmationData?.deliveryOptionName ? ` (${confirmationData.deliveryOptionName})` : ''}</span>
+                <span className="font-medium text-gray-800">${Math.round(displayTotals.deliveryPrice).toFixed(0)} MXN</span>
+              </div>
+              {displayTotals.couponDiscount > 0 && confirmationData?.couponCode && (
+                <div className="flex justify-between text-green-600">
+                  <span>Cupon {confirmationData.couponCode}</span>
+                  <span className="font-medium">-${Math.round(displayTotals.couponDiscount).toFixed(0)} MXN</span>
+                </div>
+              )}
+              <div className="flex justify-between text-gray-600">
+                <span>IVA (16%)</span>
+                <span className="font-medium text-gray-800">${Math.round(displayTotals.taxAmount).toFixed(0)} MXN</span>
+              </div>
+              <div className="pt-3 mt-1 border-t border-gray-200 flex justify-between">
+                <span className="font-bold text-gray-900 text-base">Total</span>
+                <span className="font-bold text-xl text-red-600">${Math.round(displayTotals.finalTotal).toFixed(0)} MXN</span>
+              </div>
+            </div>
+          </div>
         )}
 
         <div className="flex flex-col sm:flex-row gap-3">

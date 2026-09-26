@@ -95,7 +95,7 @@ Deno.serve(async (req: Request) => {
     if (action === "get-checkout-config") {
       const { data: cfg } = await supabase
         .from("mercado_pago_config")
-        .select("is_active, test_mode, public_key, enable_credit_card, enable_debit_card, enable_ticket, enable_bank_transfer, enable_mercado_pago_wallet, max_installments")
+        .select("is_active, test_mode, public_key, enable_credit_card, enable_debit_card, enable_ticket, enable_bank_transfer, enable_mercado_pago_wallet, enable_checkout_pro, max_installments")
         .maybeSingle();
 
       return jsonResponse({
@@ -108,6 +108,7 @@ Deno.serve(async (req: Request) => {
         enable_ticket: cfg?.enable_ticket ?? true,
         enable_bank_transfer: cfg?.enable_bank_transfer ?? true,
         enable_mercado_pago_wallet: cfg?.enable_mercado_pago_wallet ?? true,
+        enable_checkout_pro: cfg?.enable_checkout_pro ?? true,
         max_installments: cfg?.max_installments ?? 12,
       });
     }

@@ -12,6 +12,7 @@ export interface MercadoPagoConfig {
   enable_ticket: boolean;
   enable_bank_transfer: boolean;
   enable_mercado_pago_wallet: boolean;
+  enable_checkout_pro: boolean;
   max_installments: number;
   statement_descriptor: string | null;
   webhook_secret: string | null;
@@ -30,6 +31,7 @@ export interface MercadoPagoConfigForm {
   enable_ticket: boolean;
   enable_bank_transfer: boolean;
   enable_mercado_pago_wallet: boolean;
+  enable_checkout_pro: boolean;
   max_installments: number;
   statement_descriptor: string;
   webhook_secret: string;
@@ -71,6 +73,7 @@ class MercadoPagoConfigService {
         enable_ticket: true,
         enable_bank_transfer: true,
         enable_mercado_pago_wallet: true,
+        enable_checkout_pro: true,
         max_installments: 12,
         statement_descriptor: '',
         webhook_secret: '',
@@ -86,6 +89,7 @@ class MercadoPagoConfigService {
       enable_ticket: config.enable_ticket,
       enable_bank_transfer: config.enable_bank_transfer,
       enable_mercado_pago_wallet: config.enable_mercado_pago_wallet,
+      enable_checkout_pro: config.enable_checkout_pro,
       max_installments: config.max_installments,
       statement_descriptor: config.statement_descriptor || '',
       webhook_secret: config.webhook_secret || '',
@@ -105,6 +109,7 @@ class MercadoPagoConfigService {
       enable_ticket: form.enable_ticket,
       enable_bank_transfer: form.enable_bank_transfer,
       enable_mercado_pago_wallet: form.enable_mercado_pago_wallet,
+      enable_checkout_pro: form.enable_checkout_pro,
       max_installments: form.max_installments,
       statement_descriptor: form.statement_descriptor || null,
       webhook_secret: form.webhook_secret || null,
