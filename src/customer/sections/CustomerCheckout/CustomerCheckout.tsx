@@ -224,7 +224,7 @@ export const CustomerCheckout: React.FC = () => {
   const createOrderAfterPayment = useCallback(async (mpPaymentId: string, mpStatus: string, mpPaymentTypeId?: string): Promise<{ orderId: string; orderNumber: string } | null> => {
     const isCashPayment = mpPaymentTypeId === 'ticket' || mpPaymentTypeId === 'atm';
     const orderStatus = mpStatus === 'approved' ? 'completed' : isCashPayment ? 'pending_cash_payment' : 'pending';
-    const paymentStatus = mpStatus === 'approved' ? 'succeeded' : 'pending';
+    const paymentStatus = mpStatus === 'approved' ? 'succeeded' : null;
     if (!customer) return null;
 
     const snappedCart = cartSnapshotRef.current;
