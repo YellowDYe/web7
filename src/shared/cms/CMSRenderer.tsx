@@ -1,5 +1,6 @@
 import React from 'react';
 import { WhatsAppWidget } from '../../customer/components/WhatsAppWidget/WhatsAppWidget';
+import { CustomCodeInjector } from '../../customer/components/CustomCodeInjector';
 import { MainMenu } from '../../customer/sections/MainMenu/MainMenu';
 import { MainHero } from '../../customer/sections/MainHero/MainHero';
 import { MainHeroCarousel } from '../../customer/sections/MainHeroCarousel/MainHeroCarousel';
@@ -127,6 +128,7 @@ export const CMSRenderer: React.FC<CMSRendererProps> = ({ modules, basePath = ''
         </React.Fragment>
       ))}
       <WhatsAppWidget />
+      <CustomCodeInjector />
     </div>
   );
 };
