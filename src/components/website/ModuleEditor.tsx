@@ -52,6 +52,7 @@ export const ModuleEditor: React.FC = () => {
     { value: 'CustomerCart', label: 'Carrito' },
     { value: 'CustomerCheckout', label: 'Checkout' },
     { value: 'CustomerProfile', label: 'Perfil Cliente' },
+    { value: 'CustomerSignup', label: 'Registro' },
     { value: 'ProteinShakes', label: 'Protein Shakes' },
     { value: 'BlogGrid', label: 'Grid de Blog' },
     { value: 'Objectives', label: 'Objetivos' },
@@ -559,6 +560,8 @@ export const ModuleEditor: React.FC = () => {
       } else if (type === 'CustomerCart') {
         defaultContent = { isSystemModule: true };
       } else if (type === 'CustomerCheckout') {
+        defaultContent = { isSystemModule: true };
+      } else if (type === 'CustomerSignup') {
         defaultContent = { isSystemModule: true };
       } else if (type === 'WeeklyMenu') {
         defaultContent = { isSystemModule: true, showImages: true, showNutrition: false };

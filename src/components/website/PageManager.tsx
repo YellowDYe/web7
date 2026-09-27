@@ -26,6 +26,7 @@ const SYSTEM_MODULE_TYPES: { value: ModuleType; label: string }[] = [
   { value: 'CustomerCart', label: 'Carrito (Sistema)' },
   { value: 'CustomerCheckout', label: 'Checkout (Sistema)' },
   { value: 'CustomerProfile', label: 'Perfil Cliente (Sistema)' },
+  { value: 'CustomerSignup', label: 'Registro (Sistema)' },
   { value: 'Footer', label: 'Footer' },
 ];
 
