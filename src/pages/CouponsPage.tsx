@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Ticket, Plus, ArrowLeft, Loader as Loader2, CircleAlert as AlertCircle, Trash2, Power, X, Percent, DollarSign } from 'lucide-react';
+import { Ticket, Plus, ArrowLeft, Loader as Loader2, CircleAlert as AlertCircle, Trash2, Power, X, Percent, DollarSign, Shuffle } from 'lucide-react';
 import { couponService } from '../services/couponService';
 import {
   Coupon,
@@ -191,6 +191,17 @@ const CouponsPage: React.FC = () => {
       : `$${Number(c.discount_value).toFixed(2)}`;
   };
 
+  const generateRandomCode = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = '';
+    const arr = new Uint8Array(8);
+    crypto.getRandomValues(arr);
+    for (let i = 0; i < 8; i++) {
+      code += chars[arr[i] % chars.length];
+    }
+    update('code', code);
+  };
+
   const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
     if (formErrors[key]) {
@@ -376,15 +387,26 @@ const CouponsPage: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Código del Cupón <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="text"
-                  value={form.code}
-                  onChange={(e) => update('code', e.target.value.toUpperCase())}
-                  className={`w-full px-4 py-2.5 rounded-xl border ${
-                    formErrors.code ? 'border-red-400' : 'border-gray-300'
-                  } focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent font-mono uppercase`}
-                  placeholder="VERANO2026"
-                />
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={form.code}
+                    onChange={(e) => update('code', e.target.value.toUpperCase())}
+                    className={`flex-1 px-4 py-2.5 rounded-xl border ${
+                      formErrors.code ? 'border-red-400' : 'border-gray-300'
+                    } focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent font-mono uppercase`}
+                    placeholder="VERANO2026"
+                  />
+                  <button
+                    type="button"
+                    onClick={generateRandomCode}
+                    className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl border border-gray-300 text-gray-600 hover:bg-gray-50 hover:border-primary-300 hover:text-primary-600 transition-colors text-sm font-medium whitespace-nowrap"
+                    title="Generar código aleatorio"
+                  >
+                    <Shuffle className="w-4 h-4" />
+                    Aleatorio
+                  </button>
+                </div>
                 {formErrors.code && (
                   <p className="text-xs text-red-600 mt-1">{formErrors.code}</p>
                 )}
