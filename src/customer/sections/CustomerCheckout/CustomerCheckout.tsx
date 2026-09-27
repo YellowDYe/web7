@@ -666,6 +666,22 @@ export const CustomerCheckout: React.FC = () => {
         body: JSON.stringify({
           action: 'create-preference',
           items: mpItems,
+          // The server re-prices this cart from the database and charges that
+          // amount; the item prices above are only used for display.
+          cart: {
+            items: (cart?.orderItems ?? [])
+              .filter((item) => BILLABLE_MEAL_TYPES.includes(item.meal_type as any))
+              .map((item) => ({
+                meal_plans_id: item.meal_plans_id,
+                quantity: item.quantity,
+              })),
+            protein_items: proteinCart.map((pi) => ({
+              protein_plans_id: pi.proteinPlan.protein_plans_id,
+              quantity: pi.quantity,
+            })),
+            delivery_option_id: cart?.selectedDeliveryOption?.delivery_options_id ?? null,
+            coupon_code: cart?.appliedCoupon?.code ?? null,
+          },
           payer: {
             name: customer.customer_name,
             surname: customer.customer_lastname,

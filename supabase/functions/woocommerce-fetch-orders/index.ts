@@ -487,12 +487,68 @@ async function processOrder(
 
 // ── Main Handler ──────────────────────────────────────────────────────────────
 
+
+// --- Access guard -----------------------------------------------------------
+// This function runs with the service role, so being merely signed in is not
+// enough: only active staff accounts may invoke it.
+const GUARD_UNAUTHORIZED = () =>
+  new Response(JSON.stringify({ error: "Unauthorized" }), {
+    status: 401,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+
+const GUARD_FORBIDDEN = () =>
+  new Response(JSON.stringify({ error: "Forbidden" }), {
+    status: 403,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+
+async function requireStaff(req: Request): Promise<Response | null> {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+  const token = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "").trim();
+  if (!token) return GUARD_UNAUTHORIZED();
+
+  // Internal server-to-server calls present the service role key.
+  if (serviceKey && token === serviceKey) return null;
+
+  const userRes = await fetch(`${supabaseUrl}/auth/v1/user`, {
+    headers: { Authorization: `Bearer ${token}`, apikey: anonKey },
+  });
+  if (!userRes.ok) return GUARD_UNAUTHORIZED();
+
+  const user = await userRes.json();
+  if (!user?.id) return GUARD_UNAUTHORIZED();
+
+  const admin = createClient(supabaseUrl, serviceKey);
+  const { data: staffRow } = await admin
+    .from("app_users")
+    .select("role_id, is_active")
+    .eq("auth_user_id", user.id)
+    .maybeSingle();
+
+  if (
+    !staffRow ||
+    staffRow.is_active === false ||
+    !staffRow.role_id ||
+    String(staffRow.role_id).toLowerCase() === "customer"
+  ) {
+    return GUARD_FORBIDDEN();
+  }
+
+  return null;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
 
   try {
+    const guardResponse = await requireStaff(req);
+    if (guardResponse) return guardResponse;
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!

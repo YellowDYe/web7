@@ -102,6 +102,29 @@ class CustomerOrderSubmissionService {
       const taxAmount = subtotalAfterCoupon * (taxRate / 100);
       const finalTotal = subtotalAfterCoupon + taxAmount;
 
+      // The browser's arithmetic is only a display value. Re-price the cart on
+      // the server and never record a total lower than the server's.
+      let recordedTotal = Math.round(finalTotal);
+      try {
+        const { data: serverTotal, error: priceError } = await supabase.rpc('price_customer_cart', {
+          p_items: orderItems
+            .filter(item => BILLABLE_MEAL_TYPES.includes(item.meal_type as any))
+            .map(item => ({ meal_plans_id: item.meal_plans_id, quantity: item.quantity })),
+          p_protein_items: [],
+          p_delivery_option_id: selectedDeliveryOption?.delivery_options_id ?? null,
+          p_coupon_code: appliedCoupon?.code ?? null
+        });
+
+        if (!priceError && serverTotal !== null && serverTotal !== undefined) {
+          const serverAmount = Math.round(Number(serverTotal));
+          if (Number.isFinite(serverAmount) && serverAmount > 0) {
+            recordedTotal = Math.max(recordedTotal, serverAmount);
+          }
+        }
+      } catch (priceErr) {
+        console.warn('Could not re-price the cart server-side');
+      }
+
       // Create the order using the same flow as admin orders
       const newOrder = await orderService.createOrder({
         customer_id: customer.customer_id,
@@ -109,7 +132,7 @@ class CustomerOrderSubmissionService {
         order_customer_email: customer.customer_email,
         order_status: data.paymentOverrides?.order_status || 'pending',
         order_notes: orderNotes || null,
-        order_total_price: Math.round(finalTotal),
+        order_total_price: recordedTotal,
         order_invoice_number: '',
         ...(data.paymentOverrides?.stripe_payment_status ? { stripe_payment_status: data.paymentOverrides.stripe_payment_status } : {}),
         ...(data.paymentOverrides?.stripe_paid_at ? { stripe_paid_at: data.paymentOverrides.stripe_paid_at } : {}),

@@ -182,6 +182,26 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    // Being signed in is not enough: this function uses the stored e.firma
+    // certificate and private key, so only active staff may invoke it.
+    const { data: staffRow } = await supabase
+      .from("app_users")
+      .select("role_id, is_active")
+      .eq("auth_user_id", user.id)
+      .maybeSingle();
+
+    if (
+      !staffRow ||
+      staffRow.is_active === false ||
+      !staffRow.role_id ||
+      String(staffRow.role_id).toLowerCase() === "customer"
+    ) {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const body: QueryRequest = await req.json();
 
     switch (body.action) {

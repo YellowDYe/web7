@@ -3,8 +3,6 @@ import { useLocation, Routes, Route } from 'react-router-dom';
 import { cmsApi, Page, Module, testConnection } from '../../shared/cms/cmsApi';
 import { cmsApiDirect } from '../../shared/cms/cmsApiDirect';
 import { CMSRenderer } from '../../shared/cms/CMSRenderer';
-import { runDiagnostics, DiagnosticResult } from '../../utils/diagnostics';
-import '../../utils/supabaseDebug';
 import { friendlyError } from '../utils/friendlyError';
 
 const CMSPage: React.FC = () => {
@@ -14,8 +12,6 @@ const CMSPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isTestingConnection, setIsTestingConnection] = useState(false);
-  const [diagnostics, setDiagnostics] = useState<DiagnosticResult[] | null>(null);
-  const [showDiagnostics, setShowDiagnostics] = useState(false);
 
   useEffect(() => {
     loadPageContent();
@@ -27,19 +23,12 @@ const CMSPage: React.FC = () => {
     setIsTestingConnection(false);
 
     if (result.success) {
-      alert('Database connection successful! Reloading page...');
       loadPageContent();
     } else {
-      alert(`Database connection failed: ${result.error || 'Unknown error'}`);
+      // Technical detail stays in the console; visitors see a plain message.
+      console.error('[CustomerHomePage] Connection test failed:', result.error);
+      alert('No pudimos conectar en este momento. Intenta de nuevo en unos minutos.');
     }
-  };
-
-  const handleRunDiagnostics = async () => {
-    setIsTestingConnection(true);
-    const results = await runDiagnostics();
-    setDiagnostics(results);
-    setShowDiagnostics(true);
-    setIsTestingConnection(false);
   };
 
   const loadPageContent = async () => {
@@ -134,11 +123,11 @@ const CMSPage: React.FC = () => {
             </button>
 
             <button
-              onClick={handleRunDiagnostics}
+              onClick={handleTestConnection}
               disabled={isTestingConnection}
               className="w-full px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors disabled:opacity-50"
             >
-              {isTestingConnection ? 'Running Diagnostics...' : 'Run Full Diagnostics'}
+              {isTestingConnection ? 'Comprobando...' : 'Comprobar conexion'}
             </button>
 
             <a
@@ -148,44 +137,6 @@ const CMSPage: React.FC = () => {
               Return to Home
             </a>
           </div>
-
-          {showDiagnostics && diagnostics && (
-            <div className="mt-6 p-4 bg-gray-50 rounded-lg text-left">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">Diagnostic Results</h3>
-                <button
-                  onClick={() => setShowDiagnostics(false)}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              <div className="space-y-3">
-                {diagnostics.map((result, index) => (
-                  <div key={index} className="border-l-4 pl-4 py-2" style={{
-                    borderColor: result.status === 'pass' ? '#10b981' : result.status === 'fail' ? '#ef4444' : '#f59e0b'
-                  }}>
-                    <div className="flex items-center justify-between mb-1">
-                      <h4 className="font-medium text-gray-900">{result.name}</h4>
-                      <span className={`text-xs px-2 py-1 rounded ${
-                        result.status === 'pass' ? 'bg-green-100 text-green-800' :
-                        result.status === 'fail' ? 'bg-red-100 text-red-800' :
-                        'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {result.status.toUpperCase()}
-                      </span>
-                    </div>
-                    <p className="text-sm text-gray-600">{result.message}</p>
-                    {/* Raw diagnostic details (database and policy error text, session ids)
-                        are intentionally not rendered; they are logged to the browser
-                        console for developers instead. */}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
 
           <div className="mt-6 p-4 bg-gray-50 rounded-lg text-left">
             <p className="text-sm text-gray-600 mb-2">

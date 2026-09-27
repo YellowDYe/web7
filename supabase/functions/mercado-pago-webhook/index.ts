@@ -10,6 +10,70 @@ const corsHeaders = {
 
 const MP_API_BASE = "https://api.mercadopago.com";
 
+// Constant-time string comparison to avoid leaking the expected signature.
+function timingSafeEqualStrings(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) {
+    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
+async function hmacSha256Hex(secret: string, message: string): Promise<string> {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const sig = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    new TextEncoder().encode(message),
+  );
+  return Array.from(new Uint8Array(sig))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+/**
+ * Verifies the Mercado Pago `x-signature` header.
+ * Manifest format: id:<data.id>;request-id:<x-request-id>;ts:<ts>;
+ */
+async function verifyMercadoPagoSignature(
+  req: Request,
+  paymentId: string,
+  secret: string,
+): Promise<boolean> {
+  const signatureHeader = req.headers.get("x-signature") || "";
+  const requestId = req.headers.get("x-request-id") || "";
+  if (!signatureHeader) return false;
+
+  let ts = "";
+  let v1 = "";
+  for (const part of signatureHeader.split(",")) {
+    const idx = part.indexOf("=");
+    if (idx === -1) continue;
+    const k = part.slice(0, idx).trim();
+    const v = part.slice(idx + 1).trim();
+    if (k === "ts") ts = v;
+    else if (k === "v1") v1 = v;
+  }
+  if (!ts || !v1) return false;
+
+  // Reject stale notifications (replay window of 10 minutes).
+  const tsMs = Number(ts) > 1e12 ? Number(ts) : Number(ts) * 1000;
+  if (!Number.isFinite(tsMs) || Math.abs(Date.now() - tsMs) > 10 * 60 * 1000) {
+    return false;
+  }
+
+  const manifest = `id:${paymentId.toLowerCase()};request-id:${requestId};ts:${ts};`;
+  const expected = await hmacSha256Hex(secret, manifest);
+  return timingSafeEqualStrings(expected, v1.toLowerCase());
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
@@ -66,6 +130,25 @@ Deno.serve(async (req: Request) => {
     if (configErr || !config?.access_token) {
       console.error("Could not load MP config for webhook:", configErr);
       return jsonResponse({ error: "Config not found" }, 500);
+    }
+
+    // This endpoint is public (no JWT). When a webhook secret is configured we
+    // require a valid Mercado Pago signature, otherwise anyone could replay an
+    // arbitrary payment id and drive the settle-order path.
+    if (config.webhook_secret) {
+      const validSignature = await verifyMercadoPagoSignature(
+        req,
+        String(paymentId),
+        config.webhook_secret,
+      );
+      if (!validSignature) {
+        console.warn("Webhook: rejected notification with invalid signature");
+        return jsonResponse({ error: "Invalid signature" }, 401);
+      }
+    } else {
+      console.warn(
+        "Webhook: no webhook_secret configured; notifications are unverified",
+      );
     }
 
     // Fetch payment details from Mercado Pago API
@@ -134,7 +217,24 @@ Deno.serve(async (req: Request) => {
       return jsonResponse({ received: true, order_found: false });
     }
 
+    // The payment must actually cover the order, otherwise a 1-peso payment
+    // could be pointed at an expensive order and settle it.
+    const orderTotal = Number(order.order_total_price) || 0;
+    const paidAmount = Number(
+      payment.transaction_amount ??
+        payment.transaction_details?.total_paid_amount ??
+        0,
+    );
+    const amountCoversOrder = orderTotal > 0 && paidAmount + 0.01 >= orderTotal;
+
     // Only update if the order isn't already marked as completed/paid
+    if (mpStatus === "approved" && !amountCoversOrder) {
+      console.error(
+        `Webhook: payment ${paymentId} of ${paidAmount} does not cover order ${orderId} total ${orderTotal}; not settling`,
+      );
+      return jsonResponse({ received: true, settled: false }, 200);
+    }
+
     if (mpStatus === "approved" && order.stripe_payment_status !== "succeeded") {
       await supabase
         .from("orders")

@@ -167,10 +167,53 @@ async function handleCreatePreference(
   req: Request,
   config: any,
 ) {
-  const { items, payer, installments, back_url, shipment_cost, description } = body;
+  const { items, payer, installments, back_url, shipment_cost, description, cart } = body;
 
   if (!items || !Array.isArray(items) || items.length === 0 || items.length > 50) {
     return jsonResponse({ error: "Se requieren items para la preferencia" }, 400);
+  }
+
+  // Prices sent by the browser are a display hint only. For customer sessions we
+  // re-price the cart from the database and charge that amount.
+  const callerIsStaff = await isStaff(supabase, callerId);
+  let serverTotal: number | null = null;
+
+  if (!callerIsStaff) {
+    const cartItems = Array.isArray(cart?.items) ? cart.items : null;
+    const proteinItems = Array.isArray(cart?.protein_items) ? cart.protein_items : [];
+
+    if (!cartItems || (cartItems.length === 0 && proteinItems.length === 0)) {
+      return jsonResponse({ error: "No se pudo validar el carrito" }, 400);
+    }
+    if (cartItems.length > 500 || proteinItems.length > 500) {
+      return jsonResponse({ error: "El carrito es demasiado grande" }, 400);
+    }
+
+    const sanitize = (list: any[], idField: string) =>
+      list.map((entry: any) => ({
+        [idField]: String(entry?.[idField] ?? ""),
+        quantity: Math.max(0, Math.min(500, Math.trunc(Number(entry?.quantity) || 0))),
+      }));
+
+    const { data: pricedTotal, error: priceError } = await supabase.rpc(
+      "price_customer_cart",
+      {
+        p_items: sanitize(cartItems, "meal_plans_id"),
+        p_protein_items: sanitize(proteinItems, "protein_plans_id"),
+        p_delivery_option_id: cart?.delivery_option_id ? String(cart.delivery_option_id) : null,
+        p_coupon_code: cart?.coupon_code ? String(cart.coupon_code) : null,
+      },
+    );
+
+    if (priceError || pricedTotal === null || pricedTotal === undefined) {
+      console.error("Could not price cart server-side:", priceError);
+      return jsonResponse({ error: "No se pudo calcular el total del pedido" }, 400);
+    }
+
+    serverTotal = Math.round(Number(pricedTotal) * 100) / 100;
+    if (!Number.isFinite(serverTotal) || serverTotal <= 0) {
+      return jsonResponse({ error: "No se pudo calcular el total del pedido" }, 400);
+    }
   }
 
   const normalizedItems = [];
@@ -195,6 +238,23 @@ async function handleCreatePreference(
   }
 
   quotedTotal = Math.round(quotedTotal * 100) / 100;
+
+  if (serverTotal !== null) {
+    // Charge the server-computed amount; collapse the line items so the
+    // preference total cannot disagree with it.
+    quotedTotal = serverTotal;
+    normalizedItems.length = 0;
+    normalizedItems.push({
+      title: typeof description === "string" && description.trim()
+        ? description.trim().slice(0, 120)
+        : "Pedido",
+      description: undefined,
+      quantity: 1,
+      unit_price: serverTotal,
+      currency_id: "MXN",
+    });
+  }
+
   if (quotedTotal < MIN_AMOUNT || quotedTotal > MAX_AMOUNT) {
     return jsonResponse({ error: "El total del pedido esta fuera del rango permitido" }, 400);
   }
@@ -270,7 +330,8 @@ async function handleCreatePreference(
   }
 
   // Build shipments if delivery cost is provided
-  const safeShipmentCost = Number(shipment_cost);
+  // Server-side pricing already includes delivery, so never add it again.
+  const safeShipmentCost = serverTotal !== null ? 0 : Number(shipment_cost);
   const shipments = Number.isFinite(safeShipmentCost) && safeShipmentCost > 0
     ? { cost: Math.round(safeShipmentCost * 100) / 100, mode: "not_specified" as const }
     : undefined;
