@@ -39,14 +39,15 @@ const CMSPage: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      // Remove /shop prefix from path for CMS lookup
-      const cmsPath = location.pathname || '/';
-      console.log('[CustomerHomePage] CMS path after processing:', cmsPath);
+      // Strip /preview prefix so CMS lookup uses the real page path;
+      // enable adminMode so unpublished pages and inactive modules are visible.
+      const isPreview = location.pathname.startsWith('/preview');
+      const cmsPath = isPreview
+        ? (location.pathname.replace(/^\/preview/, '') || '/')
+        : (location.pathname || '/');
+      console.log('[CustomerHomePage] CMS path after processing:', cmsPath, isPreview ? '(preview)' : '');
 
-      // Use direct REST API instead of Supabase client
-      console.log('[CustomerHomePage] Using direct REST API to fetch page data');
-      const pageData = await cmsApiDirect.getPageByPath(cmsPath);
-      console.log('[CustomerHomePage] Page data received:', pageData);
+      const pageData = await cmsApiDirect.getPageByPath(cmsPath, isPreview);
 
       if (!pageData) {
         console.error('[CustomerHomePage] No page found for path:', cmsPath);
@@ -55,16 +56,12 @@ const CMSPage: React.FC = () => {
         return;
       }
 
-      console.log('[CustomerHomePage] Page found:', pageData.title);
       setPage(pageData);
 
-      // Get modules for this page
       const moduleIds = pageData.module_order || [];
-      console.log('[CustomerHomePage] Module IDs from page:', moduleIds);
 
       if (moduleIds.length > 0) {
-        console.log('[CustomerHomePage] Fetching modules...');
-        const modulesData = await cmsApiDirect.getModulesByIds(moduleIds);
+        const modulesData = await cmsApiDirect.getModulesByIds(moduleIds, isPreview);
         console.log('[CustomerHomePage] Modules data received:', modulesData.length, 'modules');
 
         // Sort modules according to module_order
