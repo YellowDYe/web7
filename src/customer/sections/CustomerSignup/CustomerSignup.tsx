@@ -359,7 +359,7 @@ export const CustomerSignup: React.FC = () => {
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   onBlur={handleEmailBlur}
                   required
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-base"
                   placeholder="tu@correo.com"
                 />
               </div>
@@ -381,7 +381,7 @@ export const CustomerSignup: React.FC = () => {
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   required
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-base"
                   placeholder="Mínimo 8 caracteres"
                 />
               </div>
@@ -398,7 +398,7 @@ export const CustomerSignup: React.FC = () => {
                   value={formData.confirmPassword}
                   onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                   required
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-base"
                   placeholder="Confirma tu contraseña"
                 />
               </div>
@@ -419,7 +419,7 @@ export const CustomerSignup: React.FC = () => {
                   value={formData.first_name}
                   onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
                   required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-base"
                   placeholder="Juan"
                 />
               </div>
@@ -433,7 +433,7 @@ export const CustomerSignup: React.FC = () => {
                   value={formData.last_name}
                   onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
                   required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-base"
                   placeholder="Pérez"
                 />
               </div>
@@ -450,7 +450,7 @@ export const CustomerSignup: React.FC = () => {
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                   required
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-base"
                   placeholder="+52 123 456 7890"
                 />
               </div>
@@ -471,7 +471,7 @@ export const CustomerSignup: React.FC = () => {
                   value={formData.street_address}
                   onChange={(e) => setFormData({ ...formData, street_address: e.target.value })}
                   required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-base"
                   placeholder="Calle Principal"
                 />
               </div>
@@ -485,7 +485,7 @@ export const CustomerSignup: React.FC = () => {
                   value={formData.address_number}
                   onChange={(e) => setFormData({ ...formData, address_number: e.target.value })}
                   required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-base"
                   placeholder="123"
                 />
               </div>
@@ -499,7 +499,7 @@ export const CustomerSignup: React.FC = () => {
                 type="text"
                 value={formData.interior_number}
                 onChange={(e) => setFormData({ ...formData, interior_number: e.target.value })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-base"
                 placeholder="Depto 4B"
               />
             </div>
@@ -530,7 +530,7 @@ export const CustomerSignup: React.FC = () => {
                   value={formData.colonia}
                   onChange={(e) => setFormData({ ...formData, colonia: e.target.value })}
                   required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-base"
                   placeholder="Colonia"
                 />
               </div>
@@ -552,7 +552,7 @@ export const CustomerSignup: React.FC = () => {
                 value={formData.delivery_instructions}
                 onChange={(e) => setFormData({ ...formData, delivery_instructions: e.target.value })}
                 rows={3}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-base"
                 placeholder="Instrucciones especiales para la entrega..."
               />
             </div>
@@ -589,10 +589,10 @@ export const CustomerSignup: React.FC = () => {
               </p>
             </div>
 
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
               <div className="flex items-center space-x-2">
                 <Users className="w-5 h-5 text-gray-600" />
-                <h3 className="text-lg font-semibold text-gray-900">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900">
                   Miembros Familiares ({getFamilyMembers().length} de 5)
                 </h3>
               </div>
@@ -720,7 +720,7 @@ export const CustomerSignup: React.FC = () => {
                 type="text"
                 value={formData.rfc}
                 onChange={(e) => setFormData({ ...formData, rfc: e.target.value.toUpperCase() })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-base"
                 placeholder="XAXX010101000"
                 maxLength={13}
               />
@@ -734,7 +734,7 @@ export const CustomerSignup: React.FC = () => {
                 type="text"
                 value={formData.invoice_name}
                 onChange={(e) => setFormData({ ...formData, invoice_name: e.target.value })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-base"
                 placeholder="Empresa o Nombre Completo"
               />
             </div>
@@ -757,7 +757,7 @@ export const CustomerSignup: React.FC = () => {
                 value={formData.invoice_address}
                 onChange={(e) => setFormData({ ...formData, invoice_address: e.target.value })}
                 rows={3}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-base"
                 placeholder="Dirección completa de facturación (si es diferente a la dirección de entrega)"
               />
             </div>
@@ -770,14 +770,14 @@ export const CustomerSignup: React.FC = () => {
   };
 
   return (
-    <div className="container mx-auto px-4 py-16 max-w-3xl">
-      <Card className="p-8 shadow-lg">
+    <div className="container mx-auto px-4 py-8 sm:py-16 max-w-3xl overflow-x-hidden">
+      <Card className="p-4 sm:p-8 shadow-lg">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Crea Tu Cuenta</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Crea Tu Cuenta</h1>
           <p className="text-gray-600">Únete a Hola Dieta hoy</p>
         </div>
 
-        <div className="mb-12">
+        <div className="mb-6 sm:mb-12">
           <div className="flex items-center justify-between">
             {STEPS.map((step, index) => {
               const Icon = step.icon;
@@ -788,7 +788,7 @@ export const CustomerSignup: React.FC = () => {
                 <div key={step.id} className="flex items-center flex-1">
                   <div className="flex flex-col items-center flex-1">
                     <div
-                      className={`w-12 h-12 rounded-full flex items-center justify-center border-2 transition-colors ${
+                      className={`w-8 h-8 sm:w-12 sm:h-12 rounded-full flex items-center justify-center border-2 transition-colors ${
                         isCompleted
                           ? 'bg-green-500 border-green-500 text-white'
                           : isCurrent
@@ -796,10 +796,10 @@ export const CustomerSignup: React.FC = () => {
                           : 'bg-white border-gray-300 text-gray-400'
                       }`}
                     >
-                      {isCompleted ? <Check className="h-6 w-6" /> : <Icon className="h-6 w-6" />}
+                      {isCompleted ? <Check className="h-4 w-4 sm:h-6 sm:w-6" /> : <Icon className="h-4 w-4 sm:h-6 sm:w-6" />}
                     </div>
                     <span
-                      className={`mt-2 text-xs font-medium ${
+                      className={`mt-1 sm:mt-2 text-[10px] sm:text-xs font-medium text-center leading-tight ${
                         isCurrent ? 'text-red-600' : isCompleted ? 'text-green-600' : 'text-gray-400'
                       }`}
                     >
@@ -808,7 +808,7 @@ export const CustomerSignup: React.FC = () => {
                   </div>
                   {index < STEPS.length - 1 && (
                     <div
-                      className={`h-1 flex-1 mx-2 transition-colors ${
+                      className={`h-0.5 sm:h-1 flex-1 mx-1 sm:mx-2 transition-colors ${
                         isCompleted ? 'bg-green-500' : 'bg-gray-300'
                       }`}
                     />
