@@ -376,6 +376,9 @@ export default function CustomerSignupPage() {
       navigate(returnTo);
     } catch (err: any) {
       setError(friendlyError(err, 'Error al crear la cuenta'));
+      if (!isGoogleUser) {
+        setCurrentStep(0);
+      }
     } finally {
       setLoading(false);
     }
