@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ContactInfo } from '../../types';
 import { resolveImageUrl } from '../../../utils/imageHelper';
+import { sanitizeHtml } from '../../../utils/sanitizeHtml';
 
 interface FeaturePillImageProps {
   title?: string;
@@ -43,13 +44,11 @@ export const FeaturePillImage: React.FC<FeaturePillImageProps> = ({
                   onError={() => setIconError(true)}
                 />
               ) : null}
-              <h2 className="[font-family:'Antonio',Helvetica] font-bold text-black text-3xl md:text-4xl lg:text-5xl tracking-[-0.25px] leading-tight md:leading-[67px]">
-                {title}
-              </h2>
+              <h2 className="[font-family:'Antonio',Helvetica] font-bold text-black text-3xl md:text-4xl lg:text-5xl tracking-[-0.25px] leading-tight md:leading-[67px] cms-rich-content" dangerouslySetInnerHTML={{ __html: sanitizeHtml(title) }} />
             </div>
 
             <div className="[font-family:'Inria_Serif',Helvetica] font-normal text-[#1d1c21] text-base md:text-xl leading-6 md:leading-7 tracking-[-0.25px] max-w-lg mx-auto md:mx-0">
-              <p className="mb-4 md:mb-6">{description}</p>
+              <div className="mb-4 md:mb-6 cms-rich-content" dangerouslySetInnerHTML={{ __html: sanitizeHtml(description) }} />
               
               {contactInfo.phone && (
                 <>

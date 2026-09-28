@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { resolveImageUrl } from '../../../utils/imageHelper';
+import { sanitizeHtml } from '../../../utils/sanitizeHtml';
 
 interface MainHeroProps {
   title?: string;
@@ -40,13 +41,9 @@ export const MainHero: React.FC<MainHeroProps> = ({
       <div className="relative z-10 max-w-[1440px] mx-auto flex flex-col md:flex-row md:h-[712px]">
         <div className="w-full md:w-1/2 flex flex-col justify-center px-16 md:px-12 lg:px-20 py-6 md:py-0 rounded-t-[45px] md:rounded-none" style={{ backgroundColor: leftBackgroundColor }}>
           <div className="max-w-lg mx-auto md:mx-0 text-center md:text-left">
-            <h1 className="font-antonio font-bold text-[#1e1e1e] text-2xl sm:text-3xl md:text-4xl lg:text-5xl tracking-[-0.25px] leading-tight mb-4 md:mb-8">
-              {title}
-            </h1>
+            <h1 className="font-antonio font-bold text-[#1e1e1e] text-2xl sm:text-3xl md:text-4xl lg:text-5xl tracking-[-0.25px] leading-tight mb-4 md:mb-8 cms-rich-content" dangerouslySetInnerHTML={{ __html: sanitizeHtml(title) }} />
 
-            <p className="font-normal text-[#1e1e1e] text-base sm:text-lg md:text-lg lg:text-xl leading-6 sm:leading-7 md:leading-7 tracking-[-0.25px] mb-4 md:mb-12">
-              {description}
-            </p>
+            <div className="font-normal text-[#1e1e1e] text-base sm:text-lg md:text-lg lg:text-xl leading-6 sm:leading-7 md:leading-7 tracking-[-0.25px] mb-4 md:mb-12 cms-rich-content" dangerouslySetInnerHTML={{ __html: sanitizeHtml(description) }} />
 
             {buttonLink ? (
               <a

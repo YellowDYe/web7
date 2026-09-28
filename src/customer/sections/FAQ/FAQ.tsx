@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { ChevronDown, Search, MessageCircle } from 'lucide-react';
+import { sanitizeHtml } from '../../../utils/sanitizeHtml';
 
 export interface FaqItem {
   id: string;
@@ -129,12 +130,8 @@ export const FAQ: React.FC<FAQProps> = ({
 
         {/* Header */}
         <div className="text-center mb-10 md:mb-14">
-          <h2 className="[font-family:'Antonio',Helvetica] font-bold text-[#1e1e1e] text-4xl lg:text-5xl tracking-[-0.02em] leading-tight mb-4">
-            {title}
-          </h2>
-          <p className="[font-family:'Chivo',Helvetica] font-medium text-[#555555] text-base md:text-lg leading-relaxed tracking-[-0.01em]">
-            {subtitle}
-          </p>
+          <h2 className="[font-family:'Antonio',Helvetica] font-bold text-[#1e1e1e] text-4xl lg:text-5xl tracking-[-0.02em] leading-tight mb-4 cms-rich-content" dangerouslySetInnerHTML={{ __html: sanitizeHtml(title) }} />
+          <div className="[font-family:'Chivo',Helvetica] font-medium text-[#555555] text-base md:text-lg leading-relaxed tracking-[-0.01em] cms-rich-content" dangerouslySetInnerHTML={{ __html: sanitizeHtml(subtitle) }} />
         </div>
 
         {/* Search bar */}
@@ -200,12 +197,8 @@ export const FAQ: React.FC<FAQProps> = ({
           >
             <MessageCircle className="w-6 h-6 text-[#1e1e1e]" />
           </div>
-          <h3 className="[font-family:'Antonio',Helvetica] font-bold text-[#1e1e1e] text-2xl md:text-3xl tracking-[-0.02em] mb-3">
-            {contactTitle}
-          </h3>
-          <p className="[font-family:'Inria_Serif',Helvetica] text-[#555555] text-base md:text-lg leading-relaxed mb-7 max-w-md mx-auto">
-            {contactDescription}
-          </p>
+          <h3 className="[font-family:'Antonio',Helvetica] font-bold text-[#1e1e1e] text-2xl md:text-3xl tracking-[-0.02em] mb-3 cms-rich-content" dangerouslySetInnerHTML={{ __html: sanitizeHtml(contactTitle) }} />
+          <div className="[font-family:'Inria_Serif',Helvetica] text-[#555555] text-base md:text-lg leading-relaxed mb-7 max-w-md mx-auto cms-rich-content" dangerouslySetInnerHTML={{ __html: sanitizeHtml(contactDescription) }} />
           {contactButtonLink ? (
             <a
               href={contactButtonLink}

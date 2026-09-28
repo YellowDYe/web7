@@ -2,6 +2,7 @@ import React from 'react';
 import { Button } from '../ui/button';
 import { Plus, Trash2, MousePointerClick } from 'lucide-react';
 import { ImageFieldEditor } from './ImageFieldEditor';
+import { CompactRichTextEditor } from './CompactRichTextEditor';
 import type { Media } from '../../types/website';
 
 interface ContentFieldRendererProps {
@@ -109,6 +110,15 @@ function isValidCssColor(value: string): boolean {
     /^rgba?\(/.test(value) ||
     /^hsla?\(/.test(value) ||
     /^[a-zA-Z]+$/.test(value);
+}
+
+const RICH_TEXT_KEYS = new Set([
+  'title', 'subtitle', 'description',
+  'contactTitle', 'contactDescription',
+]);
+
+function isRichTextField(key: string): boolean {
+  return RICH_TEXT_KEYS.has(key);
 }
 
 function isButtonTextField(key: string): boolean {
@@ -310,6 +320,16 @@ export const ContentFieldRenderer: React.FC<ContentFieldRendererProps> = ({
                 ? onNestedContentChange(parentKey, key, val)
                 : onContentChange(key, val)
             )
+          ) : isRichTextField(key) ? (
+            <CompactRichTextEditor
+              value={value}
+              onChange={(val) => parentKey
+                ? onNestedContentChange(parentKey, key, val)
+                : onContentChange(key, val)
+              }
+              label={key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase())}
+              placeholder={`Escribe ${key}...`}
+            />
           ) : key.includes('description') || key.includes('content') ? (
             <>
               <label className="block text-sm font-medium text-gray-700">
@@ -535,6 +555,13 @@ export const ContentFieldRenderer: React.FC<ContentFieldRendererProps> = ({
                                 (val) => onArrayContentChange(key, index, itemKey, val)
                               )}
                             </div>
+                          ) : typeof itemValue === 'string' && isRichTextField(itemKey) ? (
+                            <CompactRichTextEditor
+                              value={itemValue}
+                              onChange={(val) => onArrayContentChange(key, index, itemKey, val)}
+                              label={itemKey.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase())}
+                              placeholder={`Escribe ${itemKey}...`}
+                            />
                           ) : typeof itemValue === 'string' ? (
                             <>
                               <label className="block text-xs font-medium text-gray-600 mb-1">

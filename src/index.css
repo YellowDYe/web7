@@ -126,6 +126,89 @@ body {
   height: 0;
 }
 
+/* Compact Rich Text Editor (for CMS module titles/descriptions) */
+.compact-editor-content .tiptap {
+  padding: 0.5rem 0.75rem;
+  outline: none;
+  min-height: 3rem;
+  max-height: 10rem;
+  overflow-y: auto;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: #111827;
+}
+
+.compact-editor-content .tiptap p {
+  margin-bottom: 0.25rem;
+}
+
+.compact-editor-content .tiptap p:last-child {
+  margin-bottom: 0;
+}
+
+.compact-editor-content .tiptap p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: #9ca3af;
+  pointer-events: none;
+  float: left;
+  height: 0;
+}
+
+.compact-editor-content .tiptap strong {
+  font-weight: 700;
+}
+
+.compact-editor-content .tiptap em {
+  font-style: italic;
+}
+
+.compact-editor-content .tiptap u {
+  text-decoration: underline;
+}
+
+.compact-editor-content .tiptap s {
+  text-decoration: line-through;
+}
+
+.compact-editor-content .tiptap a {
+  color: #2563eb;
+  text-decoration: underline;
+}
+
+.compact-editor-content .tiptap a:hover {
+  color: #1d4ed8;
+}
+
+/* CMS Rich Content rendering in customer-facing sections */
+.cms-rich-content p {
+  margin: 0;
+}
+
+.cms-rich-content strong {
+  font-weight: 700;
+}
+
+.cms-rich-content em {
+  font-style: italic;
+}
+
+.cms-rich-content u {
+  text-decoration: underline;
+}
+
+.cms-rich-content s {
+  text-decoration: line-through;
+}
+
+.cms-rich-content a {
+  text-decoration: underline;
+  transition: opacity 0.2s;
+}
+
+.cms-rich-content a:hover {
+  opacity: 0.8;
+}
+
 /* Screen-only styles for grocery list print preview */
 @media screen {
   .grocery-print-content .grocery-print-table {

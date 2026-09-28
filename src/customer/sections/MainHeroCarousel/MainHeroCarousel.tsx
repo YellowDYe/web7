@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { resolveImageUrl } from '../../../utils/imageHelper';
+import { sanitizeHtml } from '../../../utils/sanitizeHtml';
 
 interface HeroSlide {
   id: string;
@@ -50,13 +51,9 @@ const SlideView: React.FC<SlideViewProps> = ({ slide }) => {
           style={{ backgroundColor: bgColor }}
         >
           <div className="max-w-lg mx-auto md:mx-0 text-center md:text-left">
-            <h1 className="[font-family:'Antonio',Helvetica] font-bold text-[#1e1e1e] text-2xl sm:text-3xl md:text-4xl lg:text-5xl tracking-[-0.25px] leading-tight mb-4 md:mb-8">
-              {slide.title}
-            </h1>
+            <h1 className="[font-family:'Antonio',Helvetica] font-bold text-[#1e1e1e] text-2xl sm:text-3xl md:text-4xl lg:text-5xl tracking-[-0.25px] leading-tight mb-4 md:mb-8 cms-rich-content" dangerouslySetInnerHTML={{ __html: sanitizeHtml(slide.title) }} />
 
-            <p className="[font-family:'Inria_Serif',Helvetica] font-normal text-[#1e1e1e] text-base sm:text-lg md:text-lg lg:text-xl leading-6 sm:leading-7 md:leading-7 tracking-[-0.25px] mb-4 md:mb-12">
-              {slide.description}
-            </p>
+            <div className="[font-family:'Inria_Serif',Helvetica] font-normal text-[#1e1e1e] text-base sm:text-lg md:text-lg lg:text-xl leading-6 sm:leading-7 md:leading-7 tracking-[-0.25px] mb-4 md:mb-12 cms-rich-content" dangerouslySetInnerHTML={{ __html: sanitizeHtml(slide.description) }} />
 
             {slide.buttonLink ? (
               <a

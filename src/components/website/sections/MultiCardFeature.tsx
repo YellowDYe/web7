@@ -1,5 +1,6 @@
 import React from 'react';
 import type { PlanCard } from '../../../types/website';
+import { sanitizeHtml } from '../../../utils/sanitizeHtml';
 
 interface MultiCardFeatureProps {
   title?: string;
@@ -120,12 +121,8 @@ export const MultiCardFeature: React.FC<MultiCardFeatureProps> = ({
   return (
     <section className="w-full py-8 md:py-16 px-8 rounded-[45px]" style={{ backgroundColor }}>
       <div className="text-center mb-8 md:mb-16">
-        <h2 className="font-antonio font-bold text-black text-4xl lg:text-5xl text-center tracking-[-0.25px] leading-tight lg:leading-[120px] mb-2 lg:mb-4">
-          {title}
-        </h2>
-        <p className="font-medium text-[#1d1c21] text-xl text-center leading-7 tracking-[-0.25px]">
-          {subtitle}
-        </p>
+        <h2 className="font-antonio font-bold text-black text-4xl lg:text-5xl text-center tracking-[-0.25px] leading-tight lg:leading-[120px] mb-2 lg:mb-4 cms-rich-content" dangerouslySetInnerHTML={{ __html: sanitizeHtml(title) }} />
+        <div className="font-medium text-[#1d1c21] text-xl text-center leading-7 tracking-[-0.25px] cms-rich-content" dangerouslySetInnerHTML={{ __html: sanitizeHtml(subtitle) }} />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
@@ -148,13 +145,9 @@ export const MultiCardFeature: React.FC<MultiCardFeatureProps> = ({
                 className="rounded-[0px_0px_45px_45px] flex flex-col items-center p-8 pt-6"
                 style={{ backgroundColor: card.backgroundColor }}
               >
-                <h3 className="font-antonio font-bold text-black text-3xl lg:text-4xl text-center tracking-[-0.25px] leading-9 mb-4">
-                  {card.title}
-                </h3>
+                <h3 className="font-antonio font-bold text-black text-3xl lg:text-4xl text-center tracking-[-0.25px] leading-9 mb-4 cms-rich-content" dangerouslySetInnerHTML={{ __html: sanitizeHtml(card.title) }} />
 
-                <p className="font-normal text-[#1d1c21] text-base text-center leading-[22px] tracking-[-0.25px] mb-4 max-w-sm">
-                  {card.description}
-                </p>
+                <div className="font-normal text-[#1d1c21] text-base text-center leading-[22px] tracking-[-0.25px] mb-4 max-w-sm cms-rich-content" dangerouslySetInnerHTML={{ __html: sanitizeHtml(card.description) }} />
 
                 {card.macros && <MacrosBlock macros={card.macros} />}
 

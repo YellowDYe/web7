@@ -1,4 +1,5 @@
 import React from 'react';
+import { sanitizeHtml } from '../../../utils/sanitizeHtml';
 
 interface FeatureFullImageProps {
   title?: string;
@@ -31,13 +32,9 @@ export const FeatureFullImage: React.FC<FeatureFullImageProps> = ({
           </div>
 
           <div className="w-full md:w-1/2 order-2 md:order-1 text-center md:text-left">
-            <h2 className="font-antonio font-bold text-black text-3xl md:text-4xl lg:text-5xl tracking-[-0.25px] leading-tight md:leading-[70px] mb-6 md:mb-8">
-              {title}
-            </h2>
+            <h2 className="font-antonio font-bold text-black text-3xl md:text-4xl lg:text-5xl tracking-[-0.25px] leading-tight md:leading-[70px] mb-6 md:mb-8 cms-rich-content" dangerouslySetInnerHTML={{ __html: sanitizeHtml(title) }} />
 
-            <p className="font-normal text-[#1d1c21] text-lg md:text-xl tracking-[-0.25px] leading-6 md:leading-7 mb-8 md:mb-12 max-w-lg mx-auto md:mx-0">
-              {description}
-            </p>
+            <div className="font-normal text-[#1d1c21] text-lg md:text-xl tracking-[-0.25px] leading-6 md:leading-7 mb-8 md:mb-12 max-w-lg mx-auto md:mx-0 cms-rich-content" dangerouslySetInnerHTML={{ __html: sanitizeHtml(description) }} />
 
             {buttonLink ? (
               <a

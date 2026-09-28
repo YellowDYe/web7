@@ -1,4 +1,5 @@
 import React from 'react';
+import { sanitizeHtml } from '../../../utils/sanitizeHtml';
 
 interface TitleBlockProps {
   title?: string;
@@ -21,13 +22,9 @@ export const TitleBlock: React.FC<TitleBlockProps> = ({
   return (
     <section className="w-full py-10 md:py-16 px-8" style={{ backgroundColor }}>
       <div className={`max-w-3xl ${alignment === 'center' ? 'mx-auto' : alignment === 'right' ? 'ml-auto' : ''}`}>
-        <h2 className={`[font-family:'Antonio',Helvetica] font-bold text-black text-4xl lg:text-5xl tracking-[-0.25px] leading-tight mb-4 ${alignClass}`}>
-          {title}
-        </h2>
+        <h2 className={`[font-family:'Antonio',Helvetica] font-bold text-black text-4xl lg:text-5xl tracking-[-0.25px] leading-tight mb-4 ${alignClass} cms-rich-content`} dangerouslySetInnerHTML={{ __html: sanitizeHtml(title) }} />
         {subtitle && (
-          <p className={`[font-family:'Chivo',Helvetica] font-medium text-[#1d1c21] text-xl leading-7 tracking-[-0.25px] ${alignClass}`}>
-            {subtitle}
-          </p>
+          <div className={`[font-family:'Chivo',Helvetica] font-medium text-[#1d1c21] text-xl leading-7 tracking-[-0.25px] ${alignClass} cms-rich-content`} dangerouslySetInnerHTML={{ __html: sanitizeHtml(subtitle) }} />
         )}
       </div>
     </section>

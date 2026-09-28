@@ -1,5 +1,6 @@
 import React from 'react';
 import { Button } from '../../components/ui/button';
+import { sanitizeHtml } from '../../../utils/sanitizeHtml';
 
 export interface ObjectiveCard {
   id: string;
@@ -24,12 +25,8 @@ const ObjectiveCardComponent: React.FC<{ card: ObjectiveCard }> = ({ card }) => 
       style={{ borderColor: card.borderColor || '#e9ff93' }}
     >
       <div>
-        <h3 className="[font-family:'Antonio',Helvetica] font-bold text-[#1e1e1e] text-2xl lg:text-3xl tracking-[-0.25px] leading-tight mb-4">
-          {card.title || 'Objective Title'}
-        </h3>
-        <p className="[font-family:'Inria_Serif',Helvetica] font-normal text-[#444444] text-base leading-[1.6] tracking-[-0.25px]">
-          {card.description || 'Describe this objective and its benefits here.'}
-        </p>
+        <h3 className="[font-family:'Antonio',Helvetica] font-bold text-[#1e1e1e] text-2xl lg:text-3xl tracking-[-0.25px] leading-tight mb-4 cms-rich-content" dangerouslySetInnerHTML={{ __html: sanitizeHtml(card.title || 'Objective Title') }} />
+        <div className="[font-family:'Inria_Serif',Helvetica] font-normal text-[#444444] text-base leading-[1.6] tracking-[-0.25px] cms-rich-content" dangerouslySetInnerHTML={{ __html: sanitizeHtml(card.description || 'Describe this objective and its benefits here.') }} />
       </div>
 
       <div className="mt-8">
@@ -89,12 +86,8 @@ export const Objectives: React.FC<ObjectivesProps> = ({
     <section className="w-full py-12 md:py-20 px-8 rounded-[45px]" style={{ backgroundColor }}>
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-10 md:mb-16">
-          <h2 className="[font-family:'Antonio',Helvetica] font-bold text-[#1e1e1e] text-4xl lg:text-5xl tracking-[-0.25px] leading-tight mb-3">
-            {title}
-          </h2>
-          <p className="[font-family:'Chivo',Helvetica] font-medium text-[#444444] text-lg text-center leading-7 tracking-[-0.25px]">
-            {subtitle}
-          </p>
+          <h2 className="[font-family:'Antonio',Helvetica] font-bold text-[#1e1e1e] text-4xl lg:text-5xl tracking-[-0.25px] leading-tight mb-3 cms-rich-content" dangerouslySetInnerHTML={{ __html: sanitizeHtml(title) }} />
+          <div className="[font-family:'Chivo',Helvetica] font-medium text-[#444444] text-lg text-center leading-7 tracking-[-0.25px] cms-rich-content" dangerouslySetInnerHTML={{ __html: sanitizeHtml(subtitle) }} />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
