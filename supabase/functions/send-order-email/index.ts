@@ -28,6 +28,8 @@ interface OrderEmailRequest {
   shopUrl: string;
   sendAdminNotification?: boolean;
   orderStatus?: string;
+  planName?: string;
+  totalDishes?: number;
 }
 
 interface MailgunContext {
@@ -356,7 +358,8 @@ function generateAdminNotificationTemplate(params: OrderEmailRequest, siteName: 
                 <p style="margin: 0 0 8px; font-size: 14px; color: #3b82f6;">${params.customerEmail}</p>
                 <p style="margin: 0 0 4px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #6b7280;">Direcci&oacute;n de entrega</p>
                 <p style="margin: 0 0 4px; font-size: 14px; color: #374151;">${params.deliveryAddress || "No proporcionada"}</p>
-                <p style="margin: 0; font-size: 13px; color: #6b7280;">Env&iacute;o: <strong>${params.deliveryOptionName}</strong></p>
+                <p style="margin: 0 0 4px; font-size: 13px; color: #6b7280;">Env&iacute;o: <strong>${params.deliveryOptionName}</strong></p>
+                ${params.planName ? `<p style="margin: 8px 0 0; font-size: 13px; color: #6b7280;">Plan: <strong>${params.planName}</strong>${params.totalDishes ? ` &mdash; ${params.totalDishes} platillo${params.totalDishes === 1 ? '' : 's'}` : ''}</p>` : ''}
               </div>
             </td>
           </tr>
@@ -520,6 +523,7 @@ function generateOrderConfirmationTemplate(params: OrderEmailRequest): string {
               <div style="background-color: #fef2f2; border: 2px solid #fca5a5; border-radius: 12px; padding: 20px; text-align: center;">
                 <p style="margin: 0 0 4px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #9ca3af;">N&uacute;mero de Orden</p>
                 <p style="margin: 0; font-size: 28px; font-weight: 700; color: #dc2626; letter-spacing: 1px;">#${params.orderNumber}</p>
+                ${params.planName ? `<p style="margin: 12px 0 0; font-size: 15px; font-weight: 600; color: #374151;">${params.planName}${params.totalDishes ? ` &mdash; ${params.totalDishes} platillo${params.totalDishes === 1 ? '' : 's'}` : ''}</p>` : ''}
               </div>
             </td>
           </tr>

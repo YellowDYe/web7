@@ -60,6 +60,8 @@ export interface OrderConfirmationData {
   deliveryOptionName: string;
   couponCode?: string;
   orderStatus?: string;
+  planName?: string;
+  totalDishes?: number;
 }
 
 class CustomerOrderSubmissionService {
@@ -343,6 +345,8 @@ class CustomerOrderSubmissionService {
           shopUrl,
           sendAdminNotification: true,
           orderStatus: data.orderStatus || 'approved',
+          planName: data.planName,
+          totalDishes: data.totalDishes,
         }),
       });
 

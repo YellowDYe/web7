@@ -272,12 +272,18 @@ export const CustomerCheckout: React.FC = () => {
           totals.finalTotal += snappedProteinSubtotal * 1.16;
         }
 
+        const billableDishCount = snappedCart.orderItems
+          .filter(i => BILLABLE_MEAL_TYPES.includes(i.meal_type as any))
+          .reduce((s, i) => s + i.quantity, 0);
+
         const confirmData: OrderConfirmationData = {
           orderId, orderNumber, customer,
           selectedWeeks: snappedCart.selectedWeeks, totals,
           deliveryOptionName: snappedCart.selectedDeliveryOption?.delivery_options_name ?? '',
           couponCode: snappedCart.appliedCoupon?.code,
           orderStatus: mpStatus || 'pending',
+          planName: snappedCart.selectedPlan?.meal_plans_name,
+          totalDishes: billableDishCount,
         };
 
         try {

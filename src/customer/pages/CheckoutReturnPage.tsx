@@ -138,6 +138,7 @@ export const CheckoutReturn: React.FC = () => {
               .eq('id', createdOrderId);
 
             if (mpStatus === 'approved') {
+              const billableDishCount = (cart.orderItems || []).filter((i: any) => BILLABLE_MEAL_TYPES.includes(i.meal_type)).reduce((s: number, i: any) => s + i.quantity, 0);
               const confirmData: OrderConfirmationData = {
                 orderId: createdOrderId,
                 orderNumber: createdOrderNumber,
@@ -147,6 +148,8 @@ export const CheckoutReturn: React.FC = () => {
                 deliveryOptionName: cart.selectedDeliveryOption?.delivery_options_name ?? '',
                 couponCode: cart.appliedCoupon?.code,
                 orderStatus: 'approved',
+                planName: cart.selectedPlan?.meal_plans_name,
+                totalDishes: billableDishCount,
               };
               try {
                 await customerOrderSubmissionService.sendOrderConfirmationEmail(confirmData);
