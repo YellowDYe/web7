@@ -11,6 +11,7 @@ interface CustomerAuthContextType {
   login: (email: string, password: string) => Promise<void>;
   loginWithGoogle: (returnTo?: string) => Promise<void>;
   signup: (email: string, password: string, customerData: Partial<Customer>) => Promise<void>;
+  signupGoogleUser: (customerData: Partial<Customer>) => Promise<void>;
   logout: () => Promise<void>;
   checkEmailExists: (email: string) => Promise<{ exists: boolean; hasAuth: boolean; hasCustomer: boolean; customer?: Customer }>;
   updateCustomerProfile: (data: Partial<Customer>) => Promise<void>;
@@ -318,6 +319,28 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const signupGoogleUser = async (customerData: Partial<Customer>) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) throw new Error('No hay sesión activa. Por favor intenta de nuevo.');
+
+      const authUserId = session.user.id;
+      const email = session.user.email || '';
+
+      const emailCheck = await checkEmailExists(email);
+      if (emailCheck.hasCustomer) {
+        throw new Error('Esta cuenta de Google ya tiene un perfil. Por favor inicia sesión.');
+      }
+
+      const existingCustomerId = emailCheck.customer?.id || null;
+      await callCreateCustomerAccount(authUserId, email, customerData, existingCustomerId);
+      await fetchCustomerData(authUserId, email);
+    } catch (error: any) {
+      console.error('Google signup error:', error);
+      throw new Error(friendlyError(error, 'Error al crear la cuenta'));
+    }
+  };
+
   const logout = async () => {
     try {
       const { error } = await supabase.auth.signOut();
@@ -356,6 +379,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     login,
     loginWithGoogle,
     signup,
+    signupGoogleUser,
     logout,
     checkEmailExists,
     updateCustomerProfile,
