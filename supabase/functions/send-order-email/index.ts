@@ -426,7 +426,7 @@ function generateAdminNotificationTemplate(params: OrderEmailRequest, siteName: 
           <!-- CTA -->
           <tr>
             <td style="padding: 0 32px 36px; text-align: center;">
-              <a href="${params.shopUrl.replace(/\/+$/, "").replace(/\/(menu|orden|checkout|account|blog).*$/, "")}/admin" style="display: inline-block; background: linear-gradient(135deg, #1e3a5f 0%, #0f2942 100%); color: #ffffff; padding: 14px 36px; text-decoration: none; border-radius: 12px; font-weight: 600; font-size: 15px; box-shadow: 0 4px 12px rgba(30,58,95,0.35);">
+              <a href="https://sistema.holadieta.mx/pedidos" style="display: inline-block; background: linear-gradient(135deg, #1e3a5f 0%, #0f2942 100%); color: #ffffff; padding: 14px 36px; text-decoration: none; border-radius: 12px; font-weight: 600; font-size: 15px; box-shadow: 0 4px 12px rgba(30,58,95,0.35);">
                 Ver pedidos en el panel
               </a>
             </td>
