@@ -21,11 +21,11 @@ const MAX_AMOUNT = 200000;
  * caller cannot make Mercado Pago bounce shoppers to a site they control.
  */
 function allowedReturnOrigins(): string[] {
-  const configured = (Deno.env.get("ALLOWED_RETURN_ORIGINS") || "")
+  const configured = (Deno.env.get("ALLOWED_SITE_URLS") || Deno.env.get("ALLOWED_RETURN_ORIGINS") || "")
     .split(",")
     .map((o) => o.trim().replace(/\/$/, ""))
     .filter(Boolean);
-  const siteUrl = (Deno.env.get("SITE_URL") || "").trim().replace(/\/$/, "");
+  const siteUrl = (Deno.env.get("PUBLIC_SITE_URL") || Deno.env.get("SITE_URL") || "").trim().replace(/\/$/, "");
   if (siteUrl) configured.push(siteUrl);
   return configured;
 }

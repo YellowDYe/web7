@@ -30,3 +30,39 @@ verify_jwt = true
 
 [functions.send-order-email]
 verify_jwt = true
+
+[functions.create-auth-user]
+verify_jwt = true
+
+[functions.create-payment-intent]
+verify_jwt = true
+
+[functions.delete-auth-user]
+verify_jwt = true
+
+[functions.delete-own-account]
+verify_jwt = true
+
+[functions.delivery-tracking-proxy]
+verify_jwt = true
+
+[functions.facturama-download]
+verify_jwt = true
+
+[functions.gmail-oauth-callback]
+verify_jwt = true
+
+[functions.paypal-webhook]
+verify_jwt = false
+
+[functions.reset-auth-user-password]
+verify_jwt = true
+
+[functions.send-verification-email]
+verify_jwt = true
+
+[functions.stripe-webhook]
+verify_jwt = false
+
+[functions.woocommerce-webhook]
+verify_jwt = false

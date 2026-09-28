@@ -22,11 +22,11 @@ const WINDOW_MINUTES = 15;
  * hands the token to a site they control.
  */
 function resolveSiteUrl(requested: unknown, req: Request): string | null {
-  const allowed = (Deno.env.get("ALLOWED_RETURN_ORIGINS") || "")
+  const allowed = (Deno.env.get("ALLOWED_SITE_URLS") || Deno.env.get("ALLOWED_RETURN_ORIGINS") || "")
     .split(",")
     .map((o) => o.trim().replace(/\/$/, ""))
     .filter(Boolean);
-  const configured = (Deno.env.get("SITE_URL") || "").trim().replace(/\/$/, "");
+  const configured = (Deno.env.get("PUBLIC_SITE_URL") || Deno.env.get("SITE_URL") || "").trim().replace(/\/$/, "");
   if (configured) allowed.unshift(configured);
 
   let requestedOrigin: string | null = null;
