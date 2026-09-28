@@ -72,9 +72,11 @@ export default function CustomerSignupPage() {
   const [restrictionNames, setRestrictionNames] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    if (user && !customer) {
+    const isOAuth = user?.app_metadata?.provider === 'google';
+    if (isOAuth && user && !customer) {
       setIsGoogleUser(true);
       setCurrentStep(1);
+      localStorage.removeItem('customerSignupDraft');
       const meta = user.user_metadata;
       if (meta) {
         setFormData(prev => ({
@@ -88,6 +90,10 @@ export default function CustomerSignupPage() {
   }, [user, customer]);
 
   useEffect(() => {
+    if (searchParams.get('incomplete') !== 'true') {
+      localStorage.removeItem('customerSignupDraft');
+      return;
+    }
     const saved = localStorage.getItem('customerSignupDraft');
     if (saved) {
       try {
