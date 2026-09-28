@@ -266,79 +266,52 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     return accountResult;
   };
 
-  const signup = async (email: string, password: string, customerData: Partial<Customer>) => {
-    let newAuthUserId: string | null = null;
+  const ensureAuthenticatedSession = async (email: string, password: string): Promise<string> => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) return session.user.id;
 
+    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    if (signInError) throw signInError;
+    if (!signInData.user) throw new Error('Error al iniciar sesión');
+    return signInData.user.id;
+  };
+
+  const signup = async (email: string, password: string, customerData: Partial<Customer>) => {
     try {
-      // Step 1: Check if email exists
-      console.log('Step 1: Checking if email exists:', email);
       const emailCheck = await checkEmailExists(email);
       const existingCustomerId = emailCheck.customer?.id || null;
 
-      console.log('Email check result:', {
-        exists: emailCheck.exists,
-        hasAuth: emailCheck.hasAuth,
-        hasCustomer: emailCheck.hasCustomer,
-        existingCustomerId
-      });
-
-      // If auth exists AND customer exists, signup is fully completed already
       if (emailCheck.hasAuth && emailCheck.hasCustomer) {
         throw new Error('Esta dirección de correo ya tiene una cuenta. Por favor inicia sesión.');
       }
 
-      // If auth exists but NO customer row, this is a partially failed signup -- retry
+      let authUserId: string;
+
       if (emailCheck.hasAuth && !emailCheck.hasCustomer) {
-        console.log('Step 2 (retry): Auth user exists without customer row, signing in to complete signup');
-        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        authUserId = await ensureAuthenticatedSession(email, password);
+      } else {
+        const { data: authData, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/account`,
+            data: { user_type: 'customer' },
+          },
         });
 
-        if (signInError) {
-          throw new Error('Tu cuenta fue creada parcialmente. Verifica tu contraseña e intenta de nuevo.');
-        }
+        if (signUpError) throw signUpError;
+        if (!authData.user) throw new Error('Error al crear usuario');
 
-        if (!signInData.user) throw new Error('Error al iniciar sesión');
-
-        console.log('Signed in to complete signup:', signInData.user.id);
-
-        // Now create the customer record
-        const accountResult = await callCreateCustomerAccount(signInData.user.id, email, customerData, existingCustomerId);
-        console.log('Customer account created (retry):', accountResult);
-
-        await fetchCustomerData(signInData.user.id, email);
-        console.log('Signup recovery completed successfully');
-        return;
+        authUserId = await ensureAuthenticatedSession(email, password);
       }
 
-      // Normal flow: create auth user first
-      console.log('Step 2: Creating auth user');
-      const { data: authData, error: signUpError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/account`,
-          data: {
-            user_type: 'customer',
-          },
-        },
-      });
-
-      if (signUpError) throw signUpError;
-      if (!authData.user) throw new Error('Error al crear usuario');
-
-      newAuthUserId = authData.user.id;
-      console.log('Auth user created:', newAuthUserId);
-
-      // Create customer account
-      console.log('Step 3: Creating customer account');
-      const accountResult = await callCreateCustomerAccount(authData.user.id, email, customerData, existingCustomerId);
+      const accountResult = await callCreateCustomerAccount(authUserId, email, customerData, existingCustomerId);
       console.log('Customer account created:', accountResult);
 
-      // Fetch the customer data to update state
-      await fetchCustomerData(authData.user.id, email);
-      console.log('Signup completed successfully');
+      await fetchCustomerData(authUserId, email);
     } catch (error: any) {
       console.error('Signup error:', error);
       throw new Error(friendlyError(error, 'Error al crear la cuenta'));

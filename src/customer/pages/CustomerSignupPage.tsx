@@ -265,23 +265,6 @@ export default function CustomerSignupPage() {
           return false;
         }
 
-        // Validate email availability before allowing to proceed
-        console.log('[SIGNUP] Checking email availability before proceeding');
-        try {
-          const result = await checkEmailExists(formData.email);
-          console.log('[SIGNUP] Email availability check result:', result);
-          if (result.hasAuth && result.hasCustomer) {
-            console.log('[SIGNUP] Email already has completed account');
-            setError('Este correo ya está registrado. Por favor inicia sesión.');
-            return false;
-          }
-        } catch (err: any) {
-          console.error('[SIGNUP] Error checking email:', err);
-          setError(friendlyError(err, 'Error al verificar el correo. Por favor intenta de nuevo.'));
-          return false;
-        }
-
-        console.log('[SIGNUP] Step 0 validation passed');
         return true;
 
       case 1:
