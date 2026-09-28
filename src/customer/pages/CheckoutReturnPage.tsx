@@ -55,10 +55,12 @@ export const CheckoutReturn: React.FC = () => {
 
       if (urlStatus === 'failure' || urlStatus === 'rejected') {
         setConfirmationData(existingOrderData);
-        // Extract status_detail from URL if present for better messaging
         const detail = searchParams.get('status_detail') || '';
         setFailureDetail(detail);
         setStatus('failure');
+        if (existingOrderData) {
+          customerOrderSubmissionService.sendOrderConfirmationEmail({ ...existingOrderData, orderStatus: 'failed' }).catch(() => {});
+        }
         return;
       }
 
@@ -144,6 +146,7 @@ export const CheckoutReturn: React.FC = () => {
                 totals: orderTotals,
                 deliveryOptionName: cart.selectedDeliveryOption?.delivery_options_name ?? '',
                 couponCode: cart.appliedCoupon?.code,
+                orderStatus: 'approved',
               };
               try {
                 await customerOrderSubmissionService.sendOrderConfirmationEmail(confirmData);
@@ -248,7 +251,7 @@ export const CheckoutReturn: React.FC = () => {
 
         if (isApproved) {
           try {
-            await customerOrderSubmissionService.sendOrderConfirmationEmail(existingOrderData);
+            await customerOrderSubmissionService.sendOrderConfirmationEmail({ ...existingOrderData, orderStatus: 'approved' });
             setEmailSent(true);
           } catch (err) {
             console.warn('Could not send confirmation email:', err);

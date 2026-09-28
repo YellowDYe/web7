@@ -59,6 +59,7 @@ export interface OrderConfirmationData {
   };
   deliveryOptionName: string;
   couponCode?: string;
+  orderStatus?: string;
 }
 
 class CustomerOrderSubmissionService {
@@ -339,7 +340,9 @@ class CustomerOrderSubmissionService {
           totals,
           deliveryOptionName,
           couponCode,
-          shopUrl
+          shopUrl,
+          sendAdminNotification: true,
+          orderStatus: data.orderStatus || 'approved',
         }),
       });
 

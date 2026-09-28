@@ -277,15 +277,14 @@ export const CustomerCheckout: React.FC = () => {
           selectedWeeks: snappedCart.selectedWeeks, totals,
           deliveryOptionName: snappedCart.selectedDeliveryOption?.delivery_options_name ?? '',
           couponCode: snappedCart.appliedCoupon?.code,
+          orderStatus: mpStatus || 'pending',
         };
 
-        if (mpStatus === 'approved') {
-          try {
-            await customerOrderSubmissionService.sendOrderConfirmationEmail(confirmData);
-            emailSent = true;
-          } catch (err: any) {
-            emailError = 'No pudimos enviar el correo de confirmacion.';
-          }
+        try {
+          await customerOrderSubmissionService.sendOrderConfirmationEmail(confirmData);
+          emailSent = true;
+        } catch (err: any) {
+          emailError = 'No pudimos enviar el correo de confirmacion.';
         }
 
         const formatAddress = (): string => {

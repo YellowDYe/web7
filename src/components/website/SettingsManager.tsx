@@ -3,7 +3,7 @@ import { websiteService } from '../../services/websiteService';
 import type { Setting } from '../../types/website';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Save, Palette, Search, Code, Upload, Image, Trash2, Check, CircleAlert as AlertCircle, CircleCheck as CheckCircle, MessageCircle, Globe, ExternalLink } from 'lucide-react';
+import { Save, Palette, Search, Code, Upload, Image, Trash2, Check, CircleAlert as AlertCircle, CircleCheck as CheckCircle, MessageCircle, Globe, ExternalLink, Bell, Plus, X } from 'lucide-react';
 
 export const SettingsManager: React.FC = () => {
   const [settings, setSettings] = useState<Setting[]>([]);
@@ -33,6 +33,7 @@ export const SettingsManager: React.FC = () => {
     { id: 'custom_code', label: 'Custom Code', icon: Code },
     { id: 'whatsapp_settings', label: 'WhatsApp', icon: MessageCircle },
     { id: 'public_site_url', label: 'URL del Sitio', icon: Globe },
+    { id: 'notification_settings', label: 'Notificaciones', icon: Bell },
   ];
 
   useEffect(() => {
@@ -782,6 +783,126 @@ export const SettingsManager: React.FC = () => {
     );
   };
 
+  const renderNotificationSettings = () => {
+    const notif = editingSettings.notification_settings || { enabled: false, emails: [], notify_on_approved: true, notify_on_pending: true, notify_on_failed: true };
+    const emails: string[] = notif.emails || [];
+
+    const addEmail = () => {
+      const updated = [...emails, ''];
+      handleSettingChange('notification_settings', 'emails', updated);
+    };
+
+    const removeEmail = (index: number) => {
+      const updated = emails.filter((_: string, i: number) => i !== index);
+      handleSettingChange('notification_settings', 'emails', updated);
+    };
+
+    const updateEmail = (index: number, value: string) => {
+      const updated = emails.map((e: string, i: number) => i === index ? value : e);
+      handleSettingChange('notification_settings', 'emails', updated);
+    };
+
+    const toggleField = (field: string) => {
+      setEditingSettings(prev => ({
+        ...prev,
+        notification_settings: {
+          ...prev.notification_settings,
+          [field]: !prev.notification_settings?.[field]
+        }
+      }));
+    };
+
+    return (
+      <div className="space-y-6">
+        <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="flex items-start space-x-2">
+            <Bell className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-blue-800">
+              Configura las direcciones de correo que recibirán una notificación cada vez que un cliente realice un pedido.
+            </p>
+          </div>
+        </div>
+
+        {/* Enable toggle */}
+        <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+          <div>
+            <p className="text-sm font-medium text-gray-900">Notificaciones de pedidos activas</p>
+            <p className="text-xs text-gray-500 mt-0.5">Enviar un correo al administrador cuando se reciba un pedido nuevo</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => toggleField('enabled')}
+            className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${notif.enabled ? 'bg-blue-600' : 'bg-gray-200'}`}
+          >
+            <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${notif.enabled ? 'translate-x-5' : 'translate-x-0'}`} />
+          </button>
+        </div>
+
+        {/* Email addresses */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Correos de notificación
+          </label>
+          <div className="space-y-2">
+            {emails.map((email: string, index: number) => (
+              <div key={index} className="flex items-center space-x-2">
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => updateEmail(index, e.target.value)}
+                  placeholder="admin@ejemplo.com"
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => removeEmail(index)}
+                  className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={addEmail}
+            className="mt-2 flex items-center space-x-1 text-sm text-blue-600 hover:text-blue-800 font-medium"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Agregar correo</span>
+          </button>
+        </div>
+
+        {/* Notification triggers */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Enviar notificación cuando el pedido tenga estado:
+          </label>
+          <div className="space-y-3">
+            {[
+              { field: 'notify_on_approved', label: 'Pago aprobado', desc: 'Pagos completados con tarjeta, Mercado Pago, PayPal, etc.' },
+              { field: 'notify_on_pending', label: 'Pago pendiente', desc: 'Pedidos registrados pero aún sin pago (efectivo, transferencia)' },
+              { field: 'notify_on_failed', label: 'Pago fallido o rechazado', desc: 'Intentos de pago que no se completaron' },
+            ].map(({ field, label, desc }) => (
+              <div key={field} className="flex items-start space-x-3 p-3 border border-gray-200 rounded-lg">
+                <input
+                  type="checkbox"
+                  checked={notif[field] !== false}
+                  onChange={() => toggleField(field)}
+                  className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <div>
+                  <p className="text-sm font-medium text-gray-900">{label}</p>
+                  <p className="text-xs text-gray-500">{desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderActiveTabContent = () => {
     switch (activeTab) {
       case 'global_styles':
@@ -796,6 +917,8 @@ export const SettingsManager: React.FC = () => {
         return renderWhatsAppSettings();
       case 'public_site_url':
         return renderSiteUrl();
+      case 'notification_settings':
+        return renderNotificationSettings();
       default:
         return null;
     }
