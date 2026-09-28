@@ -261,6 +261,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
 
     if (createError) {
       console.error('Error creating customer account:', createError);
+      console.error('[RPC detail] code:', createError.code, 'details:', createError.details, 'hint:', createError.hint, 'message:', createError.message);
       throw new Error(`Error al crear cuenta: ${createError.message}`);
     }
 
@@ -306,8 +307,14 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
         if (signUpError) throw signUpError;
         if (!authData.user) throw new Error('Error al crear usuario');
 
-        authUserId = await ensureAuthenticatedSession(email, password);
+        if (authData.session?.user) {
+          authUserId = authData.session.user.id;
+        } else {
+          authUserId = await ensureAuthenticatedSession(email, password);
+        }
       }
+
+      await new Promise(r => setTimeout(r, 500));
 
       const accountResult = await callCreateCustomerAccount(authUserId, email, customerData, existingCustomerId);
       console.log('Customer account created:', accountResult);
