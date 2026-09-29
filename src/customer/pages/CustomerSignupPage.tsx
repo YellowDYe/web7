@@ -29,12 +29,12 @@ export default function CustomerSignupPage() {
   const [checkingEmail, setCheckingEmail] = useState(false);
   const [error, setError] = useState('');
   const [emailCheckMessage, setEmailCheckMessage] = useState('');
-  const { signup, signupGoogleUser, linkExistingCustomer, linkGoogleToExistingCustomer, loginWithGoogle, checkEmailExists, user, customer } = useCustomerAuth();
+  const { signup, signupGoogleUser, linkExistingCustomer, linkGoogleToExistingCustomer, loginWithGoogle, checkEmailExists, user, customer, logout } = useCustomerAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const returnTo = searchParams.get('returnTo') || '/account';
   const [isGoogleUser, setIsGoogleUser] = useState(false);
-  const [emailStatus, setEmailStatus] = useState<'available' | 'blocked' | 'link_only' | 'incomplete' | null>(null);
+  const [emailStatus, setEmailStatus] = useState<'available' | 'blocked' | 'link_only' | 'incomplete' | 'throttled' | null>(null);
   const [existingCustomerId, setExistingCustomerId] = useState<string | null>(null);
   const [googleAutoLinking, setGoogleAutoLinking] = useState(false);
 
@@ -265,7 +265,11 @@ export default function CustomerSignupPage() {
     try {
       const result = await checkEmailExists(formData.email);
 
-      if (result.hasAuth && result.hasCustomer) {
+      if (result.isThrottled) {
+        setEmailStatus('throttled');
+        setError('Has verificado este correo demasiadas veces. Espera unos minutos e intenta de nuevo.');
+        setEmailCheckMessage('');
+      } else if (result.hasAuth && result.hasCustomer) {
         setEmailStatus('blocked');
         setError('Este correo ya está registrado.');
         setEmailCheckMessage('');
@@ -300,6 +304,10 @@ export default function CustomerSignupPage() {
         }
         if (emailStatus === 'blocked') {
           setError('Este correo ya está registrado.');
+          return false;
+        }
+        if (emailStatus === 'throttled') {
+          setError('Has verificado este correo demasiadas veces. Espera unos minutos e intenta de nuevo.');
           return false;
         }
         if (formData.password.length < 8) {
@@ -447,6 +455,7 @@ export default function CustomerSignupPage() {
                 <p className={`mt-2 text-sm ${
                   emailStatus === 'link_only' ? 'text-blue-600' :
                   emailStatus === 'incomplete' ? 'text-amber-600' :
+                  emailStatus === 'throttled' ? 'text-red-600' :
                   'text-green-600'
                 }`}>
                   {emailCheckMessage}
@@ -968,10 +977,22 @@ export default function CustomerSignupPage() {
                   </Link>
                 </div>
               )}
+              {isGoogleUser && !loading && (
+                <div className="mt-3">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await logout().catch(() => {});
+                      window.location.href = '/signup';
+                    }}
+                    className="text-red-600 hover:text-red-800 font-medium underline"
+                  >
+                    Intentar de nuevo
+                  </button>
+                </div>
+              )}
             </div>
           )}
-
-          <div className="mb-8">{renderStep()}</div>
 
           <div className="flex justify-between gap-4">
             {currentStep > (isGoogleUser ? 1 : 0) && (
@@ -988,7 +1009,7 @@ export default function CustomerSignupPage() {
               <Button
                 onClick={handleNext}
                 className="flex-1 bg-red-600 hover:bg-red-700 text-white"
-                disabled={loading || checkingEmail || emailStatus === 'blocked'}
+                disabled={loading || checkingEmail || emailStatus === 'blocked' || emailStatus === 'throttled'}
               >
                 {checkingEmail ? 'Verificando...' : loading ? (
                   <span className="flex items-center justify-center">

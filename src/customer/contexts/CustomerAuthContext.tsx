@@ -15,7 +15,7 @@ interface CustomerAuthContextType {
   linkExistingCustomer: (email: string, password: string, existingCustomerId: string) => Promise<void>;
   linkGoogleToExistingCustomer: () => Promise<boolean>;
   logout: () => Promise<void>;
-  checkEmailExists: (email: string) => Promise<{ exists: boolean; hasAuth: boolean; hasCustomer: boolean; customer?: Customer }>;
+  checkEmailExists: (email: string) => Promise<{ exists: boolean; hasAuth: boolean; hasCustomer: boolean; customer?: Customer; isThrottled?: boolean }>;
   updateCustomerProfile: (data: Partial<Customer>) => Promise<void>;
 }
 
@@ -175,14 +175,28 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
           hasAuth: result.has_auth || false,
           hasCustomer: result.has_customer || false,
           customer: result.customer_uuid ? { id: result.customer_uuid } as Customer : undefined,
+          isThrottled: result.is_throttled || false,
         };
       }
 
-      return { exists: false, hasAuth: false, hasCustomer: false };
+      return { exists: false, hasAuth: false, hasCustomer: false, isThrottled: false };
     } catch (error: any) {
       console.error('[AUTH] Error checking email:', error);
       throw error;
     }
+  };
+
+  const findCustomerByEmailDirect = async (email: string): Promise<Customer | null> => {
+    const { data, error } = await supabase
+      .from('customers')
+      .select('*')
+      .eq('customer_email', email.toLowerCase().trim())
+      .maybeSingle();
+    if (error) {
+      console.error('[AUTH] Direct email lookup error:', error);
+      return null;
+    }
+    return data;
   };
 
   const login = async (email: string, password: string) => {
@@ -384,8 +398,18 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
       const authUserId = session.user.id;
       const email = session.user.email || '';
 
+      let existingCustomerId: string | null = null;
+
       const emailCheck = await checkEmailExists(email);
-      const existingCustomerId = emailCheck.customer?.id || null;
+      existingCustomerId = emailCheck.customer?.id || null;
+
+      if (!existingCustomerId) {
+        const directCustomer = await findCustomerByEmailDirect(email);
+        if (directCustomer) {
+          existingCustomerId = directCustomer.id;
+        }
+      }
+
       const accountResult = await callCreateCustomerAccount(authUserId, email, customerData, existingCustomerId);
       if (accountResult && typeof accountResult === 'object') {
         setCustomer(accountResult as Customer);
@@ -406,20 +430,30 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
 
       const email = session.user.email || '';
       if (!email) return false;
+      const authUserId = session.user.id;
+
+      let existingCustomer: Customer | null = null;
+      let existingCustomerId: string | null = null;
 
       const emailCheck = await checkEmailExists(email);
-      if (!emailCheck.hasCustomer || !emailCheck.customer?.id) return false;
+      if (emailCheck.hasCustomer && emailCheck.customer?.id) {
+        existingCustomerId = emailCheck.customer.id;
+        const { data } = await supabase
+          .from('customers')
+          .select('*')
+          .eq('id', existingCustomerId)
+          .maybeSingle();
+        existingCustomer = data;
+      }
 
-      const authUserId = session.user.id;
-      const existingCustomerId = emailCheck.customer.id;
+      if (!existingCustomer) {
+        existingCustomer = await findCustomerByEmailDirect(email);
+        if (existingCustomer) {
+          existingCustomerId = existingCustomer.id;
+        }
+      }
 
-      const { data: existingCustomer } = await supabase
-        .from('customers')
-        .select('*')
-        .eq('id', existingCustomerId)
-        .maybeSingle();
-
-      if (!existingCustomer) return false;
+      if (!existingCustomer || !existingCustomerId) return false;
 
       const minimalData: Partial<Customer> = {
         first_name: existingCustomer.customer_name || '',
