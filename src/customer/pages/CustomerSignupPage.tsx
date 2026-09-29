@@ -37,6 +37,7 @@ export default function CustomerSignupPage() {
   const [emailStatus, setEmailStatus] = useState<'available' | 'blocked' | 'link_only' | 'incomplete' | 'throttled' | null>(null);
   const [existingCustomerId, setExistingCustomerId] = useState<string | null>(null);
   const [googleAutoLinking, setGoogleAutoLinking] = useState(false);
+  const [googleLinkTimedOut, setGoogleLinkTimedOut] = useState(false);
 
   const [formData, setFormData] = useState({
     email: '',
@@ -74,6 +75,11 @@ export default function CustomerSignupPage() {
   const [restrictionNames, setRestrictionNames] = useState<Record<string, string>>({});
 
   useEffect(() => {
+    if (user && customer) {
+      navigate(returnTo);
+      return;
+    }
+
     if (user && !customer) {
       const isOAuth = user.app_metadata?.provider === 'google' ||
         user.app_metadata?.providers?.includes('google');
@@ -81,6 +87,9 @@ export default function CustomerSignupPage() {
       if (isOAuth) {
         setIsGoogleUser(true);
         setGoogleAutoLinking(true);
+        setGoogleLinkTimedOut(false);
+
+        const timeout = setTimeout(() => setGoogleLinkTimedOut(true), 8000);
 
         linkGoogleToExistingCustomer().then((linked) => {
           if (linked) {
@@ -99,7 +108,15 @@ export default function CustomerSignupPage() {
               }));
             }
           }
-        }).finally(() => setGoogleAutoLinking(false));
+        }).catch(() => {
+          setCurrentStep(1);
+          setFormData(prev => ({ ...prev, email: user.email || prev.email }));
+        }).finally(() => {
+          clearTimeout(timeout);
+          setGoogleAutoLinking(false);
+        });
+
+        return () => clearTimeout(timeout);
       } else {
         setCurrentStep(1);
         localStorage.removeItem('customerSignupDraft');
@@ -894,8 +911,28 @@ export default function CustomerSignupPage() {
         <div className="container mx-auto px-4 py-8 sm:py-16 max-w-3xl">
           <Card className="p-4 sm:p-8 shadow-lg">
             <div className="flex flex-col items-center justify-center py-16">
-              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-red-600 mb-4"></div>
-              <p className="text-gray-600 text-lg">Verificando tu cuenta...</p>
+              {googleLinkTimedOut ? (
+                <>
+                  <AlertCircle className="h-10 w-10 text-amber-500 mb-4" />
+                  <p className="text-gray-700 text-lg mb-2">La verificación está tardando más de lo esperado.</p>
+                  <p className="text-gray-500 text-sm mb-6">Puedes seguir esperando o empezar de nuevo.</p>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await logout().catch(() => {});
+                      window.location.href = '/signup';
+                    }}
+                    className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors"
+                  >
+                    Cerrar sesión y empezar de nuevo
+                  </button>
+                </>
+              ) : (
+                <>
+                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-red-600 mb-4"></div>
+                  <p className="text-gray-600 text-lg">Verificando tu cuenta...</p>
+                </>
+              )}
             </div>
           </Card>
         </div>
