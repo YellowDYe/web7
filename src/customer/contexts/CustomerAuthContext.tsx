@@ -281,6 +281,24 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     return signInData.user.id;
   };
 
+  const waitForSession = async (email: string, password: string): Promise<string> => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) return session.user.id;
+
+    await new Promise(r => setTimeout(r, 300));
+
+    const { data: { session: retrySession } } = await supabase.auth.getSession();
+    if (retrySession?.user) return retrySession.user.id;
+
+    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    if (signInError) throw signInError;
+    if (!signInData.user) throw new Error('Error al iniciar sesión');
+    return signInData.user.id;
+  };
+
   const signup = async (email: string, password: string, customerData: Partial<Customer>) => {
     try {
       const emailCheck = await checkEmailExists(email);
@@ -304,21 +322,43 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
           },
         });
 
-        if (signUpError) throw signUpError;
-        if (!authData.user) throw new Error('Error al crear usuario');
-
-        if (authData.session?.user) {
-          authUserId = authData.session.user.id;
-        } else {
+        if (signUpError) {
+          if (signUpError.message?.includes('already registered') ||
+              signUpError.message?.includes('already been registered')) {
+            authUserId = await ensureAuthenticatedSession(email, password);
+          } else {
+            throw signUpError;
+          }
+        } else if (!authData?.user) {
+          throw new Error('Error al crear usuario');
+        } else if (authData.user && !authData.session) {
           authUserId = await ensureAuthenticatedSession(email, password);
+        } else {
+          authUserId = authData.session!.user.id;
         }
       }
 
-      await new Promise(r => setTimeout(r, 500));
+      await waitForSession(email, password);
 
-      const accountResult = await callCreateCustomerAccount(authUserId, email, customerData, existingCustomerId);
+      const { data: { session: activeSession } } = await supabase.auth.getSession();
+      if (!activeSession) {
+        throw new Error('No se pudo establecer la sesión. Por favor intenta de nuevo.');
+      }
+
+      let accountResult;
+      try {
+        accountResult = await callCreateCustomerAccount(authUserId, email, customerData, existingCustomerId);
+      } catch (firstError: any) {
+        if (firstError.message?.includes('Not authorized') || firstError.message?.includes('JWT')) {
+          await new Promise(r => setTimeout(r, 1000));
+          await ensureAuthenticatedSession(email, password);
+          accountResult = await callCreateCustomerAccount(authUserId, email, customerData, existingCustomerId);
+        } else {
+          throw firstError;
+        }
+      }
+
       console.log('Customer account created:', accountResult);
-
       await fetchCustomerData(authUserId, email);
     } catch (error: any) {
       console.error('Signup error:', error);
