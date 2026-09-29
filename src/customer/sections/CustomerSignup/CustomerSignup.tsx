@@ -11,7 +11,7 @@ import FamilyMemberForm from '../../../components/customers/FamilyMemberForm';
 import DelegacionDropdown from '../../../components/customers/DelegacionDropdown';
 import type { Customer } from '../../../types/customer';
 import { supabase } from '../../../config/supabase';
-import { friendlyError } from '../../utils/friendlyError';
+
 
 const STEPS = [
   { id: 0, title: 'Cuenta', icon: Mail },
@@ -28,7 +28,9 @@ export const CustomerSignup: React.FC = () => {
   const [checkingEmail, setCheckingEmail] = useState(false);
   const [error, setError] = useState('');
   const [emailCheckMessage, setEmailCheckMessage] = useState('');
-  const { signup, checkEmailExists, user, customer } = useCustomerAuth();
+  const [emailStatus, setEmailStatus] = useState<'available' | 'blocked' | 'link_only' | 'incomplete' | 'throttled' | null>(null);
+  const [existingCustomerId, setExistingCustomerId] = useState<string | null>(null);
+  const { signup, linkExistingCustomer, checkEmailExists, user, customer } = useCustomerAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const returnTo = searchParams.get('returnTo') || '/account';
@@ -218,16 +220,29 @@ export const CustomerSignup: React.FC = () => {
     setCheckingEmail(true);
     setEmailCheckMessage('');
     setError('');
+    setEmailStatus(null);
+    setExistingCustomerId(null);
 
     try {
       const result = await checkEmailExists(formData.email);
 
-      if (result.hasAuth && result.hasCustomer) {
+      if (result.isThrottled) {
+        setEmailStatus('throttled');
+        setError('Has verificado este correo demasiadas veces. Espera unos minutos e intenta de nuevo.');
+        setEmailCheckMessage('');
+      } else if (result.hasAuth && result.hasCustomer) {
+        setEmailStatus('blocked');
         setError('Este correo ya está registrado.');
         setEmailCheckMessage('');
+      } else if (result.hasCustomer && !result.hasAuth) {
+        setEmailStatus('link_only');
+        setExistingCustomerId(result.customer?.id || null);
+        setEmailCheckMessage('Encontramos tu perfil. Crea una contraseña para activar tu cuenta.');
       } else if (result.hasAuth && !result.hasCustomer) {
+        setEmailStatus('incomplete');
         setEmailCheckMessage('Cuenta incompleta detectada. Puedes completar tu registro.');
       } else {
+        setEmailStatus('available');
         setEmailCheckMessage('¡Correo disponible!');
       }
     } catch (err: any) {
@@ -247,23 +262,20 @@ export const CustomerSignup: React.FC = () => {
           setError('Por favor completa todos los campos requeridos');
           return false;
         }
+        if (emailStatus === 'blocked') {
+          setError('Este correo ya está registrado.');
+          return false;
+        }
+        if (emailStatus === 'throttled') {
+          setError('Has verificado este correo demasiadas veces. Espera unos minutos e intenta de nuevo.');
+          return false;
+        }
         if (formData.password.length < 8) {
           setError('La contraseña debe tener al menos 8 caracteres');
           return false;
         }
         if (formData.password !== formData.confirmPassword) {
           setError('Las contraseñas no coinciden');
-          return false;
-        }
-
-        try {
-          const result = await checkEmailExists(formData.email);
-          if (result.hasAuth && result.hasCustomer) {
-            setError('Este correo ya está registrado. Por favor inicia sesión.');
-            return false;
-          }
-        } catch (err: any) {
-          setError(friendlyError(err, 'Error al verificar el correo. Por favor intenta de nuevo.'));
           return false;
         }
 
@@ -291,9 +303,25 @@ export const CustomerSignup: React.FC = () => {
 
   const handleNext = async () => {
     const isValid = await validateStep();
-    if (isValid) {
-      setCurrentStep(prev => Math.min(prev + 1, STEPS.length - 1));
+    if (!isValid) return;
+
+    if (currentStep === 0 && emailStatus === 'link_only' && existingCustomerId) {
+      setLoading(true);
+      setError('');
+      try {
+        await linkExistingCustomer(formData.email, formData.password, existingCustomerId);
+        localStorage.removeItem('customerSignupDraft');
+        navigate(returnTo);
+      } catch (err: any) {
+        const msg = err instanceof Error ? err.message : String(err);
+        setError(msg || 'Error al activar la cuenta');
+      } finally {
+        setLoading(false);
+      }
+      return;
     }
+
+    setCurrentStep(prev => Math.min(prev + 1, STEPS.length - 1));
   };
 
   const handleBack = () => {
@@ -369,7 +397,12 @@ export const CustomerSignup: React.FC = () => {
                 />
               </div>
               {emailCheckMessage && (
-                <p className={`mt-2 text-sm ${emailCheckMessage.includes('Encontramos') ? 'text-blue-600' : 'text-green-600'}`}>
+                <p className={`mt-2 text-sm ${
+                  emailStatus === 'link_only' ? 'text-blue-600' :
+                  emailStatus === 'incomplete' ? 'text-amber-600' :
+                  emailStatus === 'throttled' ? 'text-red-600' :
+                  'text-green-600'
+                }`}>
                   {emailCheckMessage}
                 </p>
               )}
@@ -866,9 +899,14 @@ export const CustomerSignup: React.FC = () => {
             <Button
               onClick={handleNext}
               className="flex-1 bg-red-600 hover:bg-red-700 text-white"
-              disabled={loading || checkingEmail}
+              disabled={loading || checkingEmail || emailStatus === 'blocked' || emailStatus === 'throttled'}
             >
-              {checkingEmail ? 'Verificando...' : 'Siguiente'}
+              {checkingEmail ? 'Verificando...' : loading ? (
+                  <span className="flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                    Activando cuenta...
+                  </span>
+                ) : currentStep === 0 && emailStatus === 'link_only' ? 'Activar Mi Cuenta' : 'Siguiente'}
             </Button>
           ) : (
             <Button
