@@ -12,6 +12,8 @@ interface CustomerAuthContextType {
   loginWithGoogle: (returnTo?: string) => Promise<void>;
   signup: (email: string, password: string, customerData: Partial<Customer>) => Promise<void>;
   signupGoogleUser: (customerData: Partial<Customer>) => Promise<void>;
+  linkExistingCustomer: (email: string, password: string, existingCustomerId: string) => Promise<void>;
+  linkGoogleToExistingCustomer: () => Promise<boolean>;
   logout: () => Promise<void>;
   checkEmailExists: (email: string) => Promise<{ exists: boolean; hasAuth: boolean; hasCustomer: boolean; customer?: Customer }>;
   updateCustomerProfile: (data: Partial<Customer>) => Promise<void>;
@@ -397,6 +399,142 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const linkGoogleToExistingCustomer = async (): Promise<boolean> => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return false;
+
+      const email = session.user.email || '';
+      if (!email) return false;
+
+      const emailCheck = await checkEmailExists(email);
+      if (!emailCheck.hasCustomer || !emailCheck.customer?.id) return false;
+
+      const authUserId = session.user.id;
+      const existingCustomerId = emailCheck.customer.id;
+
+      const { data: existingCustomer } = await supabase
+        .from('customers')
+        .select('*')
+        .eq('id', existingCustomerId)
+        .maybeSingle();
+
+      if (!existingCustomer) return false;
+
+      const minimalData: Partial<Customer> = {
+        first_name: existingCustomer.customer_name || '',
+        last_name: existingCustomer.customer_lastname || '',
+        phone: existingCustomer.customer_phone || '',
+        street_address: existingCustomer.customer_street || '',
+        address_number: existingCustomer.customer_street_number || '',
+        interior_number: existingCustomer.customer_interior_number || '',
+        colonia: existingCustomer.customer_colonia || '',
+        delegacion: existingCustomer.customer_delegacion || '',
+        postal_code: existingCustomer.customer_postal_code || '',
+        delivery_instructions: existingCustomer.customer_delivery_instructions || '',
+        restrictions: existingCustomer.customer_restrictions || [],
+      } as any;
+
+      const accountResult = await callCreateCustomerAccount(authUserId, email, minimalData, existingCustomerId);
+      if (accountResult && typeof accountResult === 'object') {
+        setCustomer(accountResult as Customer);
+      } else {
+        await fetchCustomerData(authUserId, email);
+      }
+      return true;
+    } catch (error: any) {
+      console.error('Google link error:', error);
+      return false;
+    }
+  };
+
+  const linkExistingCustomer = async (email: string, password: string, existingCustomerId: string) => {
+    try {
+      const { data: authData, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/account`,
+          data: { user_type: 'customer' },
+        },
+      });
+
+      let authUserId: string;
+
+      if (signUpError) {
+        if (signUpError.message?.includes('already registered') ||
+            signUpError.message?.includes('already been registered')) {
+          authUserId = await ensureAuthenticatedSession(email, password);
+        } else {
+          throw signUpError;
+        }
+      } else if (!authData?.user) {
+        throw new Error('Error al crear usuario');
+      } else if (authData.user && !authData.session) {
+        authUserId = await ensureAuthenticatedSession(email, password);
+      } else {
+        authUserId = authData.session!.user.id;
+      }
+
+      await waitForSession(email, password);
+
+      const { data: { session: activeSession } } = await supabase.auth.getSession();
+      if (!activeSession) {
+        throw new Error('No se pudo establecer la sesión. Por favor intenta de nuevo.');
+      }
+
+      const { data: existingCustomer } = await supabase
+        .from('customers')
+        .select('*')
+        .eq('id', existingCustomerId)
+        .maybeSingle();
+
+      if (!existingCustomer) {
+        throw new Error('No se encontró el registro del cliente.');
+      }
+
+      const minimalData: Partial<Customer> = {
+        first_name: existingCustomer.customer_name || '',
+        last_name: existingCustomer.customer_lastname || '',
+        phone: existingCustomer.customer_phone || '',
+        street_address: existingCustomer.customer_street || '',
+        address_number: existingCustomer.customer_street_number || '',
+        interior_number: existingCustomer.customer_interior_number || '',
+        colonia: existingCustomer.customer_colonia || '',
+        delegacion: existingCustomer.customer_delegacion || '',
+        postal_code: existingCustomer.customer_postal_code || '',
+        delivery_instructions: existingCustomer.customer_delivery_instructions || '',
+        restrictions: existingCustomer.customer_restrictions || [],
+      } as any;
+
+      let accountResult;
+      try {
+        accountResult = await callCreateCustomerAccount(authUserId, email, minimalData, existingCustomerId);
+      } catch (firstError: any) {
+        if (firstError.message?.includes('Not authorized') || firstError.message?.includes('JWT')) {
+          await new Promise(r => setTimeout(r, 1000));
+          await ensureAuthenticatedSession(email, password);
+          accountResult = await callCreateCustomerAccount(authUserId, email, minimalData, existingCustomerId);
+        } else {
+          throw firstError;
+        }
+      }
+
+      if (accountResult && typeof accountResult === 'object') {
+        setCustomer(accountResult as Customer);
+      } else {
+        await fetchCustomerData(authUserId, email);
+      }
+    } catch (error: any) {
+      console.error('Link existing customer error:', error);
+      await supabase.auth.signOut().catch(() => {});
+      setUser(null);
+      setCustomer(null);
+      const rawMsg = error instanceof Error ? error.message : String(error);
+      throw new Error(rawMsg || 'Error al vincular la cuenta');
+    }
+  };
+
   const logout = async () => {
     try {
       const { error } = await supabase.auth.signOut();
@@ -436,6 +574,8 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     loginWithGoogle,
     signup,
     signupGoogleUser,
+    linkExistingCustomer,
+    linkGoogleToExistingCustomer,
     logout,
     checkEmailExists,
     updateCustomerProfile,

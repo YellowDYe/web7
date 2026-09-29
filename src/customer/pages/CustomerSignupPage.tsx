@@ -29,11 +29,14 @@ export default function CustomerSignupPage() {
   const [checkingEmail, setCheckingEmail] = useState(false);
   const [error, setError] = useState('');
   const [emailCheckMessage, setEmailCheckMessage] = useState('');
-  const { signup, signupGoogleUser, loginWithGoogle, checkEmailExists, user, customer } = useCustomerAuth();
+  const { signup, signupGoogleUser, linkExistingCustomer, linkGoogleToExistingCustomer, loginWithGoogle, checkEmailExists, user, customer } = useCustomerAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const returnTo = searchParams.get('returnTo') || '/account';
   const [isGoogleUser, setIsGoogleUser] = useState(false);
+  const [emailStatus, setEmailStatus] = useState<'available' | 'blocked' | 'link_only' | 'incomplete' | null>(null);
+  const [existingCustomerId, setExistingCustomerId] = useState<string | null>(null);
+  const [googleAutoLinking, setGoogleAutoLinking] = useState(false);
 
   const [formData, setFormData] = useState({
     email: '',
@@ -72,22 +75,35 @@ export default function CustomerSignupPage() {
 
   useEffect(() => {
     if (user && !customer) {
-      setCurrentStep(1);
-      localStorage.removeItem('customerSignupDraft');
-      setFormData(prev => ({ ...prev, email: user.email || prev.email }));
-
       const isOAuth = user.app_metadata?.provider === 'google' ||
         user.app_metadata?.providers?.includes('google');
+
       if (isOAuth) {
         setIsGoogleUser(true);
-        const meta = user.user_metadata;
-        if (meta) {
-          setFormData(prev => ({
-            ...prev,
-            first_name: meta.full_name?.split(' ')[0] || meta.name?.split(' ')[0] || prev.first_name,
-            last_name: meta.full_name?.split(' ').slice(1).join(' ') || meta.name?.split(' ').slice(1).join(' ') || prev.last_name,
-          }));
-        }
+        setGoogleAutoLinking(true);
+
+        linkGoogleToExistingCustomer().then((linked) => {
+          if (linked) {
+            localStorage.removeItem('customerSignupDraft');
+            navigate(returnTo);
+          } else {
+            setCurrentStep(1);
+            localStorage.removeItem('customerSignupDraft');
+            setFormData(prev => ({ ...prev, email: user.email || prev.email }));
+            const meta = user.user_metadata;
+            if (meta) {
+              setFormData(prev => ({
+                ...prev,
+                first_name: meta.full_name?.split(' ')[0] || meta.name?.split(' ')[0] || prev.first_name,
+                last_name: meta.full_name?.split(' ').slice(1).join(' ') || meta.name?.split(' ').slice(1).join(' ') || prev.last_name,
+              }));
+            }
+          }
+        }).finally(() => setGoogleAutoLinking(false));
+      } else {
+        setCurrentStep(1);
+        localStorage.removeItem('customerSignupDraft');
+        setFormData(prev => ({ ...prev, email: user.email || prev.email }));
       }
     }
   }, [user, customer]);
@@ -240,24 +256,28 @@ export default function CustomerSignupPage() {
   const handleEmailBlur = async () => {
     if (!formData.email) return;
 
-    console.log('[SIGNUP] Checking email:', formData.email);
     setCheckingEmail(true);
     setEmailCheckMessage('');
     setError('');
+    setEmailStatus(null);
+    setExistingCustomerId(null);
 
     try {
       const result = await checkEmailExists(formData.email);
-      console.log('[SIGNUP] Email check result:', result);
 
       if (result.hasAuth && result.hasCustomer) {
-        console.log('[SIGNUP] Email already registered with completed account');
+        setEmailStatus('blocked');
         setError('Este correo ya está registrado.');
         setEmailCheckMessage('');
+      } else if (result.hasCustomer && !result.hasAuth) {
+        setEmailStatus('link_only');
+        setExistingCustomerId(result.customer?.id || null);
+        setEmailCheckMessage('Encontramos tu perfil. Crea una contraseña para activar tu cuenta.');
       } else if (result.hasAuth && !result.hasCustomer) {
-        console.log('[SIGNUP] Email has incomplete signup, allowing retry');
+        setEmailStatus('incomplete');
         setEmailCheckMessage('Cuenta incompleta detectada. Puedes completar tu registro.');
       } else {
-        console.log('[SIGNUP] Email available');
+        setEmailStatus('available');
         setEmailCheckMessage('¡Correo disponible!');
       }
     } catch (err: any) {
@@ -274,19 +294,19 @@ export default function CustomerSignupPage() {
 
     switch (currentStep) {
       case 0:
-        console.log('[SIGNUP] Validating step 0 - email and password');
         if (!formData.email || !formData.password || !formData.confirmPassword) {
-          console.log('[SIGNUP] Missing required fields');
           setError('Por favor completa todos los campos requeridos');
           return false;
         }
+        if (emailStatus === 'blocked') {
+          setError('Este correo ya está registrado.');
+          return false;
+        }
         if (formData.password.length < 8) {
-          console.log('[SIGNUP] Password too short');
           setError('La contraseña debe tener al menos 8 caracteres');
           return false;
         }
         if (formData.password !== formData.confirmPassword) {
-          console.log('[SIGNUP] Passwords do not match');
           setError('Las contraseñas no coinciden');
           return false;
         }
@@ -323,12 +343,26 @@ export default function CustomerSignupPage() {
   };
 
   const handleNext = async () => {
-    console.log('[SIGNUP] Next button clicked, current step:', currentStep);
     const isValid = await validateStep();
-    console.log('[SIGNUP] Validation result:', isValid);
-    if (isValid) {
-      setCurrentStep(prev => Math.min(prev + 1, STEPS.length - 1));
+    if (!isValid) return;
+
+    if (currentStep === 0 && emailStatus === 'link_only' && existingCustomerId) {
+      setLoading(true);
+      setError('');
+      try {
+        await linkExistingCustomer(formData.email, formData.password, existingCustomerId);
+        localStorage.removeItem('customerSignupDraft');
+        navigate(returnTo);
+      } catch (err: any) {
+        const msg = err instanceof Error ? err.message : String(err);
+        setError(msg || 'Error al activar la cuenta');
+      } finally {
+        setLoading(false);
+      }
+      return;
     }
+
+    setCurrentStep(prev => Math.min(prev + 1, STEPS.length - 1));
   };
 
   const handleBack = () => {
@@ -410,7 +444,11 @@ export default function CustomerSignupPage() {
                 />
               </div>
               {emailCheckMessage && (
-                <p className={`mt-2 text-sm ${emailCheckMessage.includes('Encontramos') ? 'text-blue-600' : 'text-green-600'}`}>
+                <p className={`mt-2 text-sm ${
+                  emailStatus === 'link_only' ? 'text-blue-600' :
+                  emailStatus === 'incomplete' ? 'text-amber-600' :
+                  'text-green-600'
+                }`}>
                   {emailCheckMessage}
                 </p>
               )}
@@ -840,6 +878,23 @@ export default function CustomerSignupPage() {
     }
   };
 
+  if (googleAutoLinking) {
+    return (
+      <div className="min-h-screen bg-gray-50 overflow-x-hidden">
+        <CustomerSiteHeader />
+        <div className="container mx-auto px-4 py-8 sm:py-16 max-w-3xl">
+          <Card className="p-4 sm:p-8 shadow-lg">
+            <div className="flex flex-col items-center justify-center py-16">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-red-600 mb-4"></div>
+              <p className="text-gray-600 text-lg">Verificando tu cuenta...</p>
+            </div>
+          </Card>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 overflow-x-hidden">
       <CustomerSiteHeader />
@@ -933,9 +988,14 @@ export default function CustomerSignupPage() {
               <Button
                 onClick={handleNext}
                 className="flex-1 bg-red-600 hover:bg-red-700 text-white"
-                disabled={loading || checkingEmail}
+                disabled={loading || checkingEmail || emailStatus === 'blocked'}
               >
-                {checkingEmail ? 'Verificando...' : 'Siguiente'}
+                {checkingEmail ? 'Verificando...' : loading ? (
+                  <span className="flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                    Activando cuenta...
+                  </span>
+                ) : currentStep === 0 && emailStatus === 'link_only' ? 'Activar Mi Cuenta' : 'Siguiente'}
               </Button>
             ) : (
               <Button
