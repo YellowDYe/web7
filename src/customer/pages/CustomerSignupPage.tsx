@@ -71,19 +71,23 @@ export default function CustomerSignupPage() {
   const [restrictionNames, setRestrictionNames] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    const isOAuth = user?.app_metadata?.provider === 'google';
-    if (isOAuth && user && !customer) {
-      setIsGoogleUser(true);
+    if (user && !customer) {
       setCurrentStep(1);
       localStorage.removeItem('customerSignupDraft');
-      const meta = user.user_metadata;
-      if (meta) {
-        setFormData(prev => ({
-          ...prev,
-          email: user.email || prev.email,
-          first_name: meta.full_name?.split(' ')[0] || meta.name?.split(' ')[0] || prev.first_name,
-          last_name: meta.full_name?.split(' ').slice(1).join(' ') || meta.name?.split(' ').slice(1).join(' ') || prev.last_name,
-        }));
+      setFormData(prev => ({ ...prev, email: user.email || prev.email }));
+
+      const isOAuth = user.app_metadata?.provider === 'google' ||
+        user.app_metadata?.providers?.includes('google');
+      if (isOAuth) {
+        setIsGoogleUser(true);
+        const meta = user.user_metadata;
+        if (meta) {
+          setFormData(prev => ({
+            ...prev,
+            first_name: meta.full_name?.split(' ')[0] || meta.name?.split(' ')[0] || prev.first_name,
+            last_name: meta.full_name?.split(' ').slice(1).join(' ') || meta.name?.split(' ').slice(1).join(' ') || prev.last_name,
+          }));
+        }
       }
     }
   }, [user, customer]);
