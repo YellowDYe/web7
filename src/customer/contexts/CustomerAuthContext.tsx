@@ -517,29 +517,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
         throw new Error('No se pudo establecer la sesión. Por favor intenta de nuevo.');
       }
 
-      const { data: existingCustomer } = await supabase
-        .from('customers')
-        .select('*')
-        .eq('id', existingCustomerId)
-        .maybeSingle();
-
-      if (!existingCustomer) {
-        throw new Error('No se encontró el registro del cliente.');
-      }
-
-      const minimalData: Partial<Customer> = {
-        first_name: existingCustomer.customer_name || '',
-        last_name: existingCustomer.customer_lastname || '',
-        phone: existingCustomer.customer_phone || '',
-        street_address: existingCustomer.customer_street || '',
-        address_number: existingCustomer.customer_street_number || '',
-        interior_number: existingCustomer.customer_interior_number || '',
-        colonia: existingCustomer.customer_colonia || '',
-        delegacion: existingCustomer.customer_delegacion || '',
-        postal_code: existingCustomer.customer_postal_code || '',
-        delivery_instructions: existingCustomer.customer_delivery_instructions || '',
-        restrictions: existingCustomer.customer_restrictions || [],
-      } as any;
+      const minimalData: Partial<Customer> = {} as any;
 
       let accountResult;
       try {
