@@ -359,7 +359,11 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
       }
 
       console.log('Customer account created:', accountResult);
-      await fetchCustomerData(authUserId, email);
+      if (accountResult && typeof accountResult === 'object') {
+        setCustomer(accountResult as Customer);
+      } else {
+        await fetchCustomerData(authUserId, email);
+      }
     } catch (error: any) {
       console.error('Signup error:', error);
       await supabase.auth.signOut().catch(() => {});
@@ -380,8 +384,12 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
 
       const emailCheck = await checkEmailExists(email);
       const existingCustomerId = emailCheck.customer?.id || null;
-      await callCreateCustomerAccount(authUserId, email, customerData, existingCustomerId);
-      await fetchCustomerData(authUserId, email);
+      const accountResult = await callCreateCustomerAccount(authUserId, email, customerData, existingCustomerId);
+      if (accountResult && typeof accountResult === 'object') {
+        setCustomer(accountResult as Customer);
+      } else {
+        await fetchCustomerData(authUserId, email);
+      }
     } catch (error: any) {
       console.error('Google signup error:', error);
       const rawMsg = error instanceof Error ? error.message : String(error);
