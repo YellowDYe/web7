@@ -9,6 +9,7 @@ import { ProtectedCustomerRoute } from './customer/components/ProtectedCustomerR
 import Layout from './components/layout/Layout';
 import { CustomerHomePage } from './customer/pages/CustomerHomePage';
 import CustomerLoginPage from './customer/pages/CustomerLoginPage';
+import CustomerSignupPage from './customer/pages/CustomerSignupPage';
 import CustomerAccountPage from './customer/pages/CustomerAccountPage';
 import CustomerCheckoutPage from './customer/pages/CustomerCheckoutPage';
 import { CheckoutReturn } from './customer/pages/CheckoutReturnPage';
@@ -104,6 +105,7 @@ function App() {
                 <Routes>
                   <Route path="/" element={<CustomerHomePage />} />
                   <Route path="/login" element={<CustomerLoginPage />} />
+                  <Route path="/signup" element={<CustomerSignupPage />} />
                   <Route path="/forgot-password" element={<CustomerForgotPasswordPage />} />
                   <Route
                     path="/account"
