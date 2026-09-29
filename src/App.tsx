@@ -13,6 +13,7 @@ import CustomerAccountPage from './customer/pages/CustomerAccountPage';
 import CustomerCheckoutPage from './customer/pages/CustomerCheckoutPage';
 import { CheckoutReturn } from './customer/pages/CheckoutReturnPage';
 import CustomerForgotPasswordPage from './customer/pages/CustomerForgotPasswordPage';
+import CustomerResetPasswordPage from './customer/pages/CustomerResetPasswordPage';
 import CustomerOrderPage from './customer/pages/CustomerOrderPage';
 import CustomerCartPage from './customer/pages/CustomerCartPage';
 import CustomerBlogPostPage from './customer/pages/CustomerBlogPostPage';
@@ -105,6 +106,7 @@ function App() {
                   <Route path="/" element={<CustomerHomePage />} />
                   <Route path="/login" element={<CustomerLoginPage />} />
                   <Route path="/forgot-password" element={<CustomerForgotPasswordPage />} />
+                  <Route path="/reset-password" element={<CustomerResetPasswordPage />} />
                   <Route
                     path="/account"
                     element={
