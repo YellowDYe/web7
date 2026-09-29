@@ -379,10 +379,6 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
       const email = session.user.email || '';
 
       const emailCheck = await checkEmailExists(email);
-      if (emailCheck.hasCustomer) {
-        throw new Error('Esta cuenta de Google ya tiene un perfil. Por favor inicia sesión.');
-      }
-
       const existingCustomerId = emailCheck.customer?.id || null;
       await callCreateCustomerAccount(authUserId, email, customerData, existingCustomerId);
       await fetchCustomerData(authUserId, email);
