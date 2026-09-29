@@ -113,23 +113,39 @@ export const CMSRenderer: React.FC<CMSRendererProps> = ({ modules, basePath = ''
     }
   };
 
+  const headerModules = modules.filter(m => m.type === 'MainMenu');
+  const footerModules = modules.filter(m => m.type === 'Footer');
+  const contentModules = modules.filter(m => m.type !== 'MainMenu' && m.type !== 'Footer');
+
   return (
-    <div className="bg-white">
-      {modules.map((module, index) => (
+    <div className="bg-white min-h-screen flex flex-col">
+      {/* Header */}
+      {headerModules.map(module => (
         <React.Fragment key={module.id}>
           {renderModule(module)}
-          {/* Add spacing between modules, except for MainMenu and Footer */}
-          {index < modules.length - 1 &&
-           module.type !== 'MainMenu' &&
-           modules[index + 1]?.type !== 'Footer' && (
-            <div style={{ height: '5px' }}></div>
-          )}
-          {/* Special spacing after MainMenu */}
-          {module.type === 'MainMenu' && index < modules.length - 1 && (
-            <div style={{ height: '10px' }}></div>
-          )}
+          {contentModules.length > 0 && <div style={{ height: '10px' }}></div>}
         </React.Fragment>
       ))}
+
+      {/* Content — grows to fill remaining space */}
+      <div className="flex-1">
+        {contentModules.map((module, index) => (
+          <React.Fragment key={module.id}>
+            {renderModule(module)}
+            {index < contentModules.length - 1 && (
+              <div style={{ height: '5px' }}></div>
+            )}
+          </React.Fragment>
+        ))}
+      </div>
+
+      {/* Footer — always at the bottom */}
+      {footerModules.map(module => (
+        <React.Fragment key={module.id}>
+          {renderModule(module)}
+        </React.Fragment>
+      ))}
+
       <WhatsAppWidget />
       <CustomCodeInjector />
     </div>
