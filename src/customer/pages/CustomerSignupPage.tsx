@@ -902,6 +902,8 @@ export default function CustomerSignupPage() {
             </div>
           )}
 
+          <div className="mb-8">{renderStep()}</div>
+
           <div className="flex justify-between gap-4">
             {currentStep > 0 && (
               <Button
