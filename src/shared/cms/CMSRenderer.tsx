@@ -22,6 +22,7 @@ import { BlogPage } from '../../customer/sections/BlogPage/BlogPage';
 import { Objectives } from '../../customer/sections/Objectives/Objectives';
 import { FAQ } from '../../customer/sections/FAQ/FAQ';
 import { CustomerSignup } from '../../customer/sections/CustomerSignup/CustomerSignup';
+import { CustomerLogin } from '../../customer/sections/CustomerLogin/CustomerLogin';
 import { TitleBlock } from '../../customer/sections/TitleBlock/TitleBlock';
 import { WeeklyMenu } from '../../customer/sections/WeeklyMenu/WeeklyMenu';
 
@@ -88,6 +89,8 @@ export const CMSRenderer: React.FC<CMSRendererProps> = ({ modules, basePath = ''
         return <CustomerCheckout key={module.id} />;
       case 'CustomerSignup':
         return <CustomerSignup key={module.id} />;
+      case 'CustomerLogin':
+        return <CustomerLogin key={module.id} />;
       case 'ProteinShakes':
         return <ProteinShakes key={module.id} />;
       case 'BlogGrid':

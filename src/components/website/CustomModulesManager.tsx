@@ -46,6 +46,7 @@ export const CustomModulesManager: React.FC = () => {
     { value: 'CustomerCart', label: 'Carrito (Sistema)', isSystem: true },
     { value: 'CustomerCheckout', label: 'Checkout (Sistema)', isSystem: true },
     { value: 'CustomerProfile', label: 'Perfil Cliente (Sistema)', isSystem: true },
+    { value: 'CustomerLogin', label: 'Inicio de Sesión (Sistema)', isSystem: true },
     { value: 'Footer', label: 'Footer' },
   ];
 
