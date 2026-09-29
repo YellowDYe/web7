@@ -172,7 +172,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
           exists: result.email_exists || false,
           hasAuth: result.has_auth || false,
           hasCustomer: result.has_customer || false,
-          customer: undefined,
+          customer: result.customer_uuid ? { id: result.customer_uuid } as Customer : undefined,
         };
       }
 
@@ -365,7 +365,8 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
       await supabase.auth.signOut().catch(() => {});
       setUser(null);
       setCustomer(null);
-      throw new Error(friendlyError(error, 'Error al crear la cuenta'));
+      const rawMsg = error instanceof Error ? error.message : String(error);
+      throw new Error(rawMsg || 'Error al crear la cuenta');
     }
   };
 
@@ -387,7 +388,8 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
       await fetchCustomerData(authUserId, email);
     } catch (error: any) {
       console.error('Google signup error:', error);
-      throw new Error(friendlyError(error, 'Error al crear la cuenta'));
+      const rawMsg = error instanceof Error ? error.message : String(error);
+      throw new Error(rawMsg || 'Error al crear la cuenta');
     }
   };
 

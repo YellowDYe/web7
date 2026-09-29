@@ -13,7 +13,6 @@ import DelegacionDropdown from '../../components/customers/DelegacionDropdown';
 import { Footer } from '../sections/Footer/Footer';
 import type { Customer } from '../../types/customer';
 import { supabase } from '../../config/supabase';
-import { friendlyError } from '../utils/friendlyError';
 
 const STEPS = [
   { id: 0, title: 'Cuenta', icon: Mail },
@@ -375,7 +374,8 @@ export default function CustomerSignupPage() {
       localStorage.removeItem('customerSignupDraft');
       navigate(returnTo);
     } catch (err: any) {
-      setError(friendlyError(err, 'Error al crear la cuenta'));
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(msg || 'Error al crear la cuenta');
       if (!isGoogleUser) {
         setCurrentStep(0);
       }

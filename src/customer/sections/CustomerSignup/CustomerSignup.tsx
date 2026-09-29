@@ -363,7 +363,8 @@ export const CustomerSignup: React.FC = () => {
       localStorage.removeItem('customerSignupDraft');
       navigate(returnTo);
     } catch (err: any) {
-      setError(friendlyError(err, 'Error al crear la cuenta'));
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(msg || 'Error al crear la cuenta');
       if (!isGoogleUser) {
         setCurrentStep(0);
       }
