@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Receipt, Trash2, Package, Users, ShoppingCart, Tag, Loader, LogIn, ChevronDown } from 'lucide-react';
+import { Receipt, Trash2, Package, Users, ShoppingCart, Tag, Loader, LogIn, ChevronDown, ListChecks } from 'lucide-react';
 import { PendingOrderItem, BILLABLE_MEAL_TYPES } from '../../../types/orderMenu';
+import { MEAL_TYPES } from '../../../types/mealTypes';
 import { DeliveryOption } from '../../../types/deliveryOption';
 import { Coupon } from '../../../types/coupon';
 import { DiscountWithAmount } from '../../../components/orders/OrderSummary';
@@ -48,6 +49,10 @@ const CustomerOrderSidePanel: React.FC<CustomerOrderSidePanelProps> = ({
 }) => {
   const [confirmClear, setConfirmClear] = useState(false);
   const [detailsExpanded, setDetailsExpanded] = useState(false);
+  const [expandedWeeks, setExpandedWeeks] = useState<Record<string, boolean>>({});
+
+  const toggleWeekDetail = (weekName: string) =>
+    setExpandedWeeks(prev => ({ ...prev, [weekName]: !prev[weekName] }));
 
   const handleClearClick = () => setConfirmClear(true);
   const handleConfirmClear = () => { setConfirmClear(false); onClearOrder(); };
@@ -176,6 +181,22 @@ const CustomerOrderSidePanel: React.FC<CustomerOrderSidePanelProps> = ({
             {Object.entries(itemsByWeek).map(([weekName, items]) => {
               const billableCount = getBillableMealCountForWeek(orderItems, weekName);
               const totalCount = getTotalMealCountForWeek(orderItems, weekName);
+              const isWeekOpen = !!expandedWeeks[weekName];
+
+              const planNames = Array.from(
+                new Set(
+                  items
+                    .filter(i => BILLABLE_MEAL_TYPES.includes(i.meal_type as any) && i.meal_plan_name)
+                    .map(i => i.meal_plan_name as string)
+                )
+              );
+
+              const mealTypeCounts = MEAL_TYPES.map(mt => {
+                const qty = items
+                  .filter(i => i.meal_type === mt.label)
+                  .reduce((sum, i) => sum + i.quantity, 0);
+                return { label: mt.label, qty, billable: BILLABLE_MEAL_TYPES.includes(mt.label) };
+              }).filter(m => m.qty > 0);
 
               return (
                 <div key={weekName} className="border border-gray-200 rounded-xl overflow-hidden">
@@ -190,50 +211,98 @@ const CustomerOrderSidePanel: React.FC<CustomerOrderSidePanelProps> = ({
                     </span>
                   </div>
 
-                  <div className="divide-y divide-gray-50">
-                    {items.map(item => (
-                      <div key={item.tempId} className="flex items-start justify-between px-3 py-2">
-                        <div className="flex-1 min-w-0 pr-2">
-                          <div className="flex items-center flex-wrap gap-1">
-                            <span className="text-xs font-medium text-gray-900 truncate">
-                              {item.day_of_week} · {item.meal_type}
-                            </span>
-                            {BILLABLE_MEAL_TYPES.includes(item.meal_type as any) && (
-                              <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-medium">
-                                {item.meal_plan_name}
+                  {/* Per-week overview: plan + dish counts by meal type */}
+                  <div className="px-3 py-2.5 space-y-2">
+                    {planNames.length > 0 && (
+                      <div className="flex items-center flex-wrap gap-1">
+                        <span className="text-xs text-gray-500">Plan:</span>
+                        {planNames.map(name => (
+                          <span
+                            key={name}
+                            className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-medium"
+                          >
+                            {name}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="flex flex-wrap gap-1.5">
+                      {mealTypeCounts.map(m => (
+                        <span
+                          key={m.label}
+                          className={`text-xs px-2 py-1 rounded-lg font-medium ${
+                            m.billable
+                              ? 'bg-gray-100 text-gray-700'
+                              : 'bg-green-50 text-green-700'
+                          }`}
+                        >
+                          {m.label}
+                          <span className="font-bold"> x{m.qty}</span>
+                          {!m.billable && <span className="italic font-normal"> · incluida</span>}
+                        </span>
+                      ))}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => toggleWeekDetail(weekName)}
+                      className="flex items-center gap-1 text-xs font-medium text-red-600 hover:text-red-700 transition-colors"
+                    >
+                      <ListChecks className="w-3.5 h-3.5" />
+                      {isWeekOpen ? 'Ocultar platillos' : 'Ver platillos seleccionados'}
+                      <ChevronDown
+                        className={`w-3.5 h-3.5 transition-transform duration-200 ${isWeekOpen ? 'rotate-180' : ''}`}
+                      />
+                    </button>
+                  </div>
+
+                  {isWeekOpen && (
+                    <div className="divide-y divide-gray-50 border-t border-gray-100">
+                      {items.map(item => (
+                        <div key={item.tempId} className="flex items-start justify-between px-3 py-2">
+                          <div className="flex-1 min-w-0 pr-2">
+                            <div className="flex items-center flex-wrap gap-1">
+                              <span className="text-xs font-medium text-gray-900 truncate">
+                                {item.day_of_week} · {item.meal_type}
                               </span>
-                            )}
-                            {item.family_member_name && (
-                              <span className="text-xs bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded inline-flex items-center gap-0.5">
-                                <Users className="w-2.5 h-2.5" />
-                                {item.family_member_name}
-                              </span>
+                              {BILLABLE_MEAL_TYPES.includes(item.meal_type as any) && (
+                                <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-medium">
+                                  {item.meal_plan_name}
+                                </span>
+                              )}
+                              {item.family_member_name && (
+                                <span className="text-xs bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded inline-flex items-center gap-0.5">
+                                  <Users className="w-2.5 h-2.5" />
+                                  {item.family_member_name}
+                                </span>
+                              )}
+                            </div>
+                            {item.recipe_name && (
+                              <p className="text-xs text-gray-400 italic mt-0.5 truncate">{item.recipe_name}</p>
                             )}
                           </div>
-                          {item.recipe_name && (
-                            <p className="text-xs text-gray-400 italic mt-0.5 truncate">{item.recipe_name}</p>
-                          )}
-                        </div>
 
-                        <div className="flex items-center space-x-2 flex-shrink-0">
-                          {BILLABLE_MEAL_TYPES.includes(item.meal_type as any) ? (
-                            <span className="text-xs font-semibold text-gray-800">
-                              x{item.quantity}
-                            </span>
-                          ) : (
-                            <span className="text-xs text-green-600 font-medium italic">incluida</span>
-                          )}
-                          <button
-                            onClick={() => !loading && onRemoveItem(item.tempId!)}
-                            disabled={loading}
-                            className="p-1 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded transition-colors disabled:opacity-40"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </button>
+                          <div className="flex items-center space-x-2 flex-shrink-0">
+                            {BILLABLE_MEAL_TYPES.includes(item.meal_type as any) ? (
+                              <span className="text-xs font-semibold text-gray-800">
+                                x{item.quantity}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-green-600 font-medium italic">incluida</span>
+                            )}
+                            <button
+                              onClick={() => !loading && onRemoveItem(item.tempId!)}
+                              disabled={loading}
+                              className="p-1 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded transition-colors disabled:opacity-40"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               );
             })}
