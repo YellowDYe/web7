@@ -22,9 +22,22 @@ export interface ValidationResult {
 }
 
 export function calculateBillableMealsPerWeek(
-  orderItems: PendingOrderItem[]
+  orderItems: PendingOrderItem[],
+  selectedWeekNames: string[] = []
 ): Map<string, WeekMealCount> {
   const weekMap = new Map<string, WeekMealCount>();
+
+  selectedWeekNames.forEach(weekName => {
+    if (!weekMap.has(weekName)) {
+      weekMap.set(weekName, {
+        weekName,
+        weekId: '',
+        billableMealCount: 0,
+        totalMealCount: 0,
+        meetsMinimum: false
+      });
+    }
+  });
 
   orderItems.forEach(item => {
     const weekKey = item.week_name;
@@ -53,8 +66,11 @@ export function calculateBillableMealsPerWeek(
   return weekMap;
 }
 
-export function validateOrderWeeks(orderItems: PendingOrderItem[]): ValidationResult {
-  const weekCounts = Array.from(calculateBillableMealsPerWeek(orderItems).values());
+export function validateOrderWeeks(
+  orderItems: PendingOrderItem[],
+  selectedWeekNames: string[] = []
+): ValidationResult {
+  const weekCounts = Array.from(calculateBillableMealsPerWeek(orderItems, selectedWeekNames).values());
   const incompleteWeeks = weekCounts.filter(week => !week.meetsMinimum);
 
   return {

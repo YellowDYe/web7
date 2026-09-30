@@ -652,7 +652,7 @@ export const CustomerOrder: React.FC = () => {
       return;
     }
 
-    const validation = validateOrderWeeks(orderItems);
+    const validation = validateOrderWeeks(orderItems, selectedWeeks.map(w => w.week.week_name));
     if (!validation.isValid) {
       let message = '';
       if (validation.incompleteWeeks.length > 0) {
@@ -686,7 +686,8 @@ export const CustomerOrder: React.FC = () => {
     navigate('/cart');
   };
 
-  const orderValidation = validateOrderWeeks(orderItems);
+  const selectedWeekNames = selectedWeeks.map(w => w.week.week_name);
+  const orderValidation = validateOrderWeeks(orderItems, selectedWeekNames);
   const canAddToCart = orderValidation.isValid && selectedDeliveryOption && customer;
 
   const activeWeekBillable = activeWeek
@@ -983,6 +984,7 @@ export const CustomerOrder: React.FC = () => {
             loading={loading}
             canAddToCart={!!canAddToCart}
             isLoggedIn={!!customer}
+            selectedWeekNames={selectedWeekNames}
           />
         </>
       )}

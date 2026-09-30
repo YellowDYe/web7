@@ -26,6 +26,7 @@ interface CustomerOrderSidePanelProps {
   loading: boolean;
   canAddToCart: boolean;
   isLoggedIn: boolean;
+  selectedWeekNames?: string[];
 }
 
 const formatCurrency = (amount: number): string =>
@@ -46,6 +47,7 @@ const CustomerOrderSidePanel: React.FC<CustomerOrderSidePanelProps> = ({
   loading,
   canAddToCart,
   isLoggedIn,
+  selectedWeekNames = [],
 }) => {
   const [confirmClear, setConfirmClear] = useState(false);
   const [expandedWeeks, setExpandedWeeks] = useState<Record<string, boolean>>({});
@@ -90,7 +92,7 @@ const CustomerOrderSidePanel: React.FC<CustomerOrderSidePanelProps> = ({
     taxRate
   );
 
-  const orderValidation = validateOrderWeeks(orderItems);
+  const orderValidation = validateOrderWeeks(orderItems, selectedWeekNames);
 
   if (orderItems.length === 0) {
     return (
