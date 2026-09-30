@@ -145,7 +145,7 @@ const PostalCodeSearchDropdown: React.FC<PostalCodeSearchDropdownProps> = ({
   return (
     <div className="relative" ref={containerRef}>
       <label className="block text-sm font-medium text-gray-700 mb-2">
-        Código Postal
+        Código Postal *
       </label>
       
       {/* Input Field */}

@@ -3,7 +3,9 @@ import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useCustomerAuth } from '../../contexts/CustomerAuthContext';
 import { Button } from '../../components/ui/button';
 import { Card } from '../../components/ui/card';
-import { Mail, Lock, User, Phone, MapPin, FileText, Check, Users, CreditCard as Edit, Trash2, Plus, CircleAlert as AlertCircle } from 'lucide-react';
+import { Mail, Lock, User, Phone, MapPin, FileText, Check, Users, CreditCard as Edit, Trash2, Plus, CircleAlert as AlertCircle, MessageCircle } from 'lucide-react';
+import { cmsApiDirect } from '../../../shared/cms/cmsApiDirect';
+import { deliveryZoneService } from '../../../services/deliveryZoneService';
 import { AddressAutocompleteInput } from '../../components/AddressAutocompleteInput';
 import type { AddressComponents } from '../../hooks/useGooglePlacesAutocomplete';
 import RestrictionSelector from '../../../components/customers/RestrictionSelector';
@@ -68,6 +70,10 @@ export const CustomerSignup: React.FC = () => {
   });
 
   const [isFamilyMemberFormOpen, setIsFamilyMemberFormOpen] = useState(false);
+  const [postalCodeValid, setPostalCodeValid] = useState<boolean | null>(null);
+  const [postalCodeChecking, setPostalCodeChecking] = useState(false);
+  const [whatsappPhone, setWhatsappPhone] = useState('');
+  const [deliveryZoneCodes, setDeliveryZoneCodes] = useState<Set<string>>(new Set());
   const [editingMemberSlot, setEditingMemberSlot] = useState<number | null>(null);
   const [restrictionNames, setRestrictionNames] = useState<Record<string, string>>({});
 
@@ -104,6 +110,29 @@ export const CustomerSignup: React.FC = () => {
       formData.family_member_3_name, formData.family_member_3_restrictions,
       formData.family_member_4_name, formData.family_member_4_restrictions,
       formData.family_member_5_name, formData.family_member_5_restrictions]);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const zones = await deliveryZoneService.getZones();
+        setDeliveryZoneCodes(new Set(zones.map(z => z.postal_code)));
+      } catch { /* dropdown still works standalone */ }
+      try {
+        const result = await cmsApiDirect.getSettingByName('whatsapp_settings');
+        if (result?.value?.phoneNumber) setWhatsappPhone(result.value.phoneNumber);
+      } catch { /* no whatsapp link — that's fine */ }
+    };
+    load();
+  }, []);
+
+  useEffect(() => {
+    if (!formData.postal_code) {
+      setPostalCodeValid(null);
+      return;
+    }
+    if (deliveryZoneCodes.size === 0) return;
+    setPostalCodeValid(deliveryZoneCodes.has(formData.postal_code));
+  }, [formData.postal_code, deliveryZoneCodes]);
 
   const getFamilyMembers = () => {
     const members: Array<{ slot: number; name: string; restrictions: string[] }> = [];
@@ -294,6 +323,10 @@ export const CustomerSignup: React.FC = () => {
         if (!formData.street_address || !formData.address_number || !formData.colonia ||
             !formData.delegacion || !formData.postal_code) {
           setError('Por favor completa todos los campos de dirección requeridos');
+          return false;
+        }
+        if (postalCodeValid === false) {
+          setError('No tenemos servicio de entrega en tu código postal.');
           return false;
         }
         return true;
@@ -564,6 +597,31 @@ export const CustomerSignup: React.FC = () => {
                   });
                 }}
               />
+              {postalCodeValid === false && formData.postal_code && (
+                <div className="mt-3 flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4">
+                  <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <div className="text-sm text-amber-800">
+                    <p className="font-medium">No tenemos servicio de entrega en el código postal {formData.postal_code}.</p>
+                    <p className="mt-1">
+                      Para más información, contáctanos
+                      {whatsappPhone ? (
+                        <a
+                          href={`https://wa.me/${whatsappPhone.replace(/\D/g, '')}?text=${encodeURIComponent('Hola, me gustaría saber si tienen servicio en mi código postal: ' + formData.postal_code)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 ml-1 font-semibold text-green-700 hover:text-green-800 underline"
+                        >
+                          <MessageCircle className="h-4 w-4" />
+                          por WhatsApp
+                        </a>
+                      ) : (
+                        <span> por WhatsApp</span>
+                      )}
+                      .
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
