@@ -554,9 +554,6 @@ export const CustomerSignup: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Código Postal *
-              </label>
               <PostalCodeSearchDropdown
                 selectedPostalCode={formData.postal_code}
                 onPostalCodeSelect={(postalCode, neighborhood) => {
