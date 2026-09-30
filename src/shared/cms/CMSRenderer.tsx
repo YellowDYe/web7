@@ -23,6 +23,8 @@ import { Objectives } from '../../customer/sections/Objectives/Objectives';
 import { FAQ } from '../../customer/sections/FAQ/FAQ';
 import { CustomerSignup } from '../../customer/sections/CustomerSignup/CustomerSignup';
 import { CustomerLogin } from '../../customer/sections/CustomerLogin/CustomerLogin';
+import { CustomerForgotPassword } from '../../customer/sections/CustomerForgotPassword/CustomerForgotPassword';
+import { CustomerResetPassword } from '../../customer/sections/CustomerResetPassword/CustomerResetPassword';
 import { TitleBlock } from '../../customer/sections/TitleBlock/TitleBlock';
 import { WeeklyMenu } from '../../customer/sections/WeeklyMenu/WeeklyMenu';
 
@@ -91,6 +93,10 @@ export const CMSRenderer: React.FC<CMSRendererProps> = ({ modules, basePath = ''
         return <CustomerSignup key={module.id} />;
       case 'CustomerLogin':
         return <CustomerLogin key={module.id} />;
+      case 'CustomerForgotPassword':
+        return <CustomerForgotPassword key={module.id} />;
+      case 'CustomerResetPassword':
+        return <CustomerResetPassword key={module.id} />;
       case 'ProteinShakes':
         return <ProteinShakes key={module.id} />;
       case 'BlogGrid':

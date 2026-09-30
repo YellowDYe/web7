@@ -1,0 +1,1 @@
+export { CustomerForgotPassword } from './CustomerForgotPassword';

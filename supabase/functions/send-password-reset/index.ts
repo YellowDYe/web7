@@ -110,7 +110,27 @@ Deno.serve(async (req: Request) => {
       ? (redirectPath as string)
       : "/reset-password";
 
-    const siteBase = resolveSiteUrl(siteUrl, req);
+    // Customer reset links must always land on the public storefront, regardless
+    // of which host requested the reset. Admin links keep using the request origin.
+    let siteBase: string | null = null;
+    if (!path.startsWith("/admin")) {
+      const { data: siteUrlRow } = await supabase
+        .from("cms_settings")
+        .select("value")
+        .eq("setting_name", "site_url")
+        .maybeSingle();
+      const configuredUrl = typeof siteUrlRow?.value === "string" ? siteUrlRow.value.trim() : "";
+      if (configuredUrl) {
+        try {
+          siteBase = new URL(configuredUrl).origin;
+        } catch {
+          siteBase = null;
+        }
+      }
+    }
+    if (!siteBase) {
+      siteBase = resolveSiteUrl(siteUrl, req);
+    }
     if (!siteBase) {
       console.error("No site URL configured for password reset links");
       return new Response(
@@ -234,6 +254,11 @@ Si no solicitaste este cambio, puedes ignorar este correo.
     formData.append("subject", subject);
     formData.append("text", textBody);
     formData.append("html", htmlBody);
+    // Disable click tracking so Mailgun does not pre-fetch (and consume) the
+    // single-use recovery link before the customer clicks it.
+    formData.append("o:tracking", "no");
+    formData.append("o:tracking-clicks", "no");
+    formData.append("o:tracking-opens", "no");
 
     const mailgunResponse = await fetch(
       `https://api.mailgun.net/v3/${mailgunDomain}/messages`,
