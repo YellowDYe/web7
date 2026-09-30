@@ -50,17 +50,26 @@ export default function CustomerResetPasswordPage() {
 
         // Fallback: check if onAuthStateChange already established a session
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-          if (event === 'PASSWORD_RECOVERY' && session) {
+          if ((event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') && session) {
             setHasValidSession(true);
             setLoading(false);
             subscription.unsubscribe();
           }
         });
 
-        // Give the listener a moment, then check existing session
-        await new Promise(r => setTimeout(r, 1500));
-        const { data: sessionData } = await supabase.auth.getSession();
-        if (sessionData.session) {
+        // The recovery session is stored asynchronously right after load, so
+        // give it a few short tries before deciding the link is invalid.
+        let established = false;
+        for (let attempt = 0; attempt < 6; attempt++) {
+          await new Promise(r => setTimeout(r, 500));
+          const { data: sessionData } = await supabase.auth.getSession();
+          if (sessionData.session) {
+            established = true;
+            break;
+          }
+        }
+
+        if (established) {
           setHasValidSession(true);
         } else {
           setError('El enlace de recuperación no es válido o ha expirado.');

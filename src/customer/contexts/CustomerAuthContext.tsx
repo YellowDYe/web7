@@ -134,6 +134,15 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     initAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      // A password-recovery link may drop the visitor on any page. Whenever
+      // Supabase reports a recovery, make sure they land on the reset form.
+      if (_event === 'PASSWORD_RECOVERY') {
+        if (!window.location.pathname.includes('reset-password')) {
+          window.location.replace('/reset-password');
+        }
+        return;
+      }
+
       // When the same user is already loaded, skip all events except sign-out
       if (currentUserIdRef.current && session?.user?.id === currentUserIdRef.current) {
         return;
