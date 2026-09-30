@@ -13,6 +13,7 @@ const CustomerCartPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    window.scrollTo({ top: 0, left: 0 });
     loadPageContent();
   }, [location.pathname]);
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CircleAlert as AlertCircle } from 'lucide-react';
+import { CircleAlert as AlertCircle, ChevronLeft, ChevronRight, ShoppingCart } from 'lucide-react';
 import { useCustomerAuth } from '../../contexts/CustomerAuthContext';
 import { useCart } from '../../contexts/CartContext';
 import { SelectedWeek } from '../../../types/week';
@@ -64,6 +64,7 @@ export const CustomerOrder: React.FC = () => {
   const firstOrderCheckedRef = useRef(false);
 
   // UI state
+  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [restrictionNames, setRestrictionNames] = useState<string[]>([]);
@@ -88,6 +89,10 @@ export const CustomerOrder: React.FC = () => {
     setSelectedFamilyMember(cart.selectedFamilyMember ?? null);
     setAppliedCoupon(cart.appliedCoupon);
     setCouponDiscountAmount(cart.couponDiscountAmount);
+
+    if (cart.orderItems && cart.orderItems.length > 0) {
+      setStep(5);
+    }
   }, [cart]);
 
   // Auto-select delivery option when duration is set but delivery option is missing
@@ -681,29 +686,125 @@ export const CustomerOrder: React.FC = () => {
     navigate('/cart');
   };
 
-  const getCurrentStep = () => {
-    if (!planDuration) return 1;
-    if (selectedWeeks.length === 0) return 2;
-    if (!selectedPlan) return 3;
-    const billableForActiveWeek = activeWeek
-      ? orderItems.filter(
-          item =>
-            item.week_name === activeWeek.week.week_name &&
-            BILLABLE_MEAL_TYPES.includes(item.meal_type as any)
-        ).length
-      : 0;
-    if (billableForActiveWeek === 0) return 4;
-    const validation = validateOrderWeeks(orderItems);
-    if (!validation.isValid) return 4;
-    return 5;
-  };
-
   const orderValidation = validateOrderWeeks(orderItems);
-  const currentStep = getCurrentStep();
   const canAddToCart = orderValidation.isValid && selectedDeliveryOption && customer;
 
+  const activeWeekBillable = activeWeek
+    ? orderItems.filter(
+        item =>
+          item.week_name === activeWeek.week.week_name &&
+          BILLABLE_MEAL_TYPES.includes(item.meal_type as any)
+      ).length
+    : 0;
+
+  const steps = [
+    { num: 1, label: 'Duración' },
+    { num: 2, label: 'Semanas' },
+    { num: 3, label: 'Plan' },
+    { num: 4, label: 'Paquete' },
+    { num: 5, label: 'Resumen' }
+  ];
+
+  const canReachStep = (target: number): boolean => {
+    if (target <= 1) return true;
+    if (target === 2) return planDuration != null;
+    if (target === 3) return !!activeWeek;
+    return !!activeWeek && !!selectedPlan;
+  };
+
+  const goToStep = (target: number) => {
+    if (!canReachStep(target)) return;
+    setStep(target as 1 | 2 | 3 | 4 | 5);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const canContinue = (): boolean => {
+    if (step === 1) return planDuration != null;
+    if (step === 2) return !!activeWeek;
+    if (step === 3) return !!selectedPlan;
+    if (step === 4) return activeWeekBillable >= 3;
+    return false;
+  };
+
+  // Running total for the floating summary bar
+  const floatingItemsTotal = orderItems.reduce((total, item) => (
+    BILLABLE_MEAL_TYPES.includes(item.meal_type as any)
+      ? total + item.meal_plan_price * item.quantity
+      : total
+  ), 0);
+  const floatingPlanDiscounts = appliedDiscountsWithAmounts.reduce((sum, d) => sum + d.amount, 0);
+  const floatingBreakdown = calculatePriceBreakdown(
+    floatingItemsTotal,
+    floatingPlanDiscounts,
+    selectedDeliveryOption?.delivery_options_price ?? 0,
+    couponDiscountAmount,
+    0,
+    16
+  );
+  const totalBillableCount = orderItems
+    .filter(item => BILLABLE_MEAL_TYPES.includes(item.meal_type as any))
+    .reduce((sum, item) => sum + item.quantity, 0);
+  const formatCurrency = (amount: number): string =>
+    new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(amount);
+
+  const validationWarnings = orderItems.length > 0 && !orderValidation.isValid ? (
+    <>
+      {orderValidation.incompleteWeeks.length > 0 && (
+        <div className="mb-6 bg-orange-50 border border-orange-200 rounded-xl p-4">
+          <div className="flex items-start space-x-3">
+            <AlertCircle className="w-5 h-5 text-orange-600 mt-0.5 flex-shrink-0" />
+            <div>
+              <h3 className="text-sm font-semibold text-orange-800 mb-2">
+                Completa el mínimo de comidas por semana
+              </h3>
+              <p className="text-sm text-orange-700 mb-2">
+                Cada semana debe tener al menos 3 comidas principales (Desayuno, Comida o Cena). Las colaciones no cuentan para el mínimo.
+              </p>
+              <ul className="text-sm text-orange-700 space-y-1">
+                {orderValidation.incompleteWeeks.map((week, index) => (
+                  <li key={index} className="flex items-center space-x-2">
+                    <span className="w-1.5 h-1.5 bg-orange-600 rounded-full"></span>
+                    <span>
+                      <strong>{week.weekName}:</strong> {week.billableMealCount} de 3 comidas principales seleccionadas
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {orderValidation.weeksNeedingColaciones.length > 0 && (
+        <div className="mb-6 bg-blue-50 border border-blue-200 rounded-xl p-4">
+          <div className="flex items-start space-x-3">
+            <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+            <div>
+              <h3 className="text-sm font-semibold text-blue-800 mb-2">
+                Completa las colaciones requeridas
+              </h3>
+              <p className="text-sm text-blue-700 mb-2">
+                Los planes Fitness y Balance incluyen colaciones. Debes seleccionar el número requerido según tus comidas principales.
+              </p>
+              <ul className="text-sm text-blue-700 space-y-1">
+                {orderValidation.weeksNeedingColaciones.map((week, index) => (
+                  <li key={index} className="flex items-center space-x-2">
+                    <span className="w-1.5 h-1.5 bg-blue-600 rounded-full"></span>
+                    <span>
+                      <strong>{week.weekName}:</strong> {week.colacionesSelected} de {week.colacionesRequired} colaciones seleccionadas
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  ) : null;
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-28">
       <div className="text-center mb-8">
         <h1 className="text-4xl font-bold text-gray-900 mb-2">Crear Pedido</h1>
         <p className="text-lg text-gray-600">Selecciona tus comidas favoritas</p>
@@ -720,27 +821,33 @@ export const CustomerOrder: React.FC = () => {
       {/* Progress Indicator */}
       <div className="mb-8">
         <div className="flex items-center justify-between">
-          {[
-            { num: 1, label: 'Duración' },
-            { num: 2, label: 'Semanas' },
-            { num: 3, label: 'Plan' },
-            { num: 4, label: 'Paquete' },
-            { num: 5, label: 'Resumen' }
-          ].map((step, index) => (
-            <React.Fragment key={step.num}>
-              <div className="flex items-center space-x-1 sm:space-x-2">
-                <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs sm:text-sm font-medium flex-shrink-0 ${
-                  currentStep >= step.num ? 'bg-red-500 text-white' : 'bg-gray-300 text-gray-500'
-                }`}>
-                  {step.num}
-                </div>
-                <span className={`text-sm font-medium hidden sm:block ${
-                  currentStep >= step.num ? 'text-red-600' : 'text-gray-500'
-                }`}>{step.label}</span>
-              </div>
-              {index < 4 && <div className="flex-1 h-px bg-gray-300 mx-1 sm:mx-2"></div>}
-            </React.Fragment>
-          ))}
+          {steps.map((s, index) => {
+            const reachable = canReachStep(s.num);
+            return (
+              <React.Fragment key={s.num}>
+                <button
+                  type="button"
+                  onClick={() => goToStep(s.num)}
+                  disabled={!reachable}
+                  className={`flex items-center space-x-1 sm:space-x-2 ${reachable ? 'cursor-pointer' : 'cursor-not-allowed'}`}
+                >
+                  <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs sm:text-sm font-medium flex-shrink-0 transition-all ${
+                    step === s.num
+                      ? 'bg-red-500 text-white ring-2 ring-red-200'
+                      : step > s.num
+                        ? 'bg-red-500 text-white'
+                        : 'bg-gray-300 text-gray-500'
+                  }`}>
+                    {s.num}
+                  </div>
+                  <span className={`text-sm font-medium hidden sm:block ${
+                    step >= s.num ? 'text-red-600' : 'text-gray-500'
+                  }`}>{s.label}</span>
+                </button>
+                {index < steps.length - 1 && <div className="flex-1 h-px bg-gray-300 mx-1 sm:mx-2"></div>}
+              </React.Fragment>
+            );
+          })}
         </div>
       </div>
 
@@ -758,95 +865,43 @@ export const CustomerOrder: React.FC = () => {
         </div>
       )}
 
-      {/* Validation Warning */}
-      {orderItems.length > 0 && !orderValidation.isValid && (
-        <>
-          {orderValidation.incompleteWeeks.length > 0 && (
-            <div className="mb-6 bg-orange-50 border border-orange-200 rounded-xl p-4">
-              <div className="flex items-start space-x-3">
-                <AlertCircle className="w-5 h-5 text-orange-600 mt-0.5 flex-shrink-0" />
-                <div>
-                  <h3 className="text-sm font-semibold text-orange-800 mb-2">
-                    Completa el mínimo de comidas por semana
-                  </h3>
-                  <p className="text-sm text-orange-700 mb-2">
-                    Cada semana debe tener al menos 3 comidas principales (Desayuno, Comida o Cena). Las colaciones no cuentan para el mínimo.
-                  </p>
-                  <ul className="text-sm text-orange-700 space-y-1">
-                    {orderValidation.incompleteWeeks.map((week, index) => (
-                      <li key={index} className="flex items-center space-x-2">
-                        <span className="w-1.5 h-1.5 bg-orange-600 rounded-full"></span>
-                        <span>
-                          <strong>{week.weekName}:</strong> {week.billableMealCount} de 3 comidas principales seleccionadas
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {orderValidation.weeksNeedingColaciones.length > 0 && (
-            <div className="mb-6 bg-blue-50 border border-blue-200 rounded-xl p-4">
-              <div className="flex items-start space-x-3">
-                <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-                <div>
-                  <h3 className="text-sm font-semibold text-blue-800 mb-2">
-                    Completa las colaciones requeridas
-                  </h3>
-                  <p className="text-sm text-blue-700 mb-2">
-                    Los planes Fitness y Balance incluyen colaciones. Debes seleccionar el número requerido según tus comidas principales.
-                  </p>
-                  <ul className="text-sm text-blue-700 space-y-1">
-                    {orderValidation.weeksNeedingColaciones.map((week, index) => (
-                      <li key={index} className="flex items-center space-x-2">
-                        <span className="w-1.5 h-1.5 bg-blue-600 rounded-full"></span>
-                        <span>
-                          <strong>{week.weekName}:</strong> {week.colacionesSelected} de {week.colacionesRequired} colaciones seleccionadas
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            </div>
-          )}
-        </>
-      )}
-
       {/* Step 1: Plan Duration Selection */}
-      <PlanDurationSelector
-        selectedDuration={planDuration}
-        onDurationSelect={handleDurationSelect}
-        disabled={loading}
-      />
-
-      {/* Step 2: Week Display */}
-      {selectedWeeks.length > 0 && (
-        <CustomerWeekSelector
-          selectedWeeks={selectedWeeks}
-          activeWeek={activeWeek}
-          onWeekSelect={handleWeekSelect}
-          onToggleMondayDelivery={handleToggleMondayDelivery}
-          deliveryOption={selectedDeliveryOption}
-          orderItems={orderItems}
-        />
-      )}
-
-      {/* Step 2.5: Family Member Selection */}
-      {activeWeek && customer && (
-        <CustomerFamilyMemberSelector
-          customerId={customer.id}
-          customerName={`${customer.customer_name} ${customer.customer_lastname}`}
-          selectedFamilyMemberId={selectedFamilyMemberId}
-          onFamilyMemberSelect={handleFamilyMemberSelect}
+      {step === 1 && (
+        <PlanDurationSelector
+          selectedDuration={planDuration}
+          onDurationSelect={handleDurationSelect}
           disabled={loading}
         />
       )}
 
+      {/* Step 2: Week + Family Member Selection */}
+      {step === 2 && (
+        <>
+          {selectedWeeks.length > 0 && (
+            <CustomerWeekSelector
+              selectedWeeks={selectedWeeks}
+              activeWeek={activeWeek}
+              onWeekSelect={handleWeekSelect}
+              onToggleMondayDelivery={handleToggleMondayDelivery}
+              deliveryOption={selectedDeliveryOption}
+              orderItems={orderItems}
+            />
+          )}
+
+          {activeWeek && customer && (
+            <CustomerFamilyMemberSelector
+              customerId={customer.id}
+              customerName={`${customer.customer_name} ${customer.customer_lastname}`}
+              selectedFamilyMemberId={selectedFamilyMemberId}
+              onFamilyMemberSelect={handleFamilyMemberSelect}
+              disabled={loading}
+            />
+          )}
+        </>
+      )}
+
       {/* Step 3: Meal Plan Selection */}
-      {activeWeek && (
+      {step === 3 && activeWeek && (
         <CustomerMealPlanSelector
           activeWeek={activeWeek}
           selectedPlan={selectedPlan}
@@ -857,43 +912,95 @@ export const CustomerOrder: React.FC = () => {
       )}
 
       {/* Step 4: Package Selector */}
-      {activeWeek && selectedPlan && (
-        <CustomerPackageSelector
-          key={activeWeek.tempId}
-          activeWeek={activeWeek}
-          selectedPlan={selectedPlan}
-          orderItems={orderItems}
-          selectedFamilyMemberId={selectedFamilyMemberId}
-          selectedFamilyMemberName={selectedFamilyMember?.family_member_name}
-          customerRestrictions={
-            selectedFamilyMember
-              ? selectedFamilyMember.family_member_restrictions
-              : customer?.customer_restrictions || []
-          }
-          onConfirmPackage={handleConfirmPackage}
-          onRemovePackageMealType={handleRemovePackageMealType}
-          disabled={loading}
-        />
+      {step === 4 && activeWeek && selectedPlan && (
+        <>
+          {validationWarnings}
+          <CustomerPackageSelector
+            key={activeWeek.tempId}
+            activeWeek={activeWeek}
+            selectedPlan={selectedPlan}
+            orderItems={orderItems}
+            selectedFamilyMemberId={selectedFamilyMemberId}
+            selectedFamilyMemberName={selectedFamilyMember?.family_member_name}
+            customerRestrictions={
+              selectedFamilyMember
+                ? selectedFamilyMember.family_member_restrictions
+                : customer?.customer_restrictions || []
+            }
+            onConfirmPackage={handleConfirmPackage}
+            onRemovePackageMealType={handleRemovePackageMealType}
+            disabled={loading}
+          />
+        </>
       )}
 
-      {/* Resumen del Pedido */}
-      {activeWeek && selectedPlan && (
-        <CustomerOrderSidePanel
-          orderItems={orderItems}
-          selectedDeliveryOption={selectedDeliveryOption}
-          appliedDiscounts={appliedDiscountsWithAmounts}
-          couponDiscountAmount={couponDiscountAmount}
-          appliedCoupon={appliedCoupon}
-          onRemoveItem={handleRemoveOrderItem}
-          onAddToCart={handleAddToCart}
-          onClearOrder={handleClearOrder}
-          orderNotes={orderNotes}
-          onOrderNotesChange={setOrderNotes}
-          isFirstOrder={isFirstOrder}
-          loading={loading}
-          canAddToCart={!!canAddToCart}
-          isLoggedIn={!!customer}
-        />
+      {/* Step 5: Resumen del Pedido */}
+      {step === 5 && (
+        <>
+          {validationWarnings}
+          <CustomerOrderSidePanel
+            orderItems={orderItems}
+            selectedDeliveryOption={selectedDeliveryOption}
+            appliedDiscounts={appliedDiscountsWithAmounts}
+            couponDiscountAmount={couponDiscountAmount}
+            appliedCoupon={appliedCoupon}
+            onRemoveItem={handleRemoveOrderItem}
+            onAddToCart={handleAddToCart}
+            onClearOrder={handleClearOrder}
+            orderNotes={orderNotes}
+            onOrderNotesChange={setOrderNotes}
+            isFirstOrder={isFirstOrder}
+            loading={loading}
+            canAddToCart={!!canAddToCart}
+            isLoggedIn={!!customer}
+          />
+        </>
+      )}
+
+      {/* Step navigation */}
+      <div className="mt-8 flex items-center justify-between gap-4">
+        {step > 1 ? (
+          <button
+            type="button"
+            onClick={() => goToStep(step - 1)}
+            className="inline-flex items-center gap-1.5 px-5 py-3 rounded-xl border border-gray-300 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-colors active:scale-95"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            Atrás
+          </button>
+        ) : (
+          <div />
+        )}
+
+        {step < 5 && (
+          <button
+            type="button"
+            onClick={() => goToStep(step + 1)}
+            disabled={!canContinue()}
+            className="inline-flex items-center gap-1.5 px-6 py-3 rounded-xl bg-red-500 hover:bg-red-600 disabled:bg-gray-200 disabled:text-gray-400 text-white font-semibold text-sm transition-all active:scale-95 disabled:cursor-not-allowed disabled:active:scale-100"
+          >
+            Continuar
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+
+      {/* Floating total bar (steps before summary) */}
+      {step < 5 && orderItems.length > 0 && (
+        <button
+          type="button"
+          onClick={() => goToStep(5)}
+          className="fixed bottom-0 left-0 right-0 z-40 bg-gray-900 text-white px-4 py-3 shadow-2xl flex items-center justify-between"
+        >
+          <span className="flex items-center gap-2 text-sm font-medium">
+            <ShoppingCart className="w-4 h-4" />
+            {totalBillableCount} comida{totalBillableCount !== 1 ? 's' : ''}
+          </span>
+          <span className="flex items-center gap-3">
+            <span className="text-base font-bold">{formatCurrency(floatingBreakdown.finalTotal)}</span>
+            <span className="text-xs text-gray-300 underline">Ver resumen</span>
+          </span>
+        </button>
       )}
     </div>
   );
