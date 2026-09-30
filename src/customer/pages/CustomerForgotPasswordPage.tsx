@@ -5,7 +5,6 @@ import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import CustomerSiteHeader from '../components/CustomerSiteHeader';
 import { Footer } from '../sections/Footer/Footer';
-import { supabase } from '../../config/supabase';
 import { friendlyError } from '../utils/friendlyError';
 
 export default function CustomerForgotPasswordPage() {
@@ -20,11 +19,27 @@ export default function CustomerForgotPasswordPage() {
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
-      });
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-password-reset`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email,
+            siteUrl: window.location.origin,
+            redirectPath: '/reset-password',
+          }),
+        }
+      );
 
-      if (error) throw error;
+      const result = await response.json().catch(() => null);
+
+      if (!response.ok || !result?.success) {
+        throw new Error(result?.error || 'Error al enviar el correo de restablecimiento');
+      }
 
       setSuccess(true);
     } catch (err: any) {

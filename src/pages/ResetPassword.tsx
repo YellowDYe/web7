@@ -16,9 +16,28 @@ const ResetPassword: React.FC = () => {
   useEffect(() => {
     const handlePasswordRecovery = async () => {
       try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const tokenHash = urlParams.get('token_hash');
+        const queryType = urlParams.get('type');
+
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
         const accessToken = hashParams.get('access_token');
         const type = hashParams.get('type');
+
+        // New branded flow: ?token_hash=...&type=recovery exchanged via verifyOtp.
+        if (tokenHash && queryType === 'recovery') {
+          const { data, error: verifyError } = await supabase.auth.verifyOtp({
+            token_hash: tokenHash,
+            type: 'recovery',
+          });
+          if (!verifyError && data.session) {
+            setHasValidSession(true);
+          } else {
+            setError('El enlace de recuperación no es válido o ha expirado. Por favor solicita uno nuevo.');
+          }
+          setLoading(false);
+          return;
+        }
 
         if (type === 'recovery' && accessToken) {
           console.log('Password recovery token detected');
@@ -87,7 +106,7 @@ const ResetPassword: React.FC = () => {
 
       // Redirect to login after 2 seconds
       setTimeout(() => {
-        navigate('/', { replace: true });
+        navigate('/admin/auth', { replace: true });
       }, 2000);
 
     } catch (err: any) {
@@ -175,14 +194,14 @@ const ResetPassword: React.FC = () => {
           </div>
 
           <button
-            onClick={() => navigate('/forgot-password', { replace: true })}
+            onClick={() => navigate('/admin/forgot-password', { replace: true })}
             className="w-full bg-red-500 hover:bg-red-600 text-white font-medium py-3 px-4 rounded-xl transition-colors mb-3"
           >
             Solicitar Nuevo Enlace
           </button>
 
           <button
-            onClick={() => navigate('/', { replace: true })}
+            onClick={() => navigate('/admin/auth', { replace: true })}
             className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3 px-4 rounded-xl transition-colors"
           >
             Volver al Inicio de Sesión

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Mail, ArrowLeft, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
-import { supabase } from '../config/supabase';
+
 
 const ForgotPassword: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -21,12 +21,26 @@ const ForgotPassword: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`
-      });
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-password-reset`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email,
+            siteUrl: window.location.origin,
+            redirectPath: '/admin/reset-password',
+          }),
+        }
+      );
 
-      if (resetError) {
-        throw resetError;
+      const result = await response.json().catch(() => null);
+
+      if (!response.ok || !result?.success) {
+        throw new Error(result?.error || 'Error al enviar el correo de recuperación');
       }
 
       setSuccess(true);
@@ -81,7 +95,7 @@ const ForgotPassword: React.FC = () => {
           </div>
 
           <Link
-            to="/"
+            to="/admin/auth"
             className="block w-full bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-xl font-medium transition-colors text-center"
           >
             Volver al inicio de sesión
@@ -154,7 +168,7 @@ const ForgotPassword: React.FC = () => {
 
         <div className="mt-6">
           <Link
-            to="/"
+            to="/admin/auth"
             className="flex items-center justify-center text-gray-600 hover:text-gray-900 text-sm transition-colors"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />

@@ -21,14 +21,32 @@ export default function CustomerResetPasswordPage() {
   useEffect(() => {
     const handleRecovery = async () => {
       try {
-        // PKCE flow: Supabase redirects with ?code=... which the client
-        // exchanges automatically via onAuthStateChange.  Hash-fragment flow
-        // puts #access_token=...&type=recovery in the URL.
+        // New branded flow: the email link carries ?token_hash=...&type=recovery,
+        // which we exchange for a session with verifyOtp. Kept alongside the
+        // legacy hash-fragment and PKCE flows for older links still in inboxes.
+        const urlParams = new URLSearchParams(window.location.search);
+        const tokenHash = urlParams.get('token_hash');
+        const queryType = urlParams.get('type');
+        const code = urlParams.get('code');
+
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
         const accessToken = hashParams.get('access_token');
         const type = hashParams.get('type');
-        const urlParams = new URLSearchParams(window.location.search);
-        const code = urlParams.get('code');
+
+        if (tokenHash && queryType === 'recovery') {
+          const { data, error: verifyError } = await supabase.auth.verifyOtp({
+            token_hash: tokenHash,
+            type: 'recovery',
+          });
+          if (!verifyError && data.session) {
+            setHasValidSession(true);
+            setLoading(false);
+            return;
+          }
+          setError('El enlace de recuperación no es válido o ha expirado.');
+          setLoading(false);
+          return;
+        }
 
         if (type === 'recovery' && accessToken) {
           const { data } = await supabase.auth.getSession();
