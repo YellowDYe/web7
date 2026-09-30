@@ -79,13 +79,16 @@ Deno.serve(async (req: Request) => {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    const { data: emailConfig, error: configError } = await supabase
-      .from("email_config")
-      .select("*")
-      .limit(1)
-      .maybeSingle();
+    const { data: configRows, error: configError } = await supabase
+      .from("email_configuration")
+      .select("config_key, config_value");
 
-    if (configError || !emailConfig?.mailgun_api_key) {
+    const configMap: Record<string, string> = {};
+    for (const row of configRows ?? []) {
+      configMap[row.config_key] = row.config_value;
+    }
+
+    if (configError || !configMap["mailgun_api_key"]) {
       console.error("Email configuration missing", configError);
       return new Response(
         JSON.stringify({ success: false, error: "No se pudo enviar el correo de recuperación" }),
@@ -149,7 +152,7 @@ Deno.serve(async (req: Request) => {
     const { data: siteSettings } = await supabase
       .from("cms_settings")
       .select("value")
-      .eq("key", "site_name")
+      .eq("setting_name", "site_name")
       .maybeSingle();
 
     const siteName = siteSettings?.value || "Hola Dieta";
@@ -220,10 +223,10 @@ Si no solicitaste este cambio, puedes ignorar este correo.
 
 © ${new Date().getFullYear()} ${siteName}`;
 
-    const mailgunDomain = emailConfig.mailgun_domain || "mg.holadieta.mx";
-    const mailgunApiKey = emailConfig.mailgun_api_key;
-    const fromEmail = emailConfig.from_email || `noreply@${mailgunDomain}`;
-    const fromName = emailConfig.from_name || siteName;
+    const mailgunDomain = configMap["mailgun_domain"] || "mg.holadieta.mx";
+    const mailgunApiKey = configMap["mailgun_api_key"];
+    const fromEmail = configMap["from_email"] || `noreply@${mailgunDomain}`;
+    const fromName = configMap["from_name"] || siteName;
 
     const formData = new FormData();
     formData.append("from", `${fromName} <${fromEmail}>`);
