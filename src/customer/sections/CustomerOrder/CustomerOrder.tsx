@@ -16,7 +16,7 @@ import { discountService } from '../../../services/discountService';
 import { couponService } from '../../../services/couponService';
 import { calculatePriceBreakdown } from '../../../utils/priceCalculations';
 import { ingredientService } from '../../../services/ingredientService';
-import { validateOrderWeeks, getValidationMessage, getColacionesValidationMessage } from '../../../utils/orderValidation';
+import { validateOrderWeeks, getValidationMessage, getColacionesValidationMessage, getBillableMealCountForWeek } from '../../../utils/orderValidation';
 import { planIncludesColaciones, calculateRequiredColaciones, getBillableMealsForWeek } from '../../../utils/colacionesHelper';
 import { DAYS_OF_WEEK, buildRecipeColumn } from '../../../types/mealTypes';
 import { supabase } from '../../../config/supabase';
@@ -64,7 +64,7 @@ export const CustomerOrder: React.FC = () => {
   const firstOrderCheckedRef = useRef(false);
 
   // UI state
-  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [restrictionNames, setRestrictionNames] = useState<string[]>([]);
@@ -91,7 +91,7 @@ export const CustomerOrder: React.FC = () => {
     setCouponDiscountAmount(cart.couponDiscountAmount);
 
     if (cart.orderItems && cart.orderItems.length > 0) {
-      setStep(5);
+      setStep(4);
     }
   }, [cart]);
 
@@ -699,32 +699,58 @@ export const CustomerOrder: React.FC = () => {
 
   const steps = [
     { num: 1, label: 'Duración' },
-    { num: 2, label: 'Semanas' },
-    { num: 3, label: 'Plan' },
-    { num: 4, label: 'Paquete' },
-    { num: 5, label: 'Resumen' }
+    { num: 2, label: 'Semana y Plan' },
+    { num: 3, label: 'Comidas' },
+    { num: 4, label: 'Resumen' }
   ];
+
+  const activeWeekIndex = activeWeek
+    ? selectedWeeks.findIndex(w => w.tempId === activeWeek.tempId)
+    : -1;
+
+  const incompleteWeeks = selectedWeeks.filter(
+    w => getBillableMealCountForWeek(orderItems, w.week.week_name) < 3
+  );
 
   const canReachStep = (target: number): boolean => {
     if (target <= 1) return true;
     if (target === 2) return planDuration != null;
-    if (target === 3) return !!activeWeek;
-    return !!activeWeek && !!selectedPlan;
+    if (target === 3) return !!activeWeek && !!selectedPlan;
+    return orderItems.length > 0;
   };
 
   const goToStep = (target: number) => {
     if (!canReachStep(target)) return;
-    setStep(target as 1 | 2 | 3 | 4 | 5);
+    setStep(target as 1 | 2 | 3 | 4);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleContinue = () => {
+    if (step === 3) {
+      const nextWeek = incompleteWeeks.find(w => w.tempId !== activeWeek?.tempId);
+      if (nextWeek) {
+        handleWeekSelect(nextWeek);
+        setStep(2);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+      goToStep(4);
+      return;
+    }
+    goToStep(step + 1);
   };
 
   const canContinue = (): boolean => {
     if (step === 1) return planDuration != null;
-    if (step === 2) return !!activeWeek;
-    if (step === 3) return !!selectedPlan;
-    if (step === 4) return activeWeekBillable >= 3;
+    if (step === 2) return !!activeWeek && !!selectedPlan;
+    if (step === 3) return activeWeekBillable >= 3;
     return false;
   };
+
+  const continueLabel =
+    step === 3
+      ? (incompleteWeeks.some(w => w.tempId !== activeWeek?.tempId) ? 'Siguiente semana' : 'Ver resumen')
+      : 'Continuar';
 
   // Running total for the floating summary bar
   const floatingItemsTotal = orderItems.reduce((total, item) => (
@@ -874,9 +900,14 @@ export const CustomerOrder: React.FC = () => {
         />
       )}
 
-      {/* Step 2: Week + Family Member Selection */}
+      {/* Step 2: Week + Plan Selection */}
       {step === 2 && (
         <>
+          {selectedWeeks.length > 1 && activeWeekIndex >= 0 && (
+            <div className="mb-4 text-sm font-medium text-gray-600">
+              Semana {activeWeekIndex + 1} de {selectedWeeks.length}
+            </div>
+          )}
           {selectedWeeks.length > 0 && (
             <CustomerWeekSelector
               selectedWeeks={selectedWeeks}
@@ -897,22 +928,21 @@ export const CustomerOrder: React.FC = () => {
               disabled={loading}
             />
           )}
+
+          {activeWeek && (
+            <CustomerMealPlanSelector
+              activeWeek={activeWeek}
+              selectedPlan={selectedPlan}
+              onPlanSelect={handlePlanSelect}
+              disabled={loading}
+              orderItems={orderItems}
+            />
+          )}
         </>
       )}
 
-      {/* Step 3: Meal Plan Selection */}
-      {step === 3 && activeWeek && (
-        <CustomerMealPlanSelector
-          activeWeek={activeWeek}
-          selectedPlan={selectedPlan}
-          onPlanSelect={handlePlanSelect}
-          disabled={loading}
-          orderItems={orderItems}
-        />
-      )}
-
-      {/* Step 4: Package Selector */}
-      {step === 4 && activeWeek && selectedPlan && (
+      {/* Step 3: Package (meals) Selector */}
+      {step === 3 && activeWeek && selectedPlan && (
         <>
           {validationWarnings}
           <CustomerPackageSelector
@@ -934,8 +964,8 @@ export const CustomerOrder: React.FC = () => {
         </>
       )}
 
-      {/* Step 5: Resumen del Pedido */}
-      {step === 5 && (
+      {/* Step 4: Resumen del Pedido */}
+      {step === 4 && (
         <>
           {validationWarnings}
           <CustomerOrderSidePanel
@@ -972,24 +1002,24 @@ export const CustomerOrder: React.FC = () => {
           <div />
         )}
 
-        {step < 5 && (
+        {step < 4 && (
           <button
             type="button"
-            onClick={() => goToStep(step + 1)}
+            onClick={handleContinue}
             disabled={!canContinue()}
             className="inline-flex items-center gap-1.5 px-6 py-3 rounded-xl bg-red-500 hover:bg-red-600 disabled:bg-gray-200 disabled:text-gray-400 text-white font-semibold text-sm transition-all active:scale-95 disabled:cursor-not-allowed disabled:active:scale-100"
           >
-            Continuar
+            {continueLabel}
             <ChevronRight className="w-4 h-4" />
           </button>
         )}
       </div>
 
       {/* Floating total bar (steps before summary) */}
-      {step < 5 && orderItems.length > 0 && (
+      {step < 4 && orderItems.length > 0 && (
         <button
           type="button"
-          onClick={() => goToStep(5)}
+          onClick={() => goToStep(4)}
           className="fixed bottom-0 left-0 right-0 z-40 bg-gray-900 text-white px-4 py-3 shadow-2xl flex items-center justify-between"
         >
           <span className="flex items-center gap-2 text-sm font-medium">
