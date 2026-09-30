@@ -4,6 +4,8 @@ import { useCustomerAuth } from '../../contexts/CustomerAuthContext';
 import { Button } from '../../components/ui/button';
 import { Card } from '../../components/ui/card';
 import { Mail, Lock, User, Phone, MapPin, FileText, Check, Users, CreditCard as Edit, Trash2, Plus, CircleAlert as AlertCircle } from 'lucide-react';
+import { AddressAutocompleteInput } from '../../components/AddressAutocompleteInput';
+import type { AddressComponents } from '../../hooks/useGooglePlacesAutocomplete';
 import RestrictionSelector from '../../../components/customers/RestrictionSelector';
 import PostalCodeSearchDropdown from '../../../components/customers/PostalCodeSearchDropdown';
 import TaxRegimeDropdown from '../../../components/customers/TaxRegimeDropdown';
@@ -506,13 +508,20 @@ export const CustomerSignup: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Calle *
                 </label>
-                <input
-                  type="text"
+                <AddressAutocompleteInput
                   value={formData.street_address}
-                  onChange={(e) => setFormData({ ...formData, street_address: e.target.value })}
+                  onChange={(val) => setFormData({ ...formData, street_address: val })}
+                  onAddressSelect={(components: AddressComponents) => {
+                    setFormData((prev) => ({
+                      ...prev,
+                      street_address: components.street || prev.street_address,
+                      address_number: components.streetNumber || prev.address_number,
+                      colonia: components.colonia || prev.colonia,
+                      postal_code: components.postalCode || prev.postal_code,
+                    }));
+                  }}
+                  placeholder="Buscar dirección..."
                   required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-base"
-                  placeholder="Calle Principal"
                 />
               </div>
 

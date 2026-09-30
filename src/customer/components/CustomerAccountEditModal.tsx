@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { X, Save } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
+import { AddressAutocompleteInput } from './AddressAutocompleteInput';
+import type { AddressComponents } from '../hooks/useGooglePlacesAutocomplete';
 import { useCustomerAuth } from '../contexts/CustomerAuthContext';
 import RestrictionSelector from '../../components/customers/RestrictionSelector';
 import PostalCodeSearchDropdown from '../../components/customers/PostalCodeSearchDropdown';
@@ -169,12 +171,21 @@ export function CustomerAccountEditModal({ customer, onClose, onSave }: Customer
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Street Address *
                   </label>
-                  <input
-                    type="text"
+                  <AddressAutocompleteInput
                     value={formData.street_address}
-                    onChange={(e) => setFormData({ ...formData, street_address: e.target.value })}
+                    onChange={(val) => setFormData({ ...formData, street_address: val })}
+                    onAddressSelect={(components: AddressComponents) => {
+                      setFormData((prev) => ({
+                        ...prev,
+                        street_address: components.street || prev.street_address,
+                        address_number: components.streetNumber || prev.address_number,
+                        colonia: components.colonia || prev.colonia,
+                        postal_code: components.postalCode || prev.postal_code,
+                      }));
+                    }}
+                    placeholder="Search address..."
                     required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    className="!py-2"
                   />
                 </div>
 
