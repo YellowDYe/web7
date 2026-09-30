@@ -336,7 +336,11 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
       let authUserId: string;
 
       if (emailCheck.hasAuth && !emailCheck.hasCustomer) {
-        authUserId = await ensureAuthenticatedSession(email, password);
+        try {
+          authUserId = await ensureAuthenticatedSession(email, password);
+        } catch {
+          throw new Error('La contraseña no coincide con tu registro anterior. Usa la opción "Restablecer contraseña" para terminar de crear tu cuenta.');
+        }
       } else {
         const { data: authData, error: signUpError } = await supabase.auth.signUp({
           email,

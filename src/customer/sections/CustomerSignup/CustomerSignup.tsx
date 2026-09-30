@@ -76,6 +76,41 @@ export const CustomerSignup: React.FC = () => {
   const [deliveryZoneCodes, setDeliveryZoneCodes] = useState<Set<string>>(new Set());
   const [editingMemberSlot, setEditingMemberSlot] = useState<number | null>(null);
   const [restrictionNames, setRestrictionNames] = useState<Record<string, string>>({});
+  const [resetSending, setResetSending] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
+
+  const handleSendPasswordReset = async () => {
+    if (!formData.email) return;
+    setResetSending(true);
+    setError('');
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-password-reset`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: formData.email,
+            siteUrl: window.location.origin,
+            redirectPath: '/reset-password',
+          }),
+        }
+      );
+      const result = await response.json().catch(() => null);
+      if (!response.ok || !result?.success) {
+        throw new Error(result?.error || 'No pudimos enviar el correo. Intenta de nuevo.');
+      }
+      setResetSent(true);
+    } catch (err: any) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(msg || 'No pudimos enviar el correo. Intenta de nuevo.');
+    } finally {
+      setResetSending(false);
+    }
+  };
 
   useEffect(() => {
     if (searchParams.get('incomplete') !== 'true') {
@@ -253,6 +288,7 @@ export const CustomerSignup: React.FC = () => {
     setError('');
     setEmailStatus(null);
     setExistingCustomerId(null);
+    setResetSent(false);
 
     try {
       const result = await checkEmailExists(formData.email);
@@ -271,7 +307,7 @@ export const CustomerSignup: React.FC = () => {
         setEmailCheckMessage('Encontramos tu perfil. Crea una contraseña para activar tu cuenta.');
       } else if (result.hasAuth && !result.hasCustomer) {
         setEmailStatus('incomplete');
-        setEmailCheckMessage('Cuenta incompleta detectada. Puedes completar tu registro.');
+        setEmailCheckMessage('Tu registro anterior no se completó. Puedes terminar de crear tu cuenta ahora.');
       } else {
         setEmailStatus('available');
         setEmailCheckMessage('¡Correo disponible!');
@@ -440,6 +476,29 @@ export const CustomerSignup: React.FC = () => {
                 }`}>
                   {emailCheckMessage}
                 </p>
+              )}
+              {emailStatus === 'incomplete' && (
+                <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-4">
+                  {resetSent ? (
+                    <p className="text-sm text-green-700">
+                      Te enviamos un correo para restablecer tu contraseña. Ábrelo, elige una nueva contraseña y luego regresa a iniciar sesión.
+                    </p>
+                  ) : (
+                    <>
+                      <p className="text-sm text-amber-800 mb-3">
+                        Si recuerdas la contraseña que usaste antes, ingrésala arriba y continúa. Si no la recuerdas, restablécela para terminar de crear tu cuenta.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={handleSendPasswordReset}
+                        disabled={resetSending}
+                        className="inline-flex items-center gap-2 text-sm font-medium text-red-600 hover:text-red-700 disabled:opacity-60"
+                      >
+                        {resetSending ? 'Enviando...' : 'Restablecer contraseña'}
+                      </button>
+                    </>
+                  )}
+                </div>
               )}
             </div>
 
