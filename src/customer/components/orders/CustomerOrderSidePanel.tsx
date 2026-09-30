@@ -48,7 +48,6 @@ const CustomerOrderSidePanel: React.FC<CustomerOrderSidePanelProps> = ({
   isLoggedIn,
 }) => {
   const [confirmClear, setConfirmClear] = useState(false);
-  const [detailsExpanded, setDetailsExpanded] = useState(false);
   const [expandedWeeks, setExpandedWeeks] = useState<Record<string, boolean>>({});
 
   const toggleWeekDetail = (weekName: string) =>
@@ -107,12 +106,8 @@ const CustomerOrderSidePanel: React.FC<CustomerOrderSidePanelProps> = ({
 
   return (
     <div className="bg-white rounded-2xl shadow-lg overflow-hidden flex flex-col">
-      {/* Header - always visible, clickable to toggle details */}
-      <button
-        type="button"
-        onClick={() => setDetailsExpanded(prev => !prev)}
-        className="bg-gradient-to-r from-gray-900 to-gray-700 px-5 py-4 flex-shrink-0 w-full text-left"
-      >
+      {/* Header - static title bar with meal count and total */}
+      <div className="bg-gradient-to-r from-gray-900 to-gray-700 px-5 py-4 flex-shrink-0 w-full">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2 min-w-0">
             <Receipt className="w-5 h-5 text-white flex-shrink-0" />
@@ -125,27 +120,23 @@ const CustomerOrderSidePanel: React.FC<CustomerOrderSidePanelProps> = ({
             </span>
             <span className="text-gray-500">|</span>
             <span className="text-base font-bold text-white whitespace-nowrap">{formatCurrency(priceBreakdown.finalTotal)}</span>
-            <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${detailsExpanded ? 'rotate-180' : ''}`} />
           </div>
         </div>
 
         {confirmClear && (
-          <div
-            className="mt-3 bg-white/10 rounded-xl px-4 py-3"
-            onClick={e => e.stopPropagation()}
-          >
+          <div className="mt-3 bg-white/10 rounded-xl px-4 py-3">
             <p className="text-xs text-white font-medium mb-2">¿Vaciar todos los platillos seleccionados?</p>
             <div className="flex space-x-2">
               <button
                 type="button"
-                onClick={(e) => { e.stopPropagation(); handleConfirmClear(); }}
+                onClick={handleConfirmClear}
                 className="flex-1 bg-red-500 hover:bg-red-600 text-white text-xs font-semibold py-1.5 rounded-lg transition-colors"
               >
                 Sí, vaciar
               </button>
               <button
                 type="button"
-                onClick={(e) => { e.stopPropagation(); handleCancelClear(); }}
+                onClick={handleCancelClear}
                 className="flex-1 bg-white/20 hover:bg-white/30 text-white text-xs font-semibold py-1.5 rounded-lg transition-colors"
               >
                 Cancelar
@@ -153,16 +144,12 @@ const CustomerOrderSidePanel: React.FC<CustomerOrderSidePanelProps> = ({
             </div>
           </div>
         )}
-      </button>
+      </div>
 
-      {/* Collapsible detail section */}
-      <div
-        className={`transition-all duration-300 ease-in-out ${
-          detailsExpanded ? 'max-h-[5000px] opacity-100' : 'max-h-0 opacity-0 overflow-hidden'
-        }`}
-      >
+      {/* Detail section - always visible */}
+      <div>
         <div className="p-5 space-y-5">
-          {/* Clear button inside expanded detail */}
+          {/* Clear button */}
           {!loading && (
             <div className="flex justify-end">
               <button
