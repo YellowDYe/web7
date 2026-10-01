@@ -325,6 +325,10 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signup = async (email: string, password: string, customerData: Partial<Customer>) => {
+    // Tracks whether this attempt created a brand-new login. If the profile
+    // step then fails, we must remove that orphaned login so the email stays
+    // reusable instead of getting stuck in a half-finished state.
+    let createdNewAuthUser = false;
     try {
       const emailCheck = await checkEmailExists(email);
       const existingCustomerId = emailCheck.customer?.id || null;
@@ -360,10 +364,13 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
           }
         } else if (!authData?.user) {
           throw new Error('Error al crear usuario');
-        } else if (authData.user && !authData.session) {
-          authUserId = await ensureAuthenticatedSession(email, password);
         } else {
-          authUserId = authData.session!.user.id;
+          createdNewAuthUser = true;
+          if (authData.session) {
+            authUserId = authData.session.user.id;
+          } else {
+            authUserId = await ensureAuthenticatedSession(email, password);
+          }
         }
       }
 
@@ -395,6 +402,19 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
       }
     } catch (error: any) {
       console.error('Signup error:', error);
+      // If this attempt created a brand-new login but never saved the profile,
+      // delete that orphaned login so the email is immediately reusable and
+      // does not get stuck showing "unfinished registration".
+      if (createdNewAuthUser) {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session) {
+            await supabase.functions.invoke('delete-own-account');
+          }
+        } catch (cleanupError) {
+          console.error('Signup cleanup error (orphaned login):', cleanupError);
+        }
+      }
       await supabase.auth.signOut().catch(() => {});
       setUser(null);
       setCustomer(null);
