@@ -15,7 +15,6 @@ import { deliveryOptionService } from '../../../services/deliveryOptionService';
 import { discountService } from '../../../services/discountService';
 import { couponService } from '../../../services/couponService';
 import { calculatePriceBreakdown } from '../../../utils/priceCalculations';
-import { ingredientService } from '../../../services/ingredientService';
 import { validateOrderWeeks, getValidationMessage, getColacionesValidationMessage, getBillableMealCountForWeek } from '../../../utils/orderValidation';
 import { planIncludesColaciones, calculateRequiredColaciones, getBillableMealsForWeek } from '../../../utils/colacionesHelper';
 import { DAYS_OF_WEEK, buildRecipeColumn } from '../../../types/mealTypes';
@@ -67,8 +66,7 @@ export const CustomerOrder: React.FC = () => {
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [restrictionNames, setRestrictionNames] = useState<string[]>([]);
-  const [loadingRestrictions, setLoadingRestrictions] = useState(false);
+  // Load customer restrictions
 
   // Restore order state from cart on mount
   const cartRestoredRef = useRef(false);
@@ -118,13 +116,6 @@ export const CustomerOrder: React.FC = () => {
     };
     autoSelectDelivery();
   }, [planDuration, selectedDeliveryOption]);
-
-  // Load customer restrictions
-  useEffect(() => {
-    if (customer && customer.customer_restrictions && customer.customer_restrictions.length > 0) {
-      loadRestrictionNames();
-    }
-  }, [customer]);
 
   // Detect first-order and auto-apply PRIMERPEDIDO coupon
   useEffect(() => {
@@ -296,24 +287,6 @@ export const CustomerOrder: React.FC = () => {
       return [...withoutColaciones, ...newColaciones];
     });
   }, [orderItems, selectedPlan, activeWeek, selectedFamilyMemberId, selectedFamilyMember, menuRecipesRow, colacionRecipeNames]);
-
-  const loadRestrictionNames = async () => {
-    if (!customer?.customer_restrictions) return;
-
-    try {
-      setLoadingRestrictions(true);
-      const nameMap = await ingredientService.getIngredientNamesByIds(customer.customer_restrictions);
-      const names = customer.customer_restrictions
-        .map(id => nameMap.get(id))
-        .filter((name): name is string => name !== undefined);
-      setRestrictionNames(names);
-    } catch (err) {
-      console.error('Error loading restriction names:', err);
-      setRestrictionNames([]);
-    } finally {
-      setLoadingRestrictions(false);
-    }
-  };
 
   const loadDiscounts = async () => {
     try {
@@ -842,9 +815,9 @@ export const CustomerOrder: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-28">
-      <div className="text-center mb-8">
-        <h1 className="text-4xl font-bold text-gray-900 mb-2">Crear Pedido</h1>
-        <p className="text-lg text-gray-600">Selecciona tus comidas favoritas</p>
+      <div className="text-center mb-4 sm:mb-8">
+        <h1 className="text-xl sm:text-4xl font-bold text-gray-900 mb-0.5 sm:mb-2">Crear Pedido</h1>
+        <p className="text-sm sm:text-lg text-gray-600">Selecciona tus comidas favoritas</p>
       </div>
 
       {/* Error Message */}
@@ -887,20 +860,6 @@ export const CustomerOrder: React.FC = () => {
           })}
         </div>
       </div>
-
-      {/* Customer Restrictions Display */}
-      {customer && restrictionNames.length > 0 && (
-        <div className="mb-6 bg-orange-50 border border-orange-200 rounded-xl p-4">
-          <h3 className="text-sm font-medium text-orange-800 mb-2">Tus Restricciones Alimenticias:</h3>
-          <div className="flex flex-wrap gap-2">
-            {restrictionNames.map((name, index) => (
-              <span key={index} className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-sm">
-                {name}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Step 1: Plan Duration Selection */}
       {step === 1 && (
