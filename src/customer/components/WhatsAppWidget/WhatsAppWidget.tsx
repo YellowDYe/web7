@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { cmsApiDirect } from '../../../shared/cms/cmsApiDirect';
 
 interface WhatsAppSettings {
@@ -16,6 +17,7 @@ const DEFAULT_SETTINGS: WhatsAppSettings = {
 };
 
 export const WhatsAppWidget: React.FC = () => {
+  const location = useLocation();
   const [settings, setSettings] = useState<WhatsAppSettings>(DEFAULT_SETTINGS);
   const [isHovered, setIsHovered] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
@@ -44,6 +46,10 @@ export const WhatsAppWidget: React.FC = () => {
   }, [settings.enabled, settings.phoneNumber]);
 
   if (!settings.enabled || !settings.phoneNumber) {
+    return null;
+  }
+
+  if (location.pathname === '/order') {
     return null;
   }
 
