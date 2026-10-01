@@ -162,6 +162,9 @@ Deno.serve(async (req: Request) => {
       case "confirm-order-payment":
         return await handleConfirmOrderPayment(supabase, accessToken, body, callerId);
 
+      case "get-recent-payment-errors":
+        return await handleRecentPaymentErrors(supabase, callerId);
+
       case "get-order-snapshot": {
         const quoteId = typeof body.quote_id === "string" ? body.quote_id.replace(/^quote_/, "") : "";
         const snapPaymentId = body.payment_id ? String(body.payment_id) : "";
@@ -191,6 +194,90 @@ Deno.serve(async (req: Request) => {
     return jsonResponse({ error: "Error interno del servidor" }, 500);
   }
 });
+
+const REJECTION_MESSAGES: Record<string, string> = {
+  cc_rejected_bad_filled_card_number: "Revisa el numero de la tarjeta.",
+  cc_rejected_bad_filled_date: "Revisa la fecha de vencimiento de la tarjeta.",
+  cc_rejected_bad_filled_security_code: "Revisa el codigo de seguridad de la tarjeta.",
+  cc_rejected_bad_filled_other: "Revisa los datos de la tarjeta.",
+  cc_rejected_insufficient_amount: "La tarjeta no tiene fondos suficientes.",
+  cc_rejected_call_for_authorize: "Tu banco necesita que autorices este pago. Llama a tu banco e intenta de nuevo.",
+  cc_rejected_card_disabled: "La tarjeta no esta activa. Llama a tu banco para activarla.",
+  cc_rejected_duplicated_payment: "Ya hiciste un pago por este monto. Si necesitas pagar de nuevo, usa otra tarjeta.",
+  cc_rejected_high_risk: "El pago fue rechazado por seguridad. Intenta con otra tarjeta o metodo de pago.",
+  cc_rejected_blacklist: "El pago fue rechazado por seguridad. Intenta con otra tarjeta o metodo de pago.",
+  cc_rejected_max_attempts: "Llegaste al limite de intentos con esta tarjeta. Intenta con otra.",
+  cc_rejected_invalid_installments: "La tarjeta no acepta ese numero de pagos.",
+  cc_rejected_card_type_not_allowed: "Este tipo de tarjeta no se acepta. Intenta con otra.",
+  cc_rejected_other_reason: "Tu banco rechazo el pago. Intenta con otra tarjeta o metodo de pago.",
+  rejected_by_bank: "Tu banco rechazo el pago. Intenta con otra tarjeta o metodo de pago.",
+  rejected_insufficient_data: "Faltan datos para procesar el pago. Revisa el formulario.",
+};
+
+function describeRejection(statusDetail: unknown): string {
+  return (typeof statusDetail === "string" && REJECTION_MESSAGES[statusDetail]) ||
+    "El pago fue rechazado. Intenta con otra tarjeta o metodo de pago.";
+}
+
+function describeMpRequestError(errText: string): { message: string; code: string } {
+  let parsed: any = null;
+  try {
+    parsed = JSON.parse(errText);
+  } catch {
+    /* non-JSON body */
+  }
+  const causes: any[] = Array.isArray(parsed?.cause) ? parsed.cause : [];
+  const codes = causes.map((c) => String(c?.code ?? "")).filter(Boolean);
+  const text = [parsed?.message, parsed?.error, ...causes.map((c) => c?.description)]
+    .filter((v) => typeof v === "string")
+    .join(" ")
+    .toLowerCase();
+  const code = codes.join(",") || String(parsed?.error || parsed?.status || "unknown");
+  const has = (...list: string[]) => list.some((c) => codes.includes(c));
+
+  if (text.includes("live credentials") || text.includes("test user") || has("7")) {
+    return { code, message: "Esta tarjeta no se puede usar con la cuenta actual de la tienda. Las tarjetas de prueba solo funcionan en modo de prueba." };
+  }
+  if (has("2006", "3003", "2062") || text.includes("card_token") || text.includes("card token")) {
+    return { code, message: "Los datos de la tarjeta expiraron o no son validos. Vuelve a capturarlos e intenta de nuevo." };
+  }
+  if (has("2067", "324") || text.includes("identification")) {
+    return { code, message: "Revisa el documento de identificacion capturado." };
+  }
+  if (has("4050") || text.includes("email")) {
+    return { code, message: "Revisa el correo electronico capturado en el formulario de pago." };
+  }
+  if (has("3034", "3032", "3030", "3031") || text.includes("card_number") || text.includes("security_code")) {
+    return { code, message: "Revisa los datos de la tarjeta." };
+  }
+  if (has("10102", "10103") || text.includes("issuer")) {
+    return { code, message: "No reconocimos el banco de la tarjeta. Intenta con otra tarjeta." };
+  }
+  if (has("2034", "106") || text.includes("users involved") || text.includes("same user")) {
+    return { code, message: "No se puede pagar con la misma cuenta que recibe el pago. Usa otra cuenta o tarjeta." };
+  }
+  if (text.includes("payment_method") || has("4033", "2002")) {
+    return { code, message: "Este metodo de pago no esta disponible. Intenta con otro." };
+  }
+  return { code, message: "Mercado Pago no pudo procesar el pago. Revisa los datos o intenta con otro metodo de pago." };
+}
+
+async function handleRecentPaymentErrors(supabase: any, callerId: string) {
+  if (!(await isStaff(supabase, callerId))) {
+    return jsonResponse({ error: "No autorizado" }, 403);
+  }
+  const { data, error } = await supabase
+    .from("payment_quotes")
+    .select("id, amount, last_error, last_error_code, last_error_at")
+    .not("last_error_at", "is", null)
+    .order("last_error_at", { ascending: false })
+    .limit(10);
+  if (error) {
+    console.error("Error loading payment errors:", error);
+    return jsonResponse({ error: "Error al cargar los pagos rechazados" }, 500);
+  }
+  return jsonResponse({ success: true, errors: data ?? [] });
+}
 
 async function isStaff(supabase: any, callerId: string): Promise<boolean> {
   const { data: staffRow } = await supabase
@@ -497,12 +584,18 @@ async function handleProcessPayment(
     },
   };
 
+  // The card token is single-use, so keying on it lets a shopper retry with
+  // corrected data while still deduplicating network-level resends.
+  const attemptKey = typeof payment_data.token === "string" && payment_data.token
+    ? payment_data.token
+    : crypto.randomUUID();
+
   const response = await fetch(`${MP_API_BASE}/v1/payments`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${accessToken}`,
       "Content-Type": "application/json",
-      "X-Idempotency-Key": `${quote_id}`,
+      "X-Idempotency-Key": `${quote_id}-${attemptKey}`,
     },
     body: JSON.stringify(paymentBody),
   });
@@ -510,25 +603,47 @@ async function handleProcessPayment(
   if (!response.ok) {
     const errText = await response.text();
     console.error("MP payment error:", errText);
+    const { message, code } = describeMpRequestError(errText);
     await supabase
       .from("payment_quotes")
-      .update({ status: "pending", claimed_at: null })
+      .update({
+        status: "pending",
+        claimed_at: null,
+        last_error: message,
+        last_error_code: code,
+        last_error_at: new Date().toISOString(),
+      })
       .eq("id", quote_id);
-    return jsonResponse({ error: "Error al procesar el pago" }, 502);
+    return jsonResponse({ error: message, code }, 502);
   }
 
   const payment = await response.json();
+  const accepted = ["approved", "pending", "in_process"].includes(payment.status);
 
-  await supabase
-    .from("payment_quotes")
-    .update({ payment_id: String(payment.id ?? "") })
-    .eq("id", quote_id);
+  if (accepted) {
+    await supabase
+      .from("payment_quotes")
+      .update({ payment_id: String(payment.id ?? "") })
+      .eq("id", quote_id);
+  } else {
+    await supabase
+      .from("payment_quotes")
+      .update({
+        status: "pending",
+        claimed_at: null,
+        last_error: describeRejection(payment.status_detail),
+        last_error_code: String(payment.status_detail || payment.status || ""),
+        last_error_at: new Date().toISOString(),
+      })
+      .eq("id", quote_id);
+  }
 
   return jsonResponse({
     success: true,
     payment_id: payment.id,
     status: payment.status,
     status_detail: payment.status_detail,
+    message: accepted ? null : describeRejection(payment.status_detail),
     payment_method_id: payment.payment_method_id,
     payment_type_id: payment.payment_type_id,
     transaction_details: payment.transaction_details,

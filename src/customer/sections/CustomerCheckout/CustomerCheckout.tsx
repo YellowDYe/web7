@@ -505,11 +505,7 @@ export const CustomerCheckout: React.FC = () => {
                 clearProteinCart();
                 setStep('success');
               } else {
-                setSubmitError(
-                  result.status_detail === 'cc_rejected_other_reason'
-                    ? 'La tarjeta fue rechazada. Intenta con otro metodo de pago.'
-                    : `El pago fue rechazado: ${result.status_detail || result.status}`
-                );
+                setSubmitError(result.message || 'El pago fue rechazado. Intenta con otra tarjeta o metodo de pago.');
               }
             } catch (err: any) {
               console.error('Payment processing error:', err);

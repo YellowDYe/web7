@@ -6,6 +6,7 @@ import {
   ChevronDown, ChevronUp, Copy, CheckCheck,
 } from 'lucide-react';
 import { mercadoPagoConfigService, MercadoPagoConfigForm } from '../../services/mercadoPagoConfigService';
+import MercadoPagoRecentRejections from './MercadoPagoRecentRejections';
 
 const MercadoPagoSettings: React.FC = () => {
   const [config, setConfig] = useState<MercadoPagoConfigForm>({
@@ -43,6 +44,8 @@ const MercadoPagoSettings: React.FC = () => {
   const isTestToken = config.access_token.startsWith('TEST-') || config.access_token.startsWith('APP_USR-') === false;
   const isProdToken = config.access_token.startsWith('APP_USR-');
   const envLabel = !config.access_token ? null : isProdToken ? 'Produccion' : 'Pruebas';
+  const isTestPublicKey = config.public_key.startsWith('TEST-');
+  const keysMismatch = !!config.access_token && !!config.public_key && isProdToken === isTestPublicKey;
   const envColor = isProdToken ? 'bg-green-100 text-green-800 border-green-200' : 'bg-yellow-100 text-yellow-800 border-yellow-200';
 
   useEffect(() => {
@@ -310,7 +313,24 @@ const MercadoPagoSettings: React.FC = () => {
             Con el modo de prueba activo, los administradores podran simular pagos en el checkout sin procesar transacciones reales.
           </p>
         )}
+        {keysMismatch && (
+          <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+            El Access Token y la Public Key son de entornos distintos (uno es de prueba y otro de produccion). Usa las dos claves del mismo entorno o los pagos con tarjeta seran rechazados.
+          </p>
+        )}
+        {isProdToken && (
+          <p className="text-xs text-blue-800 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+            Tus claves son de produccion: los cobros con tarjeta son reales. Las tarjetas de prueba de Mercado Pago seran rechazadas con estas claves. Para probar sin cobros reales, guarda las credenciales de prueba de tu cuenta de Mercado Pago o paga con una tarjeta real por un monto bajo.
+          </p>
+        )}
+        {isTestToken && !!config.access_token && (
+          <p className="text-xs text-yellow-800 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2">
+            Tus claves son de prueba: solo funcionan las tarjetas de prueba de Mercado Pago y ningun cobro es real. Las tarjetas reales seran rechazadas.
+          </p>
+        )}
       </div>
+
+      <MercadoPagoRecentRejections />
 
       {/* === PAYMENT METHODS SECTION === */}
       <div className="border border-gray-200 rounded-xl overflow-hidden">
