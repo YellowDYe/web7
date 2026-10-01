@@ -989,51 +989,51 @@ export const CustomerOrder: React.FC = () => {
         </>
       )}
 
-      {/* Step navigation */}
-      <div className="mt-8 flex items-center justify-between gap-4">
-        {step > 1 ? (
-          <button
-            type="button"
-            onClick={() => goToStep(step - 1)}
-            className="inline-flex items-center gap-1.5 px-5 py-3 rounded-xl border border-gray-300 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-colors active:scale-95"
-          >
-            <ChevronLeft className="w-4 h-4" />
-            Atrás
-          </button>
-        ) : (
-          <div />
-        )}
+      {/* Fixed bottom navigation bar (always visible across steps) */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-[0_-4px_16px_rgba(0,0,0,0.08)]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-3">
+          {step > 1 ? (
+            <button
+              type="button"
+              onClick={() => goToStep(step - 1)}
+              className="inline-flex items-center gap-1.5 px-4 sm:px-5 py-3 rounded-xl border border-gray-300 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-colors active:scale-95 flex-shrink-0"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              <span className="hidden sm:inline">Atrás</span>
+            </button>
+          ) : (
+            <div className="flex-shrink-0" />
+          )}
 
-        {step < 4 && (
-          <button
-            type="button"
-            onClick={handleContinue}
-            disabled={!canContinue()}
-            className="inline-flex items-center gap-1.5 px-6 py-3 rounded-xl bg-red-500 hover:bg-red-600 disabled:bg-gray-200 disabled:text-gray-400 text-white font-semibold text-sm transition-all active:scale-95 disabled:cursor-not-allowed disabled:active:scale-100"
-          >
-            {continueLabel}
-            <ChevronRight className="w-4 h-4" />
-          </button>
-        )}
+          {orderItems.length > 0 && (
+            <button
+              type="button"
+              onClick={() => goToStep(4)}
+              className="flex-1 min-w-0 flex items-center justify-center gap-2 sm:gap-3 text-gray-900"
+            >
+              <span className="flex items-center gap-1.5 text-xs sm:text-sm font-medium text-gray-600">
+                <ShoppingCart className="w-4 h-4" />
+                {totalBillableCount} comida{totalBillableCount !== 1 ? 's' : ''}
+              </span>
+              <span className="text-sm sm:text-base font-bold">{formatCurrency(floatingBreakdown.finalTotal)}</span>
+            </button>
+          )}
+
+          {step < 4 ? (
+            <button
+              type="button"
+              onClick={handleContinue}
+              disabled={!canContinue()}
+              className="inline-flex items-center gap-1.5 px-5 sm:px-6 py-3 rounded-xl bg-red-500 hover:bg-red-600 disabled:bg-gray-200 disabled:text-gray-400 text-white font-semibold text-sm transition-all active:scale-95 disabled:cursor-not-allowed disabled:active:scale-100 flex-shrink-0"
+            >
+              {continueLabel}
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          ) : (
+            <div className="flex-shrink-0" />
+          )}
+        </div>
       </div>
-
-      {/* Floating total bar (steps before summary) */}
-      {step < 4 && orderItems.length > 0 && (
-        <button
-          type="button"
-          onClick={() => goToStep(4)}
-          className="fixed bottom-0 left-0 right-0 z-40 bg-gray-900 text-white px-4 py-3 shadow-2xl flex items-center justify-between"
-        >
-          <span className="flex items-center gap-2 text-sm font-medium">
-            <ShoppingCart className="w-4 h-4" />
-            {totalBillableCount} comida{totalBillableCount !== 1 ? 's' : ''}
-          </span>
-          <span className="flex items-center gap-3">
-            <span className="text-base font-bold">{formatCurrency(floatingBreakdown.finalTotal)}</span>
-            <span className="text-xs text-gray-300 underline">Ver resumen</span>
-          </span>
-        </button>
-      )}
     </div>
   );
 };
