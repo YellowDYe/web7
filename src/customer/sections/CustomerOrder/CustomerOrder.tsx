@@ -814,7 +814,7 @@ export const CustomerOrder: React.FC = () => {
   ) : null;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-28">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-28 lg:pb-8">
       <div className="text-center mb-4 sm:mb-8">
         <h1 className="text-xl sm:text-4xl font-bold text-gray-900 mb-0.5 sm:mb-2">Crear Pedido</h1>
         <p className="text-sm sm:text-lg text-gray-600">Selecciona tus comidas favoritas</p>
@@ -969,8 +969,8 @@ export const CustomerOrder: React.FC = () => {
         </>
       )}
 
-      {/* Fixed bottom navigation bar (always visible across steps) */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-[0_-4px_16px_rgba(0,0,0,0.08)]">
+      {/* Bottom navigation bar: fixed on mobile, inline on desktop */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] lg:static lg:z-auto lg:shadow-none lg:border-t-0 lg:mt-8 lg:bg-transparent">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-3">
           {step > 1 ? (
             <button
