@@ -324,13 +324,57 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     return signInData.user.id;
   };
 
+  // Confirms the signed-in access token is actually attached before a
+  // protected request runs. Right after sign-up the token can lag by a few
+  // hundred ms; without this the profile save can reach the database as an
+  // anonymous caller and be rejected.
+  const waitForAccessToken = async (): Promise<boolean> => {
+    for (let i = 0; i < 15; i++) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) return true;
+      await new Promise(r => setTimeout(r, 200));
+    }
+    return false;
+  };
+
+  // Forces a fresh token when a protected call was rejected because the
+  // request was not recognized as signed in.
+  const refreshAuthToken = async (email: string, password: string): Promise<void> => {
+    const { error } = await supabase.auth.refreshSession();
+    if (error) {
+      await supabase.auth.signInWithPassword({ email, password });
+    }
+    await waitForAccessToken();
+  };
+
+  const isNotSignedInRejection = (message: string): boolean => {
+    const m = (message || '').toLowerCase();
+    return (
+      m.includes('not authorized') ||
+      m.includes('jwt') ||
+      m.includes('permission denied') ||
+      m.includes('401') ||
+      m.includes('403')
+    );
+  };
+
   const signup = async (email: string, password: string, customerData: Partial<Customer>) => {
     // Tracks whether this attempt created a brand-new login. If the profile
     // step then fails, we must remove that orphaned login so the email stays
     // reusable instead of getting stuck in a half-finished state.
     let createdNewAuthUser = false;
     try {
-      const emailCheck = await checkEmailExists(email);
+      // Honor the email-check rate limit instead of treating a throttled
+      // response as "brand-new email". Give it a couple of brief retries,
+      // then stop with a clear message rather than pressing on blindly.
+      let emailCheck = await checkEmailExists(email);
+      for (let i = 0; i < 2 && emailCheck.isThrottled; i++) {
+        await new Promise(r => setTimeout(r, 1500));
+        emailCheck = await checkEmailExists(email);
+      }
+      if (emailCheck.isThrottled) {
+        throw new Error('Hemos recibido demasiados intentos seguidos. Espera un momento e inténtalo de nuevo.');
+      }
       const existingCustomerId = emailCheck.customer?.id || null;
 
       if (emailCheck.hasAuth && emailCheck.hasCustomer) {
@@ -381,16 +425,25 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
         throw new Error('No se pudo establecer la sesión. Por favor intenta de nuevo.');
       }
 
+      // Make sure the access token is actually attached before the protected
+      // profile-save runs, so the request is recognized as signed in.
+      await waitForAccessToken();
+
       let accountResult;
-      try {
-        accountResult = await callCreateCustomerAccount(authUserId, email, customerData, existingCustomerId);
-      } catch (firstError: any) {
-        if (firstError.message?.includes('Not authorized') || firstError.message?.includes('JWT')) {
-          await new Promise(r => setTimeout(r, 1000));
-          await ensureAuthenticatedSession(email, password);
+      let attempt = 0;
+      while (true) {
+        try {
           accountResult = await callCreateCustomerAccount(authUserId, email, customerData, existingCustomerId);
-        } else {
-          throw firstError;
+          break;
+        } catch (saveError: any) {
+          attempt++;
+          const msg = saveError instanceof Error ? saveError.message : String(saveError);
+          if (attempt <= 3 && isNotSignedInRejection(msg)) {
+            await new Promise(r => setTimeout(r, 500 * attempt));
+            await refreshAuthToken(email, password);
+            continue;
+          }
+          throw saveError;
         }
       }
 
