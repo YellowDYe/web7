@@ -4,6 +4,8 @@ export interface MercadoPagoConfig {
   id: string;
   access_token: string;
   public_key: string | null;
+  test_access_token: string | null;
+  test_public_key: string | null;
   user_id: string | null;
   is_active: boolean;
   test_mode: boolean;
@@ -24,6 +26,8 @@ export interface MercadoPagoConfig {
 export interface MercadoPagoConfigForm {
   access_token: string;
   public_key: string;
+  test_access_token: string;
+  test_public_key: string;
   is_active: boolean;
   test_mode: boolean;
   enable_credit_card: boolean;
@@ -66,6 +70,8 @@ class MercadoPagoConfigService {
       return {
         access_token: '',
         public_key: '',
+        test_access_token: '',
+        test_public_key: '',
         is_active: false,
         test_mode: true,
         enable_credit_card: true,
@@ -82,6 +88,8 @@ class MercadoPagoConfigService {
     return {
       access_token: config.access_token,
       public_key: config.public_key || '',
+      test_access_token: config.test_access_token || '',
+      test_public_key: config.test_public_key || '',
       is_active: config.is_active,
       test_mode: config.test_mode,
       enable_credit_card: config.enable_credit_card,
@@ -102,6 +110,8 @@ class MercadoPagoConfigService {
     const payload = {
       access_token: form.access_token,
       public_key: form.public_key,
+      test_access_token: form.test_access_token.trim() || null,
+      test_public_key: form.test_public_key.trim() || null,
       is_active: form.is_active,
       test_mode: form.test_mode,
       enable_credit_card: form.enable_credit_card,

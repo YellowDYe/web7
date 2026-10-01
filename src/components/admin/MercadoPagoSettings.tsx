@@ -12,6 +12,8 @@ const MercadoPagoSettings: React.FC = () => {
   const [config, setConfig] = useState<MercadoPagoConfigForm>({
     access_token: '',
     public_key: '',
+    test_access_token: '',
+    test_public_key: '',
     is_active: false,
     test_mode: true,
     enable_credit_card: true,
@@ -46,6 +48,7 @@ const MercadoPagoSettings: React.FC = () => {
   const envLabel = !config.access_token ? null : isProdToken ? 'Produccion' : 'Pruebas';
   const isTestPublicKey = config.public_key.startsWith('TEST-');
   const keysMismatch = !!config.access_token && !!config.public_key && isProdToken === isTestPublicKey;
+  const hasTestKeys = !!config.test_access_token.trim() && !!config.test_public_key.trim();
   const envColor = isProdToken ? 'bg-green-100 text-green-800 border-green-200' : 'bg-yellow-100 text-yellow-800 border-yellow-200';
 
   useEffect(() => {
@@ -61,6 +64,8 @@ const MercadoPagoSettings: React.FC = () => {
         setConfig({
           access_token: fullConfig.access_token,
           public_key: fullConfig.public_key || '',
+          test_access_token: fullConfig.test_access_token || '',
+          test_public_key: fullConfig.test_public_key || '',
           is_active: fullConfig.is_active,
           test_mode: fullConfig.test_mode,
           enable_credit_card: fullConfig.enable_credit_card,
@@ -242,6 +247,32 @@ const MercadoPagoSettings: React.FC = () => {
           <p className="mt-1 text-xs text-gray-500">Se usa para el formulario de pago en el checkout.</p>
         </div>
 
+        <div className="rounded-xl border border-yellow-200 bg-yellow-50/60 p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <TestTube className="w-4 h-4 text-yellow-600" />
+            <span className="text-sm font-semibold text-gray-800">Credenciales de prueba</span>
+          </div>
+          <p className="text-xs text-gray-600">
+            Copialas de Mercado Pago Developers, en Tus integraciones, Credenciales de prueba. Con el modo de prueba activo, solo los administradores y gerentes pagaran con estas claves (y con tarjetas de prueba); tus clientes siguen pagando con las claves de produccion.
+          </p>
+          <input
+            type={showToken ? 'text' : 'password'}
+            value={config.test_access_token}
+            onChange={(e) => setConfig({ ...config, test_access_token: e.target.value })}
+            disabled={!isEditing}
+            placeholder="Access Token de prueba"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white disabled:bg-gray-50 disabled:text-gray-500 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-none transition-all"
+          />
+          <input
+            type={showToken ? 'text' : 'password'}
+            value={config.test_public_key}
+            onChange={(e) => setConfig({ ...config, test_public_key: e.target.value })}
+            disabled={!isEditing}
+            placeholder="Public Key de prueba"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white disabled:bg-gray-50 disabled:text-gray-500 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-none transition-all"
+          />
+        </div>
+
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1.5">
             <Shield className="w-3.5 h-3.5 inline-block mr-1" />
@@ -308,9 +339,14 @@ const MercadoPagoSettings: React.FC = () => {
             </div>
           </label>
         </div>
-        {config.test_mode && (
+        {config.test_mode && hasTestKeys && (
           <p className="text-xs text-yellow-700 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2">
-            Con el modo de prueba activo, los administradores podran simular pagos en el checkout sin procesar transacciones reales.
+            Modo de prueba activo: cuando un administrador o gerente pague en el checkout se usaran las credenciales de prueba, asi que las tarjetas de prueba de Mercado Pago seran aprobadas. Los clientes siguen pagando con cobros reales.
+          </p>
+        )}
+        {config.test_mode && !hasTestKeys && (
+          <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+            El modo de prueba esta activo pero faltan las credenciales de prueba. Sin ellas, las tarjetas de prueba seran rechazadas.
           </p>
         )}
         {keysMismatch && (
@@ -318,9 +354,9 @@ const MercadoPagoSettings: React.FC = () => {
             El Access Token y la Public Key son de entornos distintos (uno es de prueba y otro de produccion). Usa las dos claves del mismo entorno o los pagos con tarjeta seran rechazados.
           </p>
         )}
-        {isProdToken && (
+        {isProdToken && !(config.test_mode && hasTestKeys) && (
           <p className="text-xs text-blue-800 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
-            Tus claves son de produccion: los cobros con tarjeta son reales. Las tarjetas de prueba de Mercado Pago seran rechazadas con estas claves. Para probar sin cobros reales, guarda las credenciales de prueba de tu cuenta de Mercado Pago o paga con una tarjeta real por un monto bajo.
+            Tus claves son de produccion: los cobros con tarjeta son reales y las tarjetas de prueba de Mercado Pago seran rechazadas. Para probar con tarjetas de prueba, guarda tus credenciales de prueba arriba y activa el modo de prueba.
           </p>
         )}
         {isTestToken && !!config.access_token && (

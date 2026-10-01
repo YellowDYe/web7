@@ -108,14 +108,16 @@ Deno.serve(async (req: Request) => {
     if (action === "get-checkout-config") {
       const { data: cfg } = await supabase
         .from("mercado_pago_config")
-        .select("is_active, test_mode, public_key, enable_credit_card, enable_debit_card, enable_ticket, enable_bank_transfer, enable_mercado_pago_wallet, enable_checkout_pro, max_installments")
+        .select("is_active, test_mode, public_key, test_access_token, test_public_key, enable_credit_card, enable_debit_card, enable_ticket, enable_bank_transfer, enable_mercado_pago_wallet, enable_checkout_pro, max_installments")
         .maybeSingle();
+
+      const testSession = !!cfg && await usesTestCredentials(supabase, cfg, callerId);
 
       return jsonResponse({
         success: true,
         is_active: cfg?.is_active ?? false,
-        test_mode: cfg?.test_mode ?? true,
-        public_key: cfg?.public_key || null,
+        test_mode: testSession,
+        public_key: (testSession ? cfg?.test_public_key : cfg?.public_key) || null,
         enable_credit_card: cfg?.enable_credit_card ?? true,
         enable_debit_card: cfg?.enable_debit_card ?? true,
         enable_ticket: cfg?.enable_ticket ?? true,
@@ -146,8 +148,9 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const accessToken = config.access_token;
-    const publicKey = config.public_key || null;
+    const testSession = await usesTestCredentials(supabase, config, callerId);
+    const accessToken = testSession ? config.test_access_token : config.access_token;
+    const publicKey = (testSession ? config.test_public_key : config.public_key) || null;
 
     switch (action) {
       case "create-preference":
@@ -232,7 +235,11 @@ function describeMpRequestError(errText: string): { message: string; code: strin
     .filter((v) => typeof v === "string")
     .join(" ")
     .toLowerCase();
-  const code = codes.join(",") || String(parsed?.error || parsed?.status || "unknown");
+  const details = [parsed?.message, ...causes.map((c) => c?.description)]
+    .filter((v) => typeof v === "string" && v)
+    .join(" | ");
+  const baseCode = codes.join(",") || String(parsed?.error || parsed?.status || "unknown");
+  const code = (details ? `${baseCode}: ${details}` : baseCode).slice(0, 300);
   const has = (...list: string[]) => list.some((c) => codes.includes(c));
 
   if (text.includes("live credentials") || text.includes("test user") || has("7")) {
@@ -262,8 +269,25 @@ function describeMpRequestError(errText: string): { message: string; code: strin
   return { code, message: "Mercado Pago no pudo procesar el pago. Revisa los datos o intenta con otro metodo de pago." };
 }
 
+async function isAdminOrManager(supabase: any, callerId: string): Promise<boolean> {
+  const { data } = await supabase
+    .from("app_users")
+    .select("role_id, is_active")
+    .eq("auth_user_id", callerId)
+    .maybeSingle();
+  const role = String(data?.role_id ?? "").toUpperCase();
+  return !!data && data.is_active !== false && ["ADMIN", "SUPER_ADMIN", "MANAGER"].includes(role);
+}
+
+// Mercado Pago test cards only work with test credentials, so admins can opt into
+// them while shoppers keep paying with the live keys.
+async function usesTestCredentials(supabase: any, config: any, callerId: string): Promise<boolean> {
+  if (!config?.test_mode || !config.test_access_token || !config.test_public_key) return false;
+  return await isAdminOrManager(supabase, callerId);
+}
+
 async function handleRecentPaymentErrors(supabase: any, callerId: string) {
-  if (!(await isStaff(supabase, callerId))) {
+  if (!(await isAdminOrManager(supabase, callerId))) {
     return jsonResponse({ error: "No autorizado" }, 403);
   }
   const { data, error } = await supabase
@@ -587,7 +611,7 @@ async function handleProcessPayment(
   // The card token is single-use, so keying on it lets a shopper retry with
   // corrected data while still deduplicating network-level resends.
   const attemptKey = typeof payment_data.token === "string" && payment_data.token
-    ? payment_data.token
+    ? payment_data.token.slice(0, 64)
     : crypto.randomUUID();
 
   const response = await fetch(`${MP_API_BASE}/v1/payments`, {
@@ -595,7 +619,7 @@ async function handleProcessPayment(
     headers: {
       Authorization: `Bearer ${accessToken}`,
       "Content-Type": "application/json",
-      "X-Idempotency-Key": `${quote_id}-${attemptKey}`,
+      "X-Idempotency-Key": attemptKey,
     },
     body: JSON.stringify(paymentBody),
   });
