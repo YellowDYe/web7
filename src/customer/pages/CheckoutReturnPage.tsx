@@ -7,7 +7,7 @@ import { useCart } from '../contexts/CartContext';
 import { BILLABLE_MEAL_TYPES } from '../../types/orderMenu';
 import { friendlyError } from '../utils/friendlyError';
 
-type PaymentStatus = 'loading' | 'approved' | 'pending' | 'failure';
+type PaymentStatus = 'loading' | 'approved' | 'pending' | 'failure' | 'unregistered';
 
 export const CheckoutReturn: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -74,6 +74,28 @@ export const CheckoutReturn: React.FC = () => {
       }
 
       // --- Checkout Pro flow: create order from saved cart data ---
+      if (!pendingCartData && !existingOrderData) {
+        const quoteRef = searchParams.get('ref') || searchParams.get('external_reference') || localStorage.getItem('mp_pending_quote_id') || '';
+        const { data: { session } } = await supabase.auth.getSession();
+        if (quoteRef && paymentId && session?.access_token) {
+          try {
+            const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mercado-pago-checkout`, {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action: 'get-order-snapshot', quote_id: quoteRef, payment_id: paymentId }),
+            });
+            const snapResult = res.ok ? await res.json() : null;
+            if (snapResult?.order_snapshot?.customer) pendingCartData = snapResult.order_snapshot;
+            else if (snapResult?.order_exists) {
+              setStatus(isApproved ? 'approved' : 'pending');
+              return;
+            }
+          } catch (err) {
+            console.warn('Could not load saved checkout details:', err);
+          }
+        }
+      }
+
       if (pendingCartData && !existingOrderData) {
         try {
           const { customer, cart, proteinCart, proteinSubtotal, planDiscounts } = pendingCartData;
@@ -102,7 +124,7 @@ export const CheckoutReturn: React.FC = () => {
 
             if (!result.success || !result.orderId || !result.orderNumber) {
               console.error('Order creation failed after redirect:', result.message);
-              setStatus('failure');
+              setStatus('unregistered');
               return;
             }
 
@@ -213,7 +235,7 @@ export const CheckoutReturn: React.FC = () => {
           return;
         } catch (err) {
           console.error('Error creating order after redirect:', err);
-          setStatus('failure');
+          setStatus('unregistered');
           return;
         }
       }
@@ -271,8 +293,8 @@ export const CheckoutReturn: React.FC = () => {
         return;
       }
 
-      // No stored data at all -- just show status based on URL
-      setStatus(isApproved ? 'approved' : isPending ? 'pending' : 'failure');
+      // Paid but this browser has no order details, so no order exists yet.
+      setStatus('unregistered');
     };
 
     handleReturn();
@@ -325,6 +347,30 @@ export const CheckoutReturn: React.FC = () => {
     if (d.includes('expired')) return 'El tiempo para completar el pago ha expirado. Vuelve a generar tu pedido.';
     return 'Tu pago no pudo ser procesado. Puedes intentar de nuevo o elegir otro metodo de pago.';
   })();
+
+  if (status === 'unregistered') {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="max-w-md mx-auto text-center">
+          <div className="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <AlertCircle className="w-12 h-12 text-amber-600" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Recibimos tu pago</h2>
+          <p className="text-gray-600 mb-3 leading-relaxed">
+            Tu pago fue recibido, pero no pudimos registrar tu pedido automáticamente.
+            Nuestro equipo ya fue notificado y te contactará para confirmarlo.
+          </p>
+          <p className="text-sm text-gray-500 mb-8">
+            Por favor no vuelvas a pagar.
+            {searchParams.get('payment_id') && <> Referencia de pago: <span className="font-semibold text-gray-700">{searchParams.get('payment_id')}</span></>}
+          </p>
+          <Link to="/" className="inline-block bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3 rounded-xl font-semibold transition-colors">
+            Volver al inicio
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   if (status === 'failure') {
     return (

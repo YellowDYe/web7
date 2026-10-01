@@ -1,6 +1,9 @@
 [functions.mercado-pago-webhook]
 verify_jwt = false
 
+[functions.send-admin-payment-alert]
+verify_jwt = false
+
 [functions.mercado-pago-checkout]
 verify_jwt = true
 

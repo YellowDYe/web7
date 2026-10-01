@@ -140,6 +140,26 @@ Deno.serve(async (req: Request) => {
       case "process-payment":
         return await handleProcessPayment(supabase, accessToken, body, callerId, config);
 
+      case "get-order-snapshot": {
+        const quoteId = typeof body.quote_id === "string" ? body.quote_id.replace(/^quote_/, "") : "";
+        const snapPaymentId = body.payment_id ? String(body.payment_id) : "";
+        if (!quoteId || !snapPaymentId) return jsonResponse({ error: "quote_id y payment_id requeridos" }, 400);
+        const { data: existingOrder } = await supabase
+          .from("orders")
+          .select("id")
+          .eq("mp_payment_id", snapPaymentId)
+          .maybeSingle();
+        if (existingOrder) return jsonResponse({ success: true, order_snapshot: null, order_exists: true });
+        const { data: snap, error: snapErr } = await supabase
+          .from("payment_quotes")
+          .select("order_snapshot")
+          .eq("id", quoteId)
+          .eq("auth_user_id", callerId)
+          .maybeSingle();
+        if (snapErr) return jsonResponse({ error: "Error al cargar el pedido" }, 500);
+        return jsonResponse({ success: true, order_snapshot: snap?.order_snapshot ?? null });
+      }
+
       default:
         return jsonResponse({ error: "Accion no reconocida" }, 400);
     }
@@ -167,7 +187,7 @@ async function handleCreatePreference(
   req: Request,
   config: any,
 ) {
-  const { items, payer, installments, back_url, shipment_cost, description, cart } = body;
+  const { items, payer, installments, back_url, shipment_cost, description, cart, order_snapshot } = body;
 
   if (!items || !Array.isArray(items) || items.length === 0 || items.length > 50) {
     return jsonResponse({ error: "Se requieren items para la preferencia" }, 400);
@@ -271,6 +291,7 @@ async function handleCreatePreference(
     .insert({
       auth_user_id: callerId,
       amount: quotedTotal,
+      order_snapshot: order_snapshot && typeof order_snapshot === "object" ? order_snapshot : null,
     })
     .select("id")
     .maybeSingle();
@@ -446,6 +467,7 @@ async function handleProcessPayment(
     statement_descriptor: (config.statement_descriptor || "Pedido Comida").slice(0, 22),
     binary_mode: true,
     external_reference: `quote_${quote_id}`,
+    notification_url: `${Deno.env.get("SUPABASE_URL")}/functions/v1/mercado-pago-webhook`,
     payer: {
       email: payment_data.payer?.email,
       identification: payment_data.payer?.identification,

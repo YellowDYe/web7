@@ -203,6 +203,23 @@ Deno.serve(async (req: Request) => {
 
     if (!orderId) {
       console.warn(`Webhook: No order found for payment ${paymentId}`);
+      if (["approved", "pending", "in_process", "authorized"].includes(mpStatus)) {
+        // Give the customer's browser time to register the order before alerting.
+        const alertTask = (async () => {
+          await new Promise((r) => setTimeout(r, 90_000));
+          const res = await fetch(`${supabaseUrl}/functions/v1/send-admin-payment-alert`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${supabaseServiceKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ payment_id: String(paymentId) }),
+          });
+          if (!res.ok) console.error("Admin payment alert failed:", await res.text());
+        })().catch((e) => console.error("Admin payment alert error:", e));
+        // @ts-ignore EdgeRuntime is provided by the Supabase runtime
+        if (typeof EdgeRuntime !== "undefined") EdgeRuntime.waitUntil(alertTask);
+      }
       return jsonResponse({ received: true, order_found: false });
     }
 

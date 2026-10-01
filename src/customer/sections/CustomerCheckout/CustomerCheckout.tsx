@@ -649,6 +649,15 @@ export const CustomerCheckout: React.FC = () => {
       planDiscountsSnapshotRef.current = [...planDiscounts];
       setPaymentTotalAmount(totalAmount);
 
+      const pendingOrderData = {
+        customer,
+        cart: cartSnapshotRef.current,
+        proteinCart: proteinCartSnapshotRef.current,
+        proteinSubtotal: proteinSubtotalSnapshotRef.current,
+        planDiscounts: planDiscountsSnapshotRef.current,
+        totalAmount,
+      };
+
       // Create MercadoPago preference (no DB order)
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 
@@ -701,6 +710,7 @@ export const CustomerCheckout: React.FC = () => {
           shipment_cost: deliveryPrice > 0 ? deliveryPrice : undefined,
           installments: 6,
           back_url: currentOrigin,
+          order_snapshot: pendingOrderData,
         }),
       });
 
@@ -722,14 +732,6 @@ export const CustomerCheckout: React.FC = () => {
 
       // Save cart snapshot to localStorage for the redirect return page
       try {
-        const pendingOrderData = {
-          customer,
-          cart: cartSnapshotRef.current,
-          proteinCart: proteinCartSnapshotRef.current,
-          proteinSubtotal: proteinSubtotalSnapshotRef.current,
-          planDiscounts: planDiscountsSnapshotRef.current,
-          totalAmount,
-        };
         localStorage.setItem('mp_pending_order_data', JSON.stringify(pendingOrderData));
         localStorage.setItem('mp_pending_quote_id', prefData.quote_id || '');
       } catch (_) {}
