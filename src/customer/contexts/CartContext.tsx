@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { supabase } from '../../config/supabase';
 import { PendingOrderItem } from '../../types/orderMenu';
 import { SelectedWeek } from '../../types/week';
 import { DeliveryOption } from '../../types/deliveryOption';
@@ -103,6 +104,21 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
       console.error('Error saving protein cart to localStorage:', error);
     }
   }, [proteinCart]);
+
+  // A signed-out visitor must never see a previous session's cart, so empty
+  // both carts whenever Supabase reports a sign-out.
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT') {
+        setCart(null);
+        setProteinCart([]);
+        localStorage.removeItem(CART_STORAGE_KEY);
+        localStorage.removeItem(PROTEIN_CART_STORAGE_KEY);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const addToCart = (item: CartItem) => {
     setCart(item);
