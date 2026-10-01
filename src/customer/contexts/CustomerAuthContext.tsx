@@ -17,6 +17,7 @@ interface CustomerAuthContextType {
   logout: () => Promise<void>;
   checkEmailExists: (email: string) => Promise<{ exists: boolean; hasAuth: boolean; hasCustomer: boolean; customer?: Customer; isThrottled?: boolean }>;
   updateCustomerProfile: (data: Partial<Customer>) => Promise<void>;
+  refreshCustomer: () => Promise<boolean>;
 }
 
 const CustomerAuthContext = createContext<CustomerAuthContextType | undefined>(undefined);
@@ -26,6 +27,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [loading, setLoading] = useState(true);
   const currentUserIdRef = useRef<string | null>(null);
+  const signupInProgressRef = useRef(false);
 
   const fetchCustomerData = async (authUserId: string, userEmail?: string) => {
     try {
@@ -103,6 +105,41 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Re-checks whether the signed-in person has a profile and returns true when
+  // one is found. Used by the route guard to avoid bouncing a brand-new
+  // customer to the signup screen during the brief window before their freshly
+  // created profile becomes visible.
+  const refreshCustomer = async (): Promise<boolean> => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) return false;
+
+    const { data } = await supabase
+      .from('customers')
+      .select('*')
+      .eq('auth_user_id', session.user.id)
+      .maybeSingle();
+
+    if (data) {
+      setCustomer(data);
+      return true;
+    }
+
+    if (session.user.email) {
+      const { data: byEmail } = await supabase
+        .from('customers')
+        .select('*')
+        .eq('customer_email', session.user.email)
+        .is('auth_user_id', null)
+        .maybeSingle();
+      if (byEmail) {
+        setCustomer(byEmail);
+        return true;
+      }
+    }
+
+    return false;
+  };
+
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
 
@@ -153,6 +190,11 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
         if (session?.user) {
           currentUserIdRef.current = session.user.id;
           setUser(session.user);
+          // While a signup is finishing, that flow owns the customer state.
+          // The sign-in event fires before the new profile row is visible, so
+          // fetching here would set customer to null and wrongly send a
+          // just-registered person back to the signup screen.
+          if (signupInProgressRef.current) return;
           await fetchCustomerData(session.user.id, session.user.email);
         } else {
           currentUserIdRef.current = null;
@@ -363,6 +405,11 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     // step then fails, we must remove that orphaned login so the email stays
     // reusable instead of getting stuck in a half-finished state.
     let createdNewAuthUser = false;
+    // Only becomes true once the profile is actually stored. The orphan cleanup
+    // must never run after a successful save, otherwise a hiccup in a later
+    // step would delete a perfectly good, just-created account.
+    let profileSaved = false;
+    signupInProgressRef.current = true;
     try {
       // Honor the email-check rate limit instead of treating a throttled
       // response as "brand-new email". Give it a couple of brief retries,
@@ -448,6 +495,15 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
       }
 
       console.log('Customer account created:', accountResult);
+      profileSaved = true;
+      // The profile exists now, so make this flow the source of truth: set the
+      // signed-in person and their profile directly. This prevents the brief
+      // "signed in but no profile" window that was wrongly sending brand-new
+      // customers back to the signup screen.
+      if (activeSession.user) {
+        currentUserIdRef.current = activeSession.user.id;
+        setUser(activeSession.user);
+      }
       if (accountResult && typeof accountResult === 'object') {
         setCustomer(accountResult as Customer);
       } else {
@@ -455,10 +511,9 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
       }
     } catch (error: any) {
       console.error('Signup error:', error);
-      // If this attempt created a brand-new login but never saved the profile,
-      // delete that orphaned login so the email is immediately reusable and
-      // does not get stuck showing "unfinished registration".
-      if (createdNewAuthUser) {
+      // Remove the orphaned login ONLY when the profile truly never saved, so a
+      // successful registration is never torn down by the cleanup.
+      if (createdNewAuthUser && !profileSaved) {
         try {
           const { data: { session } } = await supabase.auth.getSession();
           if (session) {
@@ -467,12 +522,14 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
         } catch (cleanupError) {
           console.error('Signup cleanup error (orphaned login):', cleanupError);
         }
+        await supabase.auth.signOut().catch(() => {});
+        setUser(null);
+        setCustomer(null);
       }
-      await supabase.auth.signOut().catch(() => {});
-      setUser(null);
-      setCustomer(null);
       const rawMsg = error instanceof Error ? error.message : String(error);
       throw new Error(rawMsg || 'Error al crear la cuenta');
+    } finally {
+      signupInProgressRef.current = false;
     }
   };
 
@@ -677,6 +734,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     logout,
     checkEmailExists,
     updateCustomerProfile,
+    refreshCustomer,
   };
 
   return (
