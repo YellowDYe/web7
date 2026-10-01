@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Utensils, Check, Loader2 } from 'lucide-react';
+import { Utensils, Check, Loader2, RefreshCw } from 'lucide-react';
 import { SelectedWeek } from '../../../types/week';
 import { MealPlan } from '../../../types/mealPlan';
 import { PendingOrderItem, BILLABLE_MEAL_TYPES } from '../../../types/orderMenu';
@@ -22,6 +22,7 @@ const CustomerMealPlanSelector: React.FC<CustomerMealPlanSelectorProps> = ({
 }) => {
   const [mealPlans, setMealPlans] = useState<MealPlan[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     loadMealPlans();
@@ -30,10 +31,12 @@ const CustomerMealPlanSelector: React.FC<CustomerMealPlanSelectorProps> = ({
   const loadMealPlans = async () => {
     try {
       setLoading(true);
+      setLoadError(false);
       const plans = await mealPlanService.getPlans();
       setMealPlans(plans);
     } catch (error) {
       console.error('Error loading meal plans:', error);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -67,6 +70,19 @@ const CustomerMealPlanSelector: React.FC<CustomerMealPlanSelectorProps> = ({
       {loading ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="w-8 h-8 animate-spin text-red-500" />
+        </div>
+      ) : loadError || mealPlans.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <p className="text-gray-600 mb-4">
+            No pudimos cargar los planes en este momento.
+          </p>
+          <button
+            onClick={loadMealPlans}
+            className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-red-500 text-white font-medium hover:bg-red-600 transition-colors"
+          >
+            <RefreshCw className="w-4 h-4" />
+            <span>Intentar de nuevo</span>
+          </button>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
