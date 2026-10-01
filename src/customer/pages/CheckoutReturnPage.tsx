@@ -99,8 +99,14 @@ export const CheckoutReturn: React.FC = () => {
       if (pendingCartData && !existingOrderData) {
         try {
           const { customer, cart, proteinCart, proteinSubtotal, planDiscounts } = pendingCartData;
-          const mpPaymentId = paymentId || `MP-redirect-${Date.now()}`;
-          const mpStatus = isApproved ? 'approved' : 'pending';
+          let paymentApproved = isApproved;
+          const confirmPayment = async (orderId: string) => {
+            if (!paymentId || !/^\d+$/.test(paymentId)) return null;
+            const confirmed = await customerOrderSubmissionService.confirmMercadoPagoPayment(orderId, paymentId);
+            if (!confirmed) return null;
+            paymentApproved = confirmed.status === 'approved';
+            return confirmed.newlyPaid;
+          };
 
           let createdOrderId = '';
           let createdOrderNumber = '';
@@ -138,28 +144,9 @@ export const CheckoutReturn: React.FC = () => {
               await saveProteinOrders(createdOrderId, customer, proteinCart);
             }
 
-            // Detect cash payment from URL params
-            const urlPaymentType = searchParams.get('payment_type') || '';
-            const isCashType = urlPaymentType === 'ticket' || urlPaymentType === 'atm';
+            const newlyPaid = await confirmPayment(createdOrderId);
 
-            // Update order with MP payment info
-            await supabase
-              .from('orders')
-              .update({
-                payment_provider: 'mercadopago',
-                mp_payment_id: mpPaymentId,
-                ...(mpStatus === 'approved' ? {
-                  order_status: 'completed',
-                  stripe_payment_status: 'succeeded',
-                  stripe_paid_at: new Date().toISOString(),
-                } : {
-                  order_status: isCashType ? 'pending_cash_payment' : 'pending',
-                  stripe_payment_status: 'pending',
-                }),
-              })
-              .eq('id', createdOrderId);
-
-            if (mpStatus === 'approved') {
+            if (paymentApproved) {
               const billableDishCount = (cart.orderItems || []).filter((i: any) => BILLABLE_MEAL_TYPES.includes(i.meal_type)).reduce((s: number, i: any) => s + i.quantity, 0);
               const confirmData: OrderConfirmationData = {
                 orderId: createdOrderId,
@@ -173,12 +160,14 @@ export const CheckoutReturn: React.FC = () => {
                 planName: cart.selectedPlan?.meal_plans_name,
                 totalDishes: billableDishCount,
               };
-              try {
-                await customerOrderSubmissionService.sendOrderConfirmationEmail(confirmData);
-                orderEmailSent = true;
-              } catch (err) {
-                console.warn('Could not send confirmation email:', err);
-                orderEmailError = true;
+              if (newlyPaid !== false) {
+                try {
+                  await customerOrderSubmissionService.sendOrderConfirmationEmail(confirmData);
+                  orderEmailSent = true;
+                } catch (err) {
+                  console.warn('Could not send confirmation email:', err);
+                  orderEmailError = true;
+                }
               }
               setConfirmationData(confirmData);
             }
@@ -193,14 +182,9 @@ export const CheckoutReturn: React.FC = () => {
                 customer_id: customer.customer_id,
                 order_customer_name: `${customer.customer_name} ${customer.customer_lastname}`.trim(),
                 order_customer_email: customer.customer_email,
-                order_status: mpStatus === 'approved' ? 'completed' : (urlPaymentType === 'ticket' || urlPaymentType === 'atm') ? 'pending_cash_payment' : 'pending',
                 order_notes: 'Pedido de proteinas',
                 order_total_price: totalAmount,
                 order_invoice_number: '',
-                stripe_payment_status: mpStatus === 'approved' ? 'succeeded' : 'pending',
-                stripe_paid_at: mpStatus === 'approved' ? new Date().toISOString() : null,
-                payment_provider: 'mercadopago',
-                mp_payment_id: mpPaymentId || null,
               })
               .select('id, order_id')
               .single();
@@ -209,6 +193,7 @@ export const CheckoutReturn: React.FC = () => {
               createdOrderId = orderRow.id;
               createdOrderNumber = orderRow.order_id;
               await saveProteinOrders(createdOrderId, customer, proteinCart);
+              await confirmPayment(createdOrderId);
             }
 
             orderTotals = {
@@ -231,7 +216,7 @@ export const CheckoutReturn: React.FC = () => {
           localStorage.removeItem('mp_pending_order_data');
           localStorage.removeItem('mp_pending_quote_id');
 
-          setStatus(isApproved ? 'approved' : 'pending');
+          setStatus(paymentApproved ? 'approved' : 'pending');
           return;
         } catch (err) {
           console.error('Error creating order after redirect:', err);

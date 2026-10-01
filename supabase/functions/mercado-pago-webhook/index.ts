@@ -164,41 +164,47 @@ Deno.serve(async (req: Request) => {
 
     const payment = await mpResponse.json();
     const mpStatus = payment.status; // approved, pending, rejected, cancelled, refunded, etc.
-    const externalRef = payment.external_reference;
+    const externalRef: string = typeof payment.external_reference === "string" ? payment.external_reference : "";
+    const quoteId = externalRef.startsWith("quote_") ? externalRef.slice(6) : null;
 
-    // Try to find the order by checking the payment_quotes table first
     let orderId: string | null = null;
 
-    // Check if we have a payment quote with this payment_id
-    const { data: quote } = await supabase
-      .from("payment_quotes")
-      .select("id, auth_user_id")
-      .eq("payment_id", String(paymentId))
-      .maybeSingle();
-
-    // Find the order: try by mp_payment_id first, then by external_reference
-    const { data: orderByMp } = await supabase
-      .from("orders")
-      .select("id, order_status, stripe_payment_status, mp_payment_id, order_customer_email, customer_id")
-      .eq("mp_payment_id", String(paymentId))
-      .maybeSingle();
-
-    if (orderByMp) {
-      orderId = orderByMp.id;
+    if (quoteId) {
+      const { data: quote } = await supabase
+        .from("payment_quotes")
+        .select("id, order_id, payment_id")
+        .eq("id", quoteId)
+        .maybeSingle();
+      if (quote) {
+        if (!quote.payment_id) {
+          await supabase
+            .from("payment_quotes")
+            .update({ payment_id: String(paymentId) })
+            .eq("id", quoteId)
+            .is("payment_id", null);
+        }
+        if (quote.order_id) orderId = quote.order_id;
+      }
     }
 
-    // If no order found by mp_payment_id, look for a pending order with this payment amount
-    // that was created around the same time
-    if (!orderId && externalRef) {
+    if (!orderId) {
+      const { data: orderByMp } = await supabase
+        .from("orders")
+        .select("id")
+        .eq("mp_payment_id", String(paymentId))
+        .maybeSingle();
+      if (orderByMp) orderId = orderByMp.id;
+    }
+
+    // Legacy flow: the reference was the order id itself.
+    if (!orderId && externalRef && !quoteId &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(externalRef)) {
       const { data: orderByRef } = await supabase
         .from("orders")
-        .select("id, order_status, stripe_payment_status, mp_payment_id, order_customer_email, customer_id")
+        .select("id")
         .eq("id", externalRef)
         .maybeSingle();
-
-      if (orderByRef) {
-        orderId = orderByRef.id;
-      }
+      if (orderByRef) orderId = orderByRef.id;
     }
 
     if (!orderId) {
@@ -226,7 +232,7 @@ Deno.serve(async (req: Request) => {
     // Re-fetch the order with all needed fields
     const { data: order } = await supabase
       .from("orders")
-      .select("id, order_status, stripe_payment_status, order_customer_email, order_customer_name, customer_id, order_id, order_total_price")
+      .select("id, order_status, stripe_payment_status, order_customer_email, order_customer_name, customer_id, order_id, order_total_price, mp_payment_id")
       .eq("id", orderId)
       .maybeSingle();
 
@@ -234,15 +240,21 @@ Deno.serve(async (req: Request) => {
       return jsonResponse({ received: true, order_found: false });
     }
 
+    if (order.mp_payment_id && order.mp_payment_id !== String(paymentId)) {
+      console.error(`Webhook: order ${orderId} already linked to payment ${order.mp_payment_id}`);
+      return jsonResponse({ received: true, settled: false });
+    }
+
     // The payment must actually cover the order, otherwise a 1-peso payment
-    // could be pointed at an expensive order and settle it.
+    // could be pointed at an expensive order and settle it. A peso of slack
+    // absorbs rounding between the cart total and the charged total.
     const orderTotal = Number(order.order_total_price) || 0;
     const paidAmount = Number(
       payment.transaction_amount ??
         payment.transaction_details?.total_paid_amount ??
         0,
     );
-    const amountCoversOrder = orderTotal > 0 && paidAmount + 0.01 >= orderTotal;
+    const amountCoversOrder = orderTotal > 0 && paidAmount + 1 >= orderTotal;
 
     // Only update if the order isn't already marked as completed/paid
     if (mpStatus === "approved" && !amountCoversOrder) {
@@ -253,7 +265,7 @@ Deno.serve(async (req: Request) => {
     }
 
     if (mpStatus === "approved" && order.stripe_payment_status !== "succeeded") {
-      await supabase
+      const { data: settled } = await supabase
         .from("orders")
         .update({
           order_status: "completed",
@@ -263,7 +275,14 @@ Deno.serve(async (req: Request) => {
           mp_payment_id: String(paymentId),
         })
         .eq("id", orderId)
-        .in("order_status", ["pending", "pending_cash_payment", "processing"]);
+        .or("stripe_payment_status.is.null,stripe_payment_status.neq.succeeded")
+        .in("order_status", ["pending", "pending_cash_payment", "processing"])
+        .select("id");
+
+      // Another path (the customer's return page) already settled it and sent the email.
+      if (!Array.isArray(settled) || settled.length === 0) {
+        return jsonResponse({ received: true, status: mpStatus, order_id: orderId });
+      }
 
       // Also update related invoice if exists
       const { data: invoice } = await supabase
@@ -335,6 +354,18 @@ Deno.serve(async (req: Request) => {
       }
 
       console.log(`Webhook: Order ${orderId} marked as paid (payment ${paymentId})`);
+    } else if (["pending", "in_process", "authorized"].includes(mpStatus) && order.stripe_payment_status !== "succeeded") {
+      const isCash = ["ticket", "atm", "bank_transfer"].includes(String(payment.payment_type_id || ""));
+      await supabase
+        .from("orders")
+        .update({
+          payment_provider: "mercadopago",
+          mp_payment_id: String(paymentId),
+          stripe_payment_status: "pending",
+          ...(isCash ? { order_status: "pending_cash_payment" } : {}),
+        })
+        .eq("id", orderId)
+        .or("stripe_payment_status.is.null,stripe_payment_status.neq.succeeded");
     } else if (mpStatus === "cancelled" || mpStatus === "refunded" || mpStatus === "charged_back") {
       // Mark order as cancelled if the payment was reversed
       if (order.order_status !== "cancelled") {

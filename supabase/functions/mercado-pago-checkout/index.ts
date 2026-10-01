@@ -140,6 +140,9 @@ Deno.serve(async (req: Request) => {
       case "process-payment":
         return await handleProcessPayment(supabase, accessToken, body, callerId, config);
 
+      case "confirm-order-payment":
+        return await handleConfirmOrderPayment(supabase, accessToken, body, callerId);
+
       case "get-order-snapshot": {
         const quoteId = typeof body.quote_id === "string" ? body.quote_id.replace(/^quote_/, "") : "";
         const snapPaymentId = body.payment_id ? String(body.payment_id) : "";
@@ -152,11 +155,12 @@ Deno.serve(async (req: Request) => {
         if (existingOrder) return jsonResponse({ success: true, order_snapshot: null, order_exists: true });
         const { data: snap, error: snapErr } = await supabase
           .from("payment_quotes")
-          .select("order_snapshot")
+          .select("order_snapshot, order_id")
           .eq("id", quoteId)
           .eq("auth_user_id", callerId)
           .maybeSingle();
         if (snapErr) return jsonResponse({ error: "Error al cargar el pedido" }, 500);
+        if (snap?.order_id) return jsonResponse({ success: true, order_snapshot: null, order_exists: true });
         return jsonResponse({ success: true, order_snapshot: snap?.order_snapshot ?? null });
       }
 
@@ -588,6 +592,126 @@ async function handleGetPaymentStatus(
     payment_id: payment.id,
     status: payment.status,
     status_detail: payment.status_detail,
+  });
+}
+
+// Rounding between the cart total and the charged total can differ by cents.
+const AMOUNT_TOLERANCE = 1;
+const CASH_PAYMENT_TYPES = ["ticket", "atm", "bank_transfer"];
+
+async function handleConfirmOrderPayment(
+  supabase: any,
+  accessToken: string,
+  body: any,
+  callerId: string,
+) {
+  const orderId = typeof body.order_id === "string" ? body.order_id : "";
+  const paymentId = body.payment_id ? String(body.payment_id) : "";
+  if (!orderId || !/^\d+$/.test(paymentId)) {
+    return jsonResponse({ error: "Datos de pago incompletos" }, 400);
+  }
+
+  const { data: order } = await supabase
+    .from("orders")
+    .select("id, customer_id, order_total_price, order_status, stripe_payment_status, mp_payment_id")
+    .eq("id", orderId)
+    .maybeSingle();
+  if (!order) return jsonResponse({ error: "Pedido no encontrado" }, 404);
+
+  const callerIsStaff = await isStaff(supabase, callerId);
+  if (!callerIsStaff) {
+    const { data: ownsIt } = await supabase
+      .from("customers")
+      .select("customer_id")
+      .eq("customer_id", order.customer_id)
+      .eq("auth_user_id", callerId)
+      .maybeSingle();
+    if (!ownsIt) return jsonResponse({ error: "No autorizado" }, 403);
+  }
+
+  if (order.mp_payment_id && order.mp_payment_id !== paymentId) {
+    return jsonResponse({ error: "El pago no corresponde a este pedido" }, 409);
+  }
+
+  const mpRes = await fetch(`${MP_API_BASE}/v1/payments/${encodeURIComponent(paymentId)}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!mpRes.ok) {
+    console.error("MP status error:", await mpRes.text());
+    return jsonResponse({ error: "Error al consultar el pago" }, 502);
+  }
+  const payment = await mpRes.json();
+
+  const externalRef = typeof payment.external_reference === "string" ? payment.external_reference : "";
+  const quoteId = externalRef.startsWith("quote_") ? externalRef.slice(6) : "";
+  if (!quoteId) return jsonResponse({ error: "El pago no corresponde a este pedido" }, 409);
+
+  const { data: quote } = await supabase
+    .from("payment_quotes")
+    .select("id, auth_user_id, order_id")
+    .eq("id", quoteId)
+    .maybeSingle();
+  if (!quote || (!callerIsStaff && quote.auth_user_id !== callerId) ||
+      (quote.order_id && quote.order_id !== orderId)) {
+    return jsonResponse({ error: "El pago no corresponde a este pedido" }, 409);
+  }
+
+  const { data: otherOrder } = await supabase
+    .from("orders")
+    .select("id")
+    .eq("mp_payment_id", paymentId)
+    .neq("id", orderId)
+    .maybeSingle();
+  if (otherOrder) return jsonResponse({ error: "El pago ya esta asociado a otro pedido" }, 409);
+
+  const status = String(payment.status || "");
+  const paidAmount = Number(payment.transaction_amount ?? 0);
+  const orderTotal = Number(order.order_total_price) || 0;
+  if (status === "approved" && !(orderTotal > 0 && paidAmount + AMOUNT_TOLERANCE >= orderTotal)) {
+    console.error(`Refusing to settle order ${orderId}: paid ${paidAmount}, total ${orderTotal}`);
+    return jsonResponse({ error: "El monto pagado no cubre el pedido" }, 409);
+  }
+
+  await supabase
+    .from("payment_quotes")
+    .update({ order_id: orderId, payment_id: paymentId })
+    .eq("id", quoteId);
+
+  let newlyPaid = false;
+  if (status === "approved") {
+    const { data: settled } = await supabase
+      .from("orders")
+      .update({
+        order_status: "completed",
+        stripe_payment_status: "succeeded",
+        stripe_paid_at: new Date().toISOString(),
+        payment_provider: "mercadopago",
+        mp_payment_id: paymentId,
+      })
+      .eq("id", orderId)
+      .or("stripe_payment_status.is.null,stripe_payment_status.neq.succeeded")
+      .in("order_status", ["pending", "pending_cash_payment", "processing"])
+      .select("id");
+    newlyPaid = Array.isArray(settled) && settled.length > 0;
+  } else if (["pending", "in_process", "authorized"].includes(status)) {
+    const isCash = CASH_PAYMENT_TYPES.includes(String(payment.payment_type_id || ""));
+    await supabase
+      .from("orders")
+      .update({
+        payment_provider: "mercadopago",
+        mp_payment_id: paymentId,
+        stripe_payment_status: "pending",
+        ...(isCash ? { order_status: "pending_cash_payment" } : {}),
+      })
+      .eq("id", orderId)
+      .or("stripe_payment_status.is.null,stripe_payment_status.neq.succeeded");
+  }
+
+  return jsonResponse({
+    success: true,
+    status,
+    payment_type_id: payment.payment_type_id ?? null,
+    newly_paid: newlyPaid,
   });
 }
 

@@ -95,9 +95,10 @@ Deno.serve(async (req: Request) => {
         .update({ admin_alerted_at: new Date().toISOString() })
         .eq("id", quoteId)
         .is("admin_alerted_at", null)
+        .is("order_id", null)
         .select("auth_user_id")
         .maybeSingle();
-      if (!claimed) return jsonResponse({ success: true, skipped: "already_alerted" });
+      if (!claimed) return jsonResponse({ success: true, skipped: "already_alerted_or_linked" });
 
       if (claimed.auth_user_id) {
         const { data: cust } = await supabase

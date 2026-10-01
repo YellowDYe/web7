@@ -19,13 +19,6 @@ interface OrderSubmissionData {
   selectedDeliveryOption: DeliveryOption;
   appliedCoupon: Coupon | null;
   couponDiscountAmount: number;
-  paymentOverrides?: {
-    order_status: string;
-    stripe_payment_status: string;
-    stripe_paid_at?: string | null;
-    payment_provider?: string;
-    mp_payment_id?: string | null;
-  };
 }
 
 interface OrderSubmissionResult {
@@ -133,14 +126,10 @@ class CustomerOrderSubmissionService {
         customer_id: customer.customer_id,
         order_customer_name: `${customer.customer_name} ${customer.customer_lastname}`.trim(),
         order_customer_email: customer.customer_email,
-        order_status: data.paymentOverrides?.order_status || 'pending',
+        order_status: 'pending',
         order_notes: orderNotes || null,
         order_total_price: recordedTotal,
         order_invoice_number: '',
-        ...(data.paymentOverrides?.stripe_payment_status ? { stripe_payment_status: data.paymentOverrides.stripe_payment_status } : {}),
-        ...(data.paymentOverrides?.stripe_paid_at ? { stripe_paid_at: data.paymentOverrides.stripe_paid_at } : {}),
-        ...(data.paymentOverrides?.payment_provider ? { payment_provider: data.paymentOverrides.payment_provider } : {}),
-        ...(data.paymentOverrides?.mp_payment_id ? { mp_payment_id: data.paymentOverrides.mp_payment_id } : {})
       } as any);
 
       // Create order weeks with quantities embedded (same as admin flow)
@@ -278,6 +267,37 @@ class CustomerOrderSubmissionService {
         message: 'Error al crear el pedido',
         error: friendlyError(error, 'Unknown error')
       };
+    }
+  }
+
+  async confirmMercadoPagoPayment(
+    orderId: string,
+    paymentId: string
+  ): Promise<{ status: string; paymentTypeId: string | null; newlyPaid: boolean } | null> {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) return null;
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mercado-pago-checkout`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ action: 'confirm-order-payment', order_id: orderId, payment_id: paymentId }),
+      });
+      const result = await response.json().catch(() => null);
+      if (!response.ok || !result?.success || typeof result.status !== 'string') {
+        console.error('confirm-order-payment failed', response.status, result?.error);
+        return null;
+      }
+      return {
+        status: result.status,
+        paymentTypeId: result.payment_type_id ?? null,
+        newlyPaid: result.newly_paid === true,
+      };
+    } catch (err) {
+      console.error('confirm-order-payment error', err);
+      return null;
     }
   }
 

@@ -220,11 +220,14 @@ export const CustomerCheckout: React.FC = () => {
     }
   };
 
-  const createOrderAfterPayment = useCallback(async (mpPaymentId: string, mpStatus: string, mpPaymentTypeId?: string): Promise<{ orderId: string; orderNumber: string } | null> => {
-    const isCashPayment = mpPaymentTypeId === 'ticket' || mpPaymentTypeId === 'atm';
-    const orderStatus = mpStatus === 'approved' ? 'completed' : isCashPayment ? 'pending_cash_payment' : 'pending';
-    const paymentStatus = mpStatus === 'approved' ? 'succeeded' : null;
+  const createOrderAfterPayment = useCallback(async (mpPaymentId: string, mpStatus: string): Promise<{ orderId: string; orderNumber: string } | null> => {
     if (!customer) return null;
+
+    const confirmPayment = async (createdOrderId: string): Promise<boolean | null> => {
+      if (!/^\d+$/.test(mpPaymentId)) return null;
+      const confirmed = await customerOrderSubmissionService.confirmMercadoPagoPayment(createdOrderId, mpPaymentId);
+      return confirmed ? confirmed.newlyPaid : null;
+    };
 
     const snappedCart = cartSnapshotRef.current;
     const snappedProteinCart = proteinCartSnapshotRef.current;
@@ -247,13 +250,6 @@ export const CustomerCheckout: React.FC = () => {
           selectedDeliveryOption: snappedCart.selectedDeliveryOption!,
           appliedCoupon: snappedCart.appliedCoupon,
           couponDiscountAmount: snappedCart.couponDiscountAmount,
-          paymentOverrides: {
-            order_status: orderStatus,
-            stripe_payment_status: paymentStatus,
-            stripe_paid_at: mpStatus === 'approved' ? new Date().toISOString() : null,
-            payment_provider: 'mercadopago',
-            mp_payment_id: mpPaymentId || null,
-          },
         });
 
         if (!result.success || !result.orderId || !result.orderNumber) {
@@ -265,6 +261,7 @@ export const CustomerCheckout: React.FC = () => {
         orderNumber = result.orderNumber;
 
         if (hasSnappedProtein) await saveProteinOrders(orderId, snappedProteinCart);
+        const newlyPaid = await confirmPayment(orderId);
 
         const totals = result.totals!;
         if (hasSnappedProtein) {
@@ -286,11 +283,14 @@ export const CustomerCheckout: React.FC = () => {
           totalDishes: billableDishCount,
         };
 
-        try {
-          await customerOrderSubmissionService.sendOrderConfirmationEmail(confirmData);
-          emailSent = true;
-        } catch (err: any) {
-          emailError = 'No pudimos enviar el correo de confirmacion.';
+        // The payment notice emails the customer when it settles the order first.
+        if (mpStatus !== 'approved' || newlyPaid !== false) {
+          try {
+            await customerOrderSubmissionService.sendOrderConfirmationEmail(confirmData);
+            emailSent = true;
+          } catch (err: any) {
+            emailError = 'No pudimos enviar el correo de confirmacion.';
+          }
         }
 
         const formatAddress = (): string => {
@@ -328,14 +328,9 @@ export const CustomerCheckout: React.FC = () => {
             customer_id: customer.customer_id,
             order_customer_name: `${customer.customer_name} ${customer.customer_lastname}`.trim(),
             order_customer_email: customer.customer_email,
-            order_status: orderStatus,
             order_notes: 'Pedido de proteinas',
             order_total_price: totalAmount,
             order_invoice_number: '',
-            stripe_payment_status: paymentStatus,
-            stripe_paid_at: mpStatus === 'approved' ? new Date().toISOString() : null,
-            payment_provider: 'mercadopago',
-            mp_payment_id: mpPaymentId || null,
           })
           .select('id, order_id')
           .single();
@@ -344,8 +339,9 @@ export const CustomerCheckout: React.FC = () => {
           orderId = orderRow.id;
           orderNumber = orderRow.order_id;
           await saveProteinOrders(orderId, snappedProteinCart);
+          const newlyPaid = await confirmPayment(orderId);
 
-          if (mpStatus === 'approved') {
+          if (mpStatus === 'approved' && newlyPaid !== false) {
             try {
               const formatAddress = (): string => {
                 const parts: string[] = [];
@@ -496,7 +492,7 @@ export const CustomerCheckout: React.FC = () => {
 
               if (result.status === 'approved' || result.status === 'pending' || result.status === 'in_process') {
                 // Step 2: Payment succeeded/pending -> NOW create the order
-                const orderResult = await createOrderAfterPayment(result.payment_id, result.status, result.payment_type_id);
+                const orderResult = await createOrderAfterPayment(String(result.payment_id), result.status);
 
                 if (orderResult) {
                   setCreatedOrderNumber(orderResult.orderNumber);
