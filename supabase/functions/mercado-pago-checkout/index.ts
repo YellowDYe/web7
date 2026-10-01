@@ -30,8 +30,12 @@ function allowedReturnOrigins(): string[] {
   return configured;
 }
 
-function resolveBackUrl(requested: unknown, req: Request): string | null {
+function resolveBackUrl(requested: unknown, req: Request, storefrontOrigin: string | null): string | null {
   const allowed = allowedReturnOrigins();
+  if (storefrontOrigin) {
+    const rest = allowed.filter((o) => o !== storefrontOrigin);
+    allowed.splice(0, allowed.length, storefrontOrigin, ...rest);
+  }
 
   let requestedOrigin: string | null = null;
   if (typeof requested === "string" && requested.trim()) {
@@ -58,6 +62,21 @@ function resolveBackUrl(requested: unknown, req: Request): string | null {
     }
   }
   return null;
+}
+
+async function loadStorefrontOrigin(supabase: any): Promise<string | null> {
+  const { data } = await supabase
+    .from("cms_settings")
+    .select("value")
+    .eq("setting_name", "site_url")
+    .maybeSingle();
+  const configured = typeof data?.value === "string" ? data.value.trim() : "";
+  if (!configured) return null;
+  try {
+    return new URL(configured).origin;
+  } catch {
+    return null;
+  }
 }
 
 Deno.serve(async (req: Request) => {
@@ -283,7 +302,7 @@ async function handleCreatePreference(
     return jsonResponse({ error: "El total del pedido esta fuera del rango permitido" }, 400);
   }
 
-  const baseUrl = resolveBackUrl(back_url, req);
+  const baseUrl = resolveBackUrl(back_url, req, await loadStorefrontOrigin(supabase));
   if (!baseUrl) {
     console.error("No allowed return origin configured (SITE_URL / ALLOWED_RETURN_ORIGINS)");
     return jsonResponse({ error: "La tienda no esta configurada para recibir pagos" }, 500);
