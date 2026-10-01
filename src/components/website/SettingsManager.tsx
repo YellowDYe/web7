@@ -784,7 +784,7 @@ export const SettingsManager: React.FC = () => {
   };
 
   const renderNotificationSettings = () => {
-    const notif = editingSettings.notification_settings || { enabled: false, emails: [], notify_on_approved: true, notify_on_pending: true, notify_on_failed: true };
+    const notif = editingSettings.notification_settings || { enabled: false, emails: [], notify_on_approved: true, notify_on_pending: true, notify_on_failed: true, notify_on_signup: true };
     const emails: string[] = notif.emails || [];
 
     const addEmail = () => {
@@ -897,6 +897,25 @@ export const SettingsManager: React.FC = () => {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* Other events */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Otros avisos:
+          </label>
+          <div className="flex items-start space-x-3 p-3 border border-gray-200 rounded-lg">
+            <input
+              type="checkbox"
+              checked={notif.notify_on_signup !== false}
+              onChange={() => toggleField('notify_on_signup')}
+              className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <div>
+              <p className="text-sm font-medium text-gray-900">Nuevo registro de cliente</p>
+              <p className="text-xs text-gray-500">Enviar un correo cuando un cliente crea una cuenta nueva</p>
+            </div>
           </div>
         </div>
       </div>

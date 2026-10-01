@@ -496,6 +496,30 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
 
       console.log('Customer account created:', accountResult);
       profileSaved = true;
+      // Notify admins (if enabled) that a new customer registered. Non-blocking:
+      // a failure here must never break the sign-up itself.
+      try {
+        const { data: { session: notifySession } } = await supabase.auth.getSession();
+        if (notifySession?.access_token) {
+          const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+          const fullName = `${(customerData as any).first_name || ''} ${(customerData as any).last_name || ''}`.trim();
+          fetch(`${supabaseUrl}/functions/v1/send-signup-notification`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${notifySession.access_token}`,
+            },
+            body: JSON.stringify({
+              customerName: fullName,
+              customerEmail: email,
+              customerPhone: (customerData as any).phone || '',
+              shopUrl: `${window.location.origin}/admin`,
+            }),
+          }).catch((err) => console.warn('Could not send signup notification:', err));
+        }
+      } catch (notifyErr) {
+        console.warn('Could not send signup notification:', notifyErr);
+      }
       // The profile exists now, so make this flow the source of truth: set the
       // signed-in person and their profile directly. This prevents the brief
       // "signed in but no profile" window that was wrongly sending brand-new

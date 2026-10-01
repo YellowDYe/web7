@@ -58,6 +58,7 @@ interface CartProviderProps {
 export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
   const [cart, setCart] = useState<CartItem | null>(null);
   const [proteinCart, setProteinCart] = useState<ProteinCartItem[]>([]);
+  const [authUserId, setAuthUserId] = useState<string | null>(null);
 
   useEffect(() => {
     try {
@@ -108,7 +109,12 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
   // A signed-out visitor must never see a previous session's cart, so empty
   // both carts whenever Supabase reports a sign-out.
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setAuthUserId(session?.user?.id ?? null);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setAuthUserId(session?.user?.id ?? null);
       if (event === 'SIGNED_OUT') {
         setCart(null);
         setProteinCart([]);
@@ -172,6 +178,30 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     (sum, item) => sum + item.proteinPlan.protein_plans_price * item.quantity,
     0
   );
+
+  // Mirror the signed-in customer's cart size to the server so staff can see
+  // which carts were started but never completed. A cart that empties to 0
+  // (for example after checkout) stops counting as abandoned.
+  const totalItemCount = itemCount + proteinItemCount;
+  useEffect(() => {
+    if (!authUserId) return;
+    const timeout = setTimeout(() => {
+      supabase
+        .from('customer_carts')
+        .upsert(
+          {
+            auth_user_id: authUserId,
+            item_count: totalItemCount,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'auth_user_id' }
+        )
+        .then(({ error }) => {
+          if (error) console.warn('Could not sync cart state:', error.message);
+        });
+    }, 800);
+    return () => clearTimeout(timeout);
+  }, [authUserId, totalItemCount]);
 
   return (
     <CartContext.Provider
