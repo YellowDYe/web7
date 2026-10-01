@@ -176,6 +176,12 @@ const CustomerPackageSelector: React.FC<CustomerPackageSelectorProps> = ({
   const [blockedRecipeIds, setBlockedRecipeIds] = useState<Set<string>>(new Set());
 
   const weekName = activeWeek.week.week_name;
+  const deliveryDateLabel = (() => {
+    const dateStr = activeWeek.week.week_date;
+    if (!dateStr) return weekName;
+    const [y, m, d] = dateStr.split('-').map(Number);
+    return new Intl.DateTimeFormat('es-MX', { day: 'numeric', month: 'short' }).format(new Date(y, m - 1, d));
+  })();
 
   // Pre-compute maximum available (non-blocked) dishes per meal type
   const maxAvailablePerType = React.useMemo(() => {
@@ -601,10 +607,11 @@ const CustomerPackageSelector: React.FC<CustomerPackageSelectorProps> = ({
             <Package className="w-5 h-5 text-red-600" />
           </div>
           <div>
-            <h2 className="text-xl font-semibold text-gray-900">Selecciona tu Paquete</h2>
+            <h2 className="text-xl font-semibold text-gray-900">Selecciona tu Menú</h2>
             <p className="text-sm text-gray-600">
-              Elige qué tiempos de comida deseas para{' '}
-              <span className="font-medium text-gray-900">{weekName}</span>
+              Entrega el <span className="font-medium text-gray-900">{deliveryDateLabel}</span>
+              {' · '}
+              <span className="font-medium text-gray-900">{selectedPlan.meal_plans_name}</span>
             </p>
           </div>
         </div>

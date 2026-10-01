@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CircleAlert as AlertCircle, ChevronLeft, ChevronRight, ShoppingCart } from 'lucide-react';
+import { CircleAlert as AlertCircle, ChevronLeft, ChevronRight, ShoppingCart, Calendar } from 'lucide-react';
 import { useCustomerAuth } from '../../contexts/CustomerAuthContext';
 import { useCart } from '../../contexts/CartContext';
 import { SelectedWeek } from '../../../types/week';
@@ -64,7 +64,7 @@ export const CustomerOrder: React.FC = () => {
   const firstOrderCheckedRef = useRef(false);
 
   // UI state
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
+  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [restrictionNames, setRestrictionNames] = useState<string[]>([]);
@@ -91,7 +91,7 @@ export const CustomerOrder: React.FC = () => {
     setCouponDiscountAmount(cart.couponDiscountAmount);
 
     if (cart.orderItems && cart.orderItems.length > 0) {
-      setStep(4);
+      setStep(5);
     }
   }, [cart]);
 
@@ -700,10 +700,18 @@ export const CustomerOrder: React.FC = () => {
 
   const steps = [
     { num: 1, label: 'Duración' },
-    { num: 2, label: 'Semana y Plan' },
-    { num: 3, label: 'Comidas' },
-    { num: 4, label: 'Resumen' }
+    { num: 2, label: 'Semana' },
+    { num: 3, label: 'Plan' },
+    { num: 4, label: 'Menú' },
+    { num: 5, label: 'Resumen' }
   ];
+
+  const formatDeliveryDate = (dateStr?: string | null): string => {
+    if (!dateStr) return '';
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const date = new Date(y, m - 1, d);
+    return new Intl.DateTimeFormat('es-MX', { day: 'numeric', month: 'short' }).format(date);
+  };
 
   const activeWeekIndex = activeWeek
     ? selectedWeeks.findIndex(w => w.tempId === activeWeek.tempId)
@@ -716,18 +724,19 @@ export const CustomerOrder: React.FC = () => {
   const canReachStep = (target: number): boolean => {
     if (target <= 1) return true;
     if (target === 2) return planDuration != null;
-    if (target === 3) return !!activeWeek && !!selectedPlan;
+    if (target === 3) return !!activeWeek;
+    if (target === 4) return !!activeWeek && !!selectedPlan;
     return orderItems.length > 0;
   };
 
   const goToStep = (target: number) => {
     if (!canReachStep(target)) return;
-    setStep(target as 1 | 2 | 3 | 4);
+    setStep(target as 1 | 2 | 3 | 4 | 5);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleContinue = () => {
-    if (step === 3) {
+    if (step === 4) {
       const nextWeek = incompleteWeeks.find(w => w.tempId !== activeWeek?.tempId);
       if (nextWeek) {
         handleWeekSelect(nextWeek);
@@ -735,7 +744,7 @@ export const CustomerOrder: React.FC = () => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
         return;
       }
-      goToStep(4);
+      goToStep(5);
       return;
     }
     goToStep(step + 1);
@@ -743,13 +752,14 @@ export const CustomerOrder: React.FC = () => {
 
   const canContinue = (): boolean => {
     if (step === 1) return planDuration != null;
-    if (step === 2) return !!activeWeek && !!selectedPlan;
-    if (step === 3) return activeWeekBillable >= 3;
+    if (step === 2) return !!activeWeek;
+    if (step === 3) return !!selectedPlan;
+    if (step === 4) return activeWeekBillable >= 3;
     return false;
   };
 
   const continueLabel =
-    step === 3
+    step === 4
       ? (incompleteWeeks.some(w => w.tempId !== activeWeek?.tempId) ? 'Siguiente semana' : 'Ver resumen')
       : 'Continuar';
 
@@ -901,7 +911,7 @@ export const CustomerOrder: React.FC = () => {
         />
       )}
 
-      {/* Step 2: Week + Plan Selection */}
+      {/* Step 2: Week Selection */}
       {step === 2 && (
         <>
           {selectedWeeks.length > 1 && activeWeekIndex >= 0 && (
@@ -931,19 +941,30 @@ export const CustomerOrder: React.FC = () => {
           )}
 
           {activeWeek && (
-            <CustomerMealPlanSelector
-              activeWeek={activeWeek}
-              selectedPlan={selectedPlan}
-              onPlanSelect={handlePlanSelect}
-              disabled={loading}
-              orderItems={orderItems}
-            />
+            <div className="mt-6 bg-red-50 border border-red-200 rounded-xl p-4 flex items-start space-x-3">
+              <Calendar className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-red-800">
+                El siguiente paso es seleccionar un plan para la semana con entrega el{' '}
+                <strong>{formatDeliveryDate(activeWeek.week.week_date)}</strong>.
+              </p>
+            </div>
           )}
         </>
       )}
 
-      {/* Step 3: Package (meals) Selector */}
-      {step === 3 && activeWeek && selectedPlan && (
+      {/* Step 3: Plan Selection */}
+      {step === 3 && activeWeek && (
+        <CustomerMealPlanSelector
+          activeWeek={activeWeek}
+          selectedPlan={selectedPlan}
+          onPlanSelect={handlePlanSelect}
+          disabled={loading}
+          orderItems={orderItems}
+        />
+      )}
+
+      {/* Step 4: Menu (meals) Selector */}
+      {step === 4 && activeWeek && selectedPlan && (
         <>
           {validationWarnings}
           <CustomerPackageSelector
@@ -965,8 +986,8 @@ export const CustomerOrder: React.FC = () => {
         </>
       )}
 
-      {/* Step 4: Resumen del Pedido */}
-      {step === 4 && (
+      {/* Step 5: Resumen del Pedido */}
+      {step === 5 && (
         <>
           {validationWarnings}
           <CustomerOrderSidePanel
@@ -1008,7 +1029,7 @@ export const CustomerOrder: React.FC = () => {
           {orderItems.length > 0 && (
             <button
               type="button"
-              onClick={() => goToStep(4)}
+              onClick={() => goToStep(5)}
               className="flex-1 min-w-0 flex items-center justify-center gap-2 sm:gap-3 text-gray-900"
             >
               <span className="flex items-center gap-1.5 text-xs sm:text-sm font-medium text-gray-600">
@@ -1019,7 +1040,7 @@ export const CustomerOrder: React.FC = () => {
             </button>
           )}
 
-          {step < 4 ? (
+          {step < 5 ? (
             <button
               type="button"
               onClick={handleContinue}
