@@ -26,6 +26,18 @@ const STEPS = [
   { id: 5, title: 'Facturación', icon: FileText },
 ];
 
+const COUNTRY_CODES = [
+  { code: '+52', label: 'México', flag: '🇲🇽' },
+  { code: '+1', label: 'USA', flag: '🇺🇸' },
+  { code: '+34', label: 'España', flag: '🇪🇸' },
+  { code: '+39', label: 'Italia', flag: '🇮🇹' },
+  { code: '+54', label: 'Argentina', flag: '🇦🇷' },
+  { code: '+55', label: 'Brasil', flag: '🇧🇷' },
+  { code: '+57', label: 'Colombia', flag: '🇨🇴' },
+  { code: '+507', label: 'Panamá', flag: '🇵🇦' },
+  { code: '+58', label: 'Venezuela', flag: '🇻🇪' },
+];
+
 export const CustomerSignup: React.FC = () => {
   const [currentStep, setCurrentStep] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -44,6 +56,7 @@ export const CustomerSignup: React.FC = () => {
     confirmPassword: '',
     first_name: '',
     last_name: '',
+    country_code: '+52',
     phone: '',
     street_address: '',
     address_number: '',
@@ -353,6 +366,10 @@ export const CustomerSignup: React.FC = () => {
           setError('Por favor completa todos los campos requeridos');
           return false;
         }
+        if (!/^\d{10}$/.test(formData.phone)) {
+          setError('El número de teléfono debe tener exactamente 10 dígitos.');
+          return false;
+        }
         return true;
 
       case 2:
@@ -409,7 +426,7 @@ export const CustomerSignup: React.FC = () => {
       const customerData: Partial<Customer> = {
         first_name: formData.first_name,
         last_name: formData.last_name,
-        phone: formData.phone,
+        phone: `${formData.country_code || '+52'} ${formData.phone}`,
         street_address: formData.street_address,
         address_number: formData.address_number,
         interior_number: formData.interior_number,
@@ -577,17 +594,35 @@ export const CustomerSignup: React.FC = () => {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Número de Teléfono *
               </label>
-              <div className="relative">
-                <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-                <input
-                  type="tel"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  required
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-base"
-                  placeholder="+52 123 456 7890"
-                />
+              <div className="flex gap-2">
+                <select
+                  value={formData.country_code || '+52'}
+                  onChange={(e) => setFormData({ ...formData, country_code: e.target.value })}
+                  className="shrink-0 px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-base bg-white"
+                  aria-label="Código de país"
+                >
+                  {COUNTRY_CODES.map((c) => (
+                    <option key={c.code} value={c.code}>
+                      {c.flag} {c.code}
+                    </option>
+                  ))}
+                </select>
+                <div className="relative flex-1">
+                  <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                  <input
+                    type="tel"
+                    inputMode="numeric"
+                    value={formData.phone}
+                    onChange={(e) =>
+                      setFormData({ ...formData, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })
+                    }
+                    required
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-base"
+                    placeholder="1234567890"
+                  />
+                </div>
               </div>
+              <p className="mt-1 text-xs text-gray-500">Ingresa 10 dígitos, sin espacios.</p>
             </div>
           </div>
         );
