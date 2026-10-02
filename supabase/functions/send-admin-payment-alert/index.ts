@@ -80,7 +80,7 @@ Deno.serve(async (req: Request) => {
     if (!mpRes.ok) return jsonResponse({ success: false, error: "Could not fetch payment" }, 502);
     const payment = await mpRes.json();
 
-    if (!["approved", "pending", "in_process", "authorized"].includes(payment.status)) {
+    if (payment.status !== "approved") {
       return jsonResponse({ success: true, skipped: "status_not_paid" });
     }
 

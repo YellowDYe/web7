@@ -209,7 +209,7 @@ Deno.serve(async (req: Request) => {
 
     if (!orderId) {
       console.warn(`Webhook: No order found for payment ${paymentId}`);
-      if (["approved", "pending", "in_process", "authorized"].includes(mpStatus)) {
+      if (mpStatus === "approved") {
         // Give the customer's browser time to register the order before alerting.
         const alertTask = (async () => {
           await new Promise((r) => setTimeout(r, 90_000));

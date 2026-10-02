@@ -400,7 +400,7 @@ class CustomerOrderSubmissionService {
         .select('*')
         .eq('meal_plans_id', planId)
         .lte('threshold', count)
-        .eq('discount_active', true)
+        .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
         .order('threshold', { ascending: false })
         .limit(1)
         .maybeSingle();

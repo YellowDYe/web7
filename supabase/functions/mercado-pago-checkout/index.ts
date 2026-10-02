@@ -364,7 +364,7 @@ async function handleCreatePreference(
       return jsonResponse({ error: "No se pudo calcular el total del pedido" }, 400);
     }
 
-    serverTotal = Math.round(Number(pricedTotal) * 100) / 100;
+    serverTotal = Math.round(Number(pricedTotal));
     if (!Number.isFinite(serverTotal) || serverTotal <= 0) {
       return jsonResponse({ error: "No se pudo calcular el total del pedido" }, 400);
     }
@@ -391,7 +391,7 @@ async function handleCreatePreference(
     });
   }
 
-  quotedTotal = Math.round(quotedTotal * 100) / 100;
+  quotedTotal = Math.round(quotedTotal);
 
   if (serverTotal !== null) {
     // Charge the server-computed amount; collapse the line items so the

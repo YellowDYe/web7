@@ -170,7 +170,7 @@ export const CustomerCheckout: React.FC = () => {
           .select('*')
           .eq('meal_plans_id', planId)
           .lte('threshold', count)
-          .eq('discount_active', true)
+          .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
           .order('threshold', { ascending: false })
           .limit(1)
           .maybeSingle();
@@ -320,7 +320,7 @@ export const CustomerCheckout: React.FC = () => {
       } else if (hasSnappedProtein) {
         const taxAmount = snappedProteinSubtotal * 0.16;
         const finalTotal = snappedProteinSubtotal + taxAmount;
-        const totalAmount = Math.round(finalTotal * 100) / 100;
+        const totalAmount = Math.round(finalTotal);
 
         const { data: orderRow } = await supabase
           .from('orders')
@@ -596,7 +596,7 @@ export const CustomerCheckout: React.FC = () => {
         let subtotalBase = itemsTotal + proteinSubtotal;
         const subtotalAfterDiscount = subtotalBase - totalPlanDiscount + deliveryPrice - couponDiscount;
         const taxAmount = subtotalAfterDiscount * 0.16;
-        totalAmount = Math.round((subtotalAfterDiscount + taxAmount) * 100) / 100;
+        totalAmount = Math.round(subtotalAfterDiscount + taxAmount);
 
         // If there are discounts, adjust items so MP total matches our total
         // We send one consolidated item with the final pre-tax amount and a tax line
@@ -623,7 +623,7 @@ export const CustomerCheckout: React.FC = () => {
           });
         }
         const taxAmount = proteinSubtotal * 0.16;
-        totalAmount = Math.round((proteinSubtotal + taxAmount) * 100) / 100;
+        totalAmount = Math.round(proteinSubtotal + taxAmount);
         // Consolidate with tax for MP
         mpItems.length = 0;
         mpItems.push({
