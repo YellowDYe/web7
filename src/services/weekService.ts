@@ -1,6 +1,25 @@
 import { supabase } from '../config/supabase';
 import { CreateWeekData } from '../types/week';
-import { getCurrentMexicoDateString } from '../utils/timezone';
+import { getCurrentMexicoDateString, getMexicoDate } from '../utils/timezone';
+
+export interface OrderCutoff {
+  cutoff_day: number;
+  cutoff_hour: number;
+}
+
+const DEFAULT_CUTOFF: OrderCutoff = { cutoff_day: 6, cutoff_hour: 11 };
+
+// Cut-off moment (Mexico City wall-clock) for a delivery date: the last cutoff_day at cutoff_hour strictly before it.
+export function getCutoffForDeliveryDate(weekDate: string, cutoff: OrderCutoff): Date {
+  const [year, month, day] = weekDate.split('-').map(Number);
+  const delivery = new Date(year, month - 1, day);
+  const daysBack = ((delivery.getDay() - cutoff.cutoff_day + 7) % 7) || 7;
+  return new Date(year, month - 1, day - daysBack, cutoff.cutoff_hour, 0, 0, 0);
+}
+
+export function isWeekStillOrderable(weekDate: string, cutoff: OrderCutoff): boolean {
+  return getMexicoDate() < getCutoffForDeliveryDate(weekDate, cutoff);
+}
 
 export interface Week {
   id: string;
@@ -203,8 +222,17 @@ export class WeekService {
   }
 
   // Get upcoming weeks for customer orders
+  async getOrderCutoff(): Promise<OrderCutoff> {
+    const { data, error } = await supabase.rpc('get_order_cutoff');
+    if (error || !data || typeof data.cutoff_day !== 'number' || typeof data.cutoff_hour !== 'number') {
+      return DEFAULT_CUTOFF;
+    }
+    return { cutoff_day: data.cutoff_day, cutoff_hour: data.cutoff_hour };
+  }
+
   async getUpcomingWeeks(limit: number = 4): Promise<any[]> {
     const today = getCurrentMexicoDateString();
+    const cutoff = await this.getOrderCutoff();
 
     const { data, error } = await supabase
       .from('weeks')
@@ -217,13 +245,16 @@ export class WeekService {
       `)
       .gte('week_date', today)
       .order('week_date', { ascending: true })
-      .limit(limit);
+      .limit(limit + 2);
 
     if (error) {
       throw new Error(`Error fetching upcoming weeks: ${error.message}`);
     }
 
-    return (data || []).map(week => ({
+    return (data || [])
+      .filter(week => week.week_date && isWeekStillOrderable(week.week_date, cutoff))
+      .slice(0, limit)
+      .map(week => ({
       ...week,
       menu_name: week.weekly_menus?.menu_name || 'Sin menú',
       menu_id: week.weekly_menus?.menu_id || null

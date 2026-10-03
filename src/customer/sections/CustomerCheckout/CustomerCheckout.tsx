@@ -11,6 +11,7 @@ import { BILLABLE_MEAL_TYPES } from '../../../types/orderMenu';
 import { calculatePriceBreakdown } from '../../../utils/priceCalculations';
 import { supabase } from '../../../config/supabase';
 import { friendlyError } from '../../utils/friendlyError';
+import { weekService, isWeekStillOrderable } from '../../../services/weekService';
 
 
 declare global {
@@ -541,6 +542,18 @@ export const CustomerCheckout: React.FC = () => {
   const handleProceedToPayment = async () => {
     if (!customer) { setSubmitError('Informacion del cliente incompleta'); return; }
     if (!cart && !hasProteinItems) { setSubmitError('El carrito esta vacio'); return; }
+
+    if (cart && cart.orderItems.length > 0 && cart.selectedWeeks?.length) {
+      const cutoff = await weekService.getOrderCutoff();
+      const closedWeek = cart.selectedWeeks.find(w => {
+        const baseDate = w.original_week_date ?? w.week.week_date;
+        return baseDate && !isWeekStillOrderable(baseDate, cutoff);
+      });
+      if (closedWeek) {
+        setSubmitError(`El horario para pedir la entrega de ${closedWeek.week.week_name} ya cerro. Regresa a tu pedido y vuelve a elegir la duracion de tu plan para ver las siguientes semanas disponibles.`);
+        return;
+      }
+    }
 
     try {
       setSubmitting(true);
