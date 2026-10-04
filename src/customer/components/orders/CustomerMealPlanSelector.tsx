@@ -146,14 +146,6 @@ const CustomerMealPlanSelector: React.FC<CustomerMealPlanSelectorProps> = ({
         })}
         </div>
       )}
-
-      {selectedPlan && (
-        <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-xl">
-          <p className="text-sm text-green-800">
-            Plan seleccionado: <strong>{selectedPlan.meal_plans_name}</strong>
-          </p>
-        </div>
-      )}
     </div>
   );
 };
