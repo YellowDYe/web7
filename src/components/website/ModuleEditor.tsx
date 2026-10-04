@@ -5,6 +5,8 @@ import { Button } from '../ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Save, Plus, Trash2, Image, X, CircleCheck as CheckCircle, CircleAlert as AlertCircle } from 'lucide-react';
 import { ContentFieldRenderer } from './ContentFieldRenderer';
+import { OrderPageContentEditor } from './OrderPageContentEditor';
+import { ORDER_PAGE_DEFAULT_CONTENT } from '../../customer/sections/CustomerOrder/orderPageContent';
 
 export const ModuleEditor: React.FC = () => {
   const [pages, setPages] = useState<Page[]>([]);
@@ -63,7 +65,7 @@ export const ModuleEditor: React.FC = () => {
 
   const systemModuleTypes = systemModuleTypesList.map(t => t.value);
 
-  const configurableSystemModules = ['WeeklyMenu', 'BlogGrid', 'Objectives', 'FAQ', 'TitleBlock'];
+  const configurableSystemModules = ['WeeklyMenu', 'BlogGrid', 'Objectives', 'FAQ', 'TitleBlock', 'CustomerOrder'];
 
   useEffect(() => {
     loadPages();
@@ -557,7 +559,7 @@ export const ModuleEditor: React.FC = () => {
           isSystemModule: true
         };
       } else if (type === 'CustomerOrder') {
-        defaultContent = { isSystemModule: true };
+        defaultContent = { isSystemModule: true, ...ORDER_PAGE_DEFAULT_CONTENT };
       } else if (type === 'CustomerCart') {
         defaultContent = { isSystemModule: true };
       } else if (type === 'CustomerCheckout') {
@@ -753,6 +755,10 @@ export const ModuleEditor: React.FC = () => {
 
     if (selectedModule.type === 'WeeklyMenu') {
       return renderWeeklyMenuEditor();
+    }
+
+    if (selectedModule.type === 'CustomerOrder') {
+      return <OrderPageContentEditor content={editingContent} onContentChange={handleContentChange} />;
     }
 
     return (

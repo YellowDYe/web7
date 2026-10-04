@@ -1,33 +1,24 @@
 import React from 'react';
 import { Calendar, Check } from 'lucide-react';
+import { ORDER_PAGE_DEFAULT_TEXTS, type OrderPageTexts } from '../../sections/CustomerOrder/orderPageContent';
 
 interface PlanDurationSelectorProps {
   selectedDuration: 1 | 2 | 4 | null;
   onDurationSelect: (duration: 1 | 2 | 4) => void;
   disabled?: boolean;
+  texts?: OrderPageTexts;
 }
 
 const PlanDurationSelector: React.FC<PlanDurationSelectorProps> = ({
   selectedDuration,
   onDurationSelect,
-  disabled = false
+  disabled = false,
+  texts = ORDER_PAGE_DEFAULT_TEXTS
 }) => {
   const durations = [
-    {
-      value: 1 as const,
-      label: '1 Semana',
-      description: 'Plan semanal'
-    },
-    {
-      value: 2 as const,
-      label: '2 Semanas',
-      description: 'Plan quincenal'
-    },
-    {
-      value: 4 as const,
-      label: '4 Semanas',
-      description: 'Plan mensual'
-    }
+    { value: 1 as const, label: texts.duration1Label, description: texts.duration1Description },
+    { value: 2 as const, label: texts.duration2Label, description: texts.duration2Description },
+    { value: 4 as const, label: texts.duration4Label, description: texts.duration4Description }
   ];
 
   return (
@@ -37,8 +28,8 @@ const PlanDurationSelector: React.FC<PlanDurationSelectorProps> = ({
           <Calendar className="w-5 h-5 text-blue-600" />
         </div>
         <div>
-          <h2 className="text-xl font-semibold text-gray-900">Duración del Plan</h2>
-          <p className="text-sm text-gray-600">Selecciona cuántas semanas deseas ordenar</p>
+          <h2 className="text-xl font-semibold text-gray-900">{texts.durationTitle}</h2>
+          <p className="text-sm text-gray-600">{texts.durationSubtitle}</p>
         </div>
       </div>
 
@@ -75,7 +66,7 @@ const PlanDurationSelector: React.FC<PlanDurationSelectorProps> = ({
         <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
           <p className="text-sm text-blue-800">
             Has seleccionado un plan de <strong>{selectedDuration} {selectedDuration === 1 ? 'semana' : 'semanas'}</strong>.
-            Las semanas disponibles se seleccionarán automáticamente.
+            {' '}{texts.durationNote}
           </p>
         </div>
       )}

@@ -28,8 +28,14 @@ import CustomerFamilyMemberSelector from '../../components/orders/CustomerFamily
 import { FamilyMember } from '../../../types/familyMember';
 import { isCustomerFirstOrder } from '../../services/customerOrderService';
 import { friendlyError } from '../../utils/friendlyError';
+import { resolveOrderPageContent } from './orderPageContent';
 
-export const CustomerOrder: React.FC = () => {
+interface CustomerOrderProps {
+  content?: unknown;
+}
+
+export const CustomerOrder: React.FC<CustomerOrderProps> = ({ content }) => {
+  const texts = resolveOrderPageContent(content);
   const navigate = useNavigate();
   const { customer } = useCustomerAuth();
   const { cart, addToCart } = useCart();
@@ -672,11 +678,11 @@ export const CustomerOrder: React.FC = () => {
     : 0;
 
   const steps = [
-    { num: 1, label: 'Duración' },
-    { num: 2, label: 'Semana' },
-    { num: 3, label: 'Plan' },
-    { num: 4, label: 'Menú' },
-    { num: 5, label: 'Resumen' }
+    { num: 1, label: texts.stepLabelDuration },
+    { num: 2, label: texts.stepLabelWeek },
+    { num: 3, label: texts.stepLabelPlan },
+    { num: 4, label: texts.stepLabelMenu },
+    { num: 5, label: texts.stepLabelSummary }
   ];
 
   const formatDeliveryDate = (dateStr?: string | null): string => {
@@ -733,8 +739,8 @@ export const CustomerOrder: React.FC = () => {
 
   const continueLabel =
     step === 4
-      ? (incompleteWeeks.some(w => w.tempId !== activeWeek?.tempId) ? 'Siguiente semana' : 'Ver resumen')
-      : 'Continuar';
+      ? (incompleteWeeks.some(w => w.tempId !== activeWeek?.tempId) ? texts.nextWeekButton : texts.viewSummaryButton)
+      : texts.continueButton;
 
   // Running total for the floating summary bar
   const floatingItemsTotal = orderItems.reduce((total, item) => (
@@ -759,16 +765,16 @@ export const CustomerOrder: React.FC = () => {
 
   const validationWarnings = orderItems.length > 0 && !orderValidation.isValid ? (
     <>
-      {orderValidation.incompleteWeeks.length > 0 && (
+      {texts.showMinMealsNotice && orderValidation.incompleteWeeks.length > 0 && (
         <div className="mb-6 bg-orange-50 border border-orange-200 rounded-xl p-4">
           <div className="flex items-start space-x-3">
             <AlertCircle className="w-5 h-5 text-orange-600 mt-0.5 flex-shrink-0" />
             <div>
               <h3 className="text-sm font-semibold text-orange-800 mb-2">
-                Completa el mínimo de comidas por semana
+                {texts.minMealsTitle}
               </h3>
               <p className="text-sm text-orange-700 mb-2">
-                Cada semana debe tener al menos 3 comidas principales (Desayuno, Comida o Cena). Las colaciones no cuentan para el mínimo.
+                {texts.minMealsDescription}
               </p>
               <ul className="text-sm text-orange-700 space-y-1">
                 {orderValidation.incompleteWeeks.map((week, index) => (
@@ -785,16 +791,16 @@ export const CustomerOrder: React.FC = () => {
         </div>
       )}
 
-      {orderValidation.weeksNeedingColaciones.length > 0 && (
+      {texts.showColacionesNotice && orderValidation.weeksNeedingColaciones.length > 0 && (
         <div className="mb-6 bg-blue-50 border border-blue-200 rounded-xl p-4">
           <div className="flex items-start space-x-3">
             <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
             <div>
               <h3 className="text-sm font-semibold text-blue-800 mb-2">
-                Completa las colaciones requeridas
+                {texts.colacionesTitle}
               </h3>
               <p className="text-sm text-blue-700 mb-2">
-                Los planes Fitness y Balance incluyen colaciones. Debes seleccionar el número requerido según tus comidas principales.
+                {texts.colacionesDescription}
               </p>
               <ul className="text-sm text-blue-700 space-y-1">
                 {orderValidation.weeksNeedingColaciones.map((week, index) => (
@@ -815,11 +821,6 @@ export const CustomerOrder: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-28 lg:pb-8">
-      <div className="text-center mb-4 sm:mb-8">
-        <h1 className="text-xl sm:text-4xl font-bold text-gray-900 mb-0.5 sm:mb-2">Crear Pedido</h1>
-        <p className="text-sm sm:text-lg text-gray-600">Selecciona tus comidas favoritas</p>
-      </div>
-
       {/* Error Message */}
       {error && (
         <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl flex items-center space-x-2">
@@ -867,6 +868,7 @@ export const CustomerOrder: React.FC = () => {
           selectedDuration={planDuration}
           onDurationSelect={handleDurationSelect}
           disabled={loading}
+          texts={texts}
         />
       )}
 
@@ -886,6 +888,7 @@ export const CustomerOrder: React.FC = () => {
               onToggleMondayDelivery={handleToggleMondayDelivery}
               deliveryOption={selectedDeliveryOption}
               orderItems={orderItems}
+              texts={texts}
             />
           )}
 
@@ -896,14 +899,15 @@ export const CustomerOrder: React.FC = () => {
               selectedFamilyMemberId={selectedFamilyMemberId}
               onFamilyMemberSelect={handleFamilyMemberSelect}
               disabled={loading}
+              texts={texts}
             />
           )}
 
-          {activeWeek && (
+          {texts.showNextStepNotice && activeWeek && (
             <div className="mt-6 bg-red-50 border border-red-200 rounded-xl p-4 flex items-start space-x-3">
               <Calendar className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
               <p className="text-sm text-red-800">
-                El siguiente paso es seleccionar un plan para la semana con entrega el{' '}
+                {texts.nextStepNotice}{' '}
                 <strong>{formatDeliveryDate(activeWeek.week.week_date)}</strong>.
               </p>
             </div>
@@ -919,6 +923,7 @@ export const CustomerOrder: React.FC = () => {
           onPlanSelect={handlePlanSelect}
           disabled={loading}
           orderItems={orderItems}
+          texts={texts}
         />
       )}
 
@@ -941,6 +946,7 @@ export const CustomerOrder: React.FC = () => {
             onConfirmPackage={handleConfirmPackage}
             onRemovePackageMealType={handleRemovePackageMealType}
             disabled={loading}
+            texts={texts}
           />
         </>
       )}
@@ -965,6 +971,7 @@ export const CustomerOrder: React.FC = () => {
             canAddToCart={!!canAddToCart}
             isLoggedIn={!!customer}
             selectedWeekNames={selectedWeekNames}
+            texts={texts}
           />
         </>
       )}
@@ -979,7 +986,7 @@ export const CustomerOrder: React.FC = () => {
               className="inline-flex items-center gap-1.5 px-4 sm:px-5 py-3 rounded-xl border border-gray-300 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-colors active:scale-95 flex-shrink-0"
             >
               <ChevronLeft className="w-4 h-4" />
-              <span className="hidden sm:inline">Atrás</span>
+              <span className="hidden sm:inline">{texts.backButton}</span>
             </button>
           ) : (
             <div className="flex-shrink-0" />

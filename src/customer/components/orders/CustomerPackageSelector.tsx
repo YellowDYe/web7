@@ -5,6 +5,7 @@ import { MealPlan } from '../../../types/mealPlan';
 import { PendingOrderItem, BILLABLE_MEAL_TYPES } from '../../../types/orderMenu';
 import { DAYS_OF_WEEK, buildRecipeColumn } from '../../../types/mealTypes';
 import { supabase } from '../../../config/supabase';
+import { ORDER_PAGE_DEFAULT_TEXTS, type OrderPageTexts } from '../../sections/CustomerOrder/orderPageContent';
 
 interface CardQuantity {
   desayuno: number;
@@ -49,6 +50,7 @@ interface CustomerPackageSelectorProps {
   onConfirmPackage: (items: PendingOrderItem[], pendingIds: string[]) => void;
   onRemovePackageMealType: (mealType: string, planId: string, weekName: string) => void;
   disabled?: boolean;
+  texts?: OrderPageTexts;
 }
 
 const MIN_QUANTITY = 0;
@@ -62,7 +64,7 @@ const MEAL_CATEGORIES = [
     mealType: 'Desayuno' as const,
     icon: Sun,
     color: 'amber' as const,
-    description: 'Empieza el día con energía',
+    descriptionKey: 'breakfastDescription' as const,
   },
   {
     key: 'comida' as const,
@@ -71,7 +73,7 @@ const MEAL_CATEGORIES = [
     mealType: 'Comida' as const,
     icon: Soup,
     color: 'emerald' as const,
-    description: 'El plato fuerte del día',
+    descriptionKey: 'lunchDescription' as const,
   },
   {
     key: 'cena' as const,
@@ -80,7 +82,7 @@ const MEAL_CATEGORIES = [
     mealType: 'Cena' as const,
     icon: Coffee,
     color: 'blue' as const,
-    description: 'Cierra el día bien nutrido',
+    descriptionKey: 'dinnerDescription' as const,
   },
 ];
 
@@ -157,6 +159,7 @@ const CustomerPackageSelector: React.FC<CustomerPackageSelectorProps> = ({
   onConfirmPackage,
   onRemovePackageMealType,
   disabled = false,
+  texts = ORDER_PAGE_DEFAULT_TEXTS,
 }) => {
   const [quantities, setQuantities] = useState<CardQuantity>({
     desayuno: DEFAULT_QUANTITY,
@@ -607,7 +610,7 @@ const CustomerPackageSelector: React.FC<CustomerPackageSelectorProps> = ({
             <Package className="w-5 h-5 text-red-600" />
           </div>
           <div>
-            <h2 className="text-xl font-semibold text-gray-900">Selecciona tu Menú</h2>
+            <h2 className="text-xl font-semibold text-gray-900">{texts.menuTitle}</h2>
             <p className="text-sm text-gray-600">
               Entrega el <span className="font-medium text-gray-900">{deliveryDateLabel}</span>
               {' · '}
@@ -768,7 +771,7 @@ const CustomerPackageSelector: React.FC<CustomerPackageSelectorProps> = ({
                 </div>
 
                 <h3 className="text-lg font-bold text-gray-900">{category.label}</h3>
-                <p className="text-sm text-gray-500 mt-0.5 mb-3">{category.description}</p>
+                <p className="text-sm text-gray-500 mt-0.5 mb-3">{texts[category.descriptionKey]}</p>
 
                 {/* Dish list from weekly menu */}
                 {dishes.length > 0 && (

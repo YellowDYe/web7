@@ -4,6 +4,7 @@ import { SelectedWeek } from '../../../types/week';
 import { DeliveryOption } from '../../../types/deliveryOption';
 import { PendingOrderItem } from '../../../types/orderMenu';
 import { getTotalMealCountForWeek } from '../../../utils/orderValidation';
+import { ORDER_PAGE_DEFAULT_CONTENT, type OrderPageContent } from '../../sections/CustomerOrder/orderPageContent';
 
 interface CustomerWeekSelectorProps {
   selectedWeeks: SelectedWeek[];
@@ -12,6 +13,7 @@ interface CustomerWeekSelectorProps {
   onToggleMondayDelivery: (weekTempId: string) => void;
   deliveryOption: DeliveryOption | null;
   orderItems?: PendingOrderItem[];
+  texts?: OrderPageContent;
 }
 
 const CustomerWeekSelector: React.FC<CustomerWeekSelectorProps> = ({
@@ -20,7 +22,8 @@ const CustomerWeekSelector: React.FC<CustomerWeekSelectorProps> = ({
   onWeekSelect,
   onToggleMondayDelivery,
   deliveryOption,
-  orderItems = []
+  orderItems = [],
+  texts = ORDER_PAGE_DEFAULT_CONTENT
 }) => {
   const formatDate = (dateString: string) => {
     const [year, month, day] = dateString.split('-').map(Number);
@@ -58,8 +61,8 @@ const CustomerWeekSelector: React.FC<CustomerWeekSelectorProps> = ({
             <Calendar className="w-5 h-5 text-green-600" />
           </div>
           <div className="min-w-0">
-            <h2 className="text-xl font-semibold text-gray-900">Semanas Seleccionadas</h2>
-            <p className="text-sm text-gray-600">Haz clic en una semana para ver el menú</p>
+            <h2 className="text-xl font-semibold text-gray-900">{texts.weeksTitle}</h2>
+            <p className="text-sm text-gray-600">{texts.weeksSubtitle}</p>
           </div>
         </div>
 
@@ -116,7 +119,7 @@ const CustomerWeekSelector: React.FC<CustomerWeekSelectorProps> = ({
                   <div className="flex items-center space-x-2 mb-1">
                     <Truck className={`w-4 h-4 ${isMonday ? 'text-blue-600' : 'text-green-600'}`} />
                     <span className={`text-xs font-medium ${isMonday ? 'text-blue-600' : 'text-green-600'}`}>
-                      Fecha de entrega
+                      {texts.deliveryDateLabel}
                     </span>
                   </div>
                   <p className={`text-base font-semibold capitalize ${isMonday ? 'text-blue-900' : 'text-gray-900'}`}>
@@ -124,10 +127,11 @@ const CustomerWeekSelector: React.FC<CustomerWeekSelectorProps> = ({
                   </p>
                   <p className={`text-xs mt-1 ${isMonday ? 'text-blue-600' : 'text-gray-500'}`}>
                     {isMonday
-                      ? 'Entregas en lunes a partir de las 10:00 AM'
-                      : 'Entregas de 6:30 a 9:30 PM del domingo'}
+                      ? texts.mondayDeliveryHours
+                      : texts.sundayDeliveryHours}
                   </p>
 
+                  {(texts.showMondayDelivery || isMonday) && (
                   <span
                     role="button"
                     tabIndex={0}
@@ -145,9 +149,10 @@ const CustomerWeekSelector: React.FC<CustomerWeekSelectorProps> = ({
                     className="inline-block mt-2 text-xs text-gray-400 hover:text-gray-600 underline underline-offset-2 cursor-pointer transition-colors"
                   >
                     {isMonday
-                      ? 'Cambiar a entrega en domingo'
-                      : 'Solicitar entrega en lunes'}
+                      ? texts.switchToSundayLabel
+                      : texts.switchToMondayLabel}
                   </span>
+                  )}
                 </div>
               ) : (
                 <p className="text-sm text-gray-400">Sin fecha de entrega</p>

@@ -10,6 +10,7 @@ import { calculatePriceBreakdown } from '../../../utils/priceCalculations';
 import { getBillableMealCountForWeek, getTotalMealCountForWeek } from '../../../utils/orderValidation';
 import { getValidationMessage } from '../../../utils/orderValidation';
 import { validateOrderWeeks } from '../../../utils/orderValidation';
+import { ORDER_PAGE_DEFAULT_TEXTS, type OrderPageTexts } from '../../sections/CustomerOrder/orderPageContent';
 
 interface CustomerOrderSidePanelProps {
   orderItems: PendingOrderItem[];
@@ -27,6 +28,7 @@ interface CustomerOrderSidePanelProps {
   canAddToCart: boolean;
   isLoggedIn: boolean;
   selectedWeekNames?: string[];
+  texts?: OrderPageTexts;
 }
 
 const formatCurrency = (amount: number): string =>
@@ -48,6 +50,7 @@ const CustomerOrderSidePanel: React.FC<CustomerOrderSidePanelProps> = ({
   canAddToCart,
   isLoggedIn,
   selectedWeekNames = [],
+  texts = ORDER_PAGE_DEFAULT_TEXTS,
 }) => {
   const [confirmClear, setConfirmClear] = useState(false);
   const [expandedWeeks, setExpandedWeeks] = useState<Record<string, boolean>>({});
@@ -113,7 +116,7 @@ const CustomerOrderSidePanel: React.FC<CustomerOrderSidePanelProps> = ({
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2 min-w-0">
             <Receipt className="w-5 h-5 text-white flex-shrink-0" />
-            <h2 className="text-base font-semibold text-white truncate">Resumen del Pedido</h2>
+            <h2 className="text-base font-semibold text-white truncate">{texts.summaryTitle}</h2>
           </div>
           <div className="flex items-center space-x-2.5 flex-shrink-0">
             <span className="text-sm font-medium text-gray-300 whitespace-nowrap">
@@ -401,14 +404,14 @@ const CustomerOrderSidePanel: React.FC<CustomerOrderSidePanelProps> = ({
                 : !orderValidation.isValid
                   ? getValidationMessage(orderValidation.incompleteWeeks)
                   : !selectedDeliveryOption
-                    ? 'Selecciona una opción de entrega para continuar'
+                    ? texts.deliveryOptionRequired
                     : ''}
             </p>
           )}
           {!isLoggedIn && (
             <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-xl text-center">
               <p className="text-sm text-amber-800 font-medium mb-2">
-                Inicia sesion para agregar al carrito
+                {texts.loginPrompt}
               </p>
               <div className="flex gap-2">
                 <Link
@@ -416,13 +419,13 @@ const CustomerOrderSidePanel: React.FC<CustomerOrderSidePanelProps> = ({
                   className="flex-1 inline-flex items-center justify-center gap-1.5 bg-red-500 hover:bg-red-600 text-white text-xs font-semibold py-2 px-3 rounded-lg transition-colors"
                 >
                   <LogIn className="w-3.5 h-3.5" />
-                  Iniciar Sesion
+                  {texts.loginButton}
                 </Link>
                 <Link
                   to="/signup?returnTo=/order"
                   className="flex-1 inline-flex items-center justify-center gap-1.5 border border-red-500 text-red-500 hover:bg-red-50 text-xs font-semibold py-2 px-3 rounded-lg transition-colors"
                 >
-                  Crear Cuenta
+                  {texts.signupButton}
                 </Link>
               </div>
             </div>

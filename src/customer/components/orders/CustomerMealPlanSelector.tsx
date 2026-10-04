@@ -4,6 +4,7 @@ import { SelectedWeek } from '../../../types/week';
 import { MealPlan } from '../../../types/mealPlan';
 import { PendingOrderItem, BILLABLE_MEAL_TYPES } from '../../../types/orderMenu';
 import { mealPlanService } from '../../../services/mealPlanService';
+import { ORDER_PAGE_DEFAULT_TEXTS, type OrderPageTexts } from '../../sections/CustomerOrder/orderPageContent';
 
 interface CustomerMealPlanSelectorProps {
   activeWeek: SelectedWeek;
@@ -11,6 +12,7 @@ interface CustomerMealPlanSelectorProps {
   onPlanSelect: (plan: MealPlan | null) => void;
   disabled?: boolean;
   orderItems?: PendingOrderItem[];
+  texts?: OrderPageTexts;
 }
 
 const CustomerMealPlanSelector: React.FC<CustomerMealPlanSelectorProps> = ({
@@ -18,7 +20,8 @@ const CustomerMealPlanSelector: React.FC<CustomerMealPlanSelectorProps> = ({
   selectedPlan,
   onPlanSelect,
   disabled = false,
-  orderItems = []
+  orderItems = [],
+  texts = ORDER_PAGE_DEFAULT_TEXTS
 }) => {
   const [mealPlans, setMealPlans] = useState<MealPlan[]>([]);
   const [loading, setLoading] = useState(false);
@@ -60,7 +63,7 @@ const CustomerMealPlanSelector: React.FC<CustomerMealPlanSelectorProps> = ({
           <Utensils className="w-5 h-5 text-orange-600" />
         </div>
         <div>
-          <h2 className="text-xl font-semibold text-gray-900">Selecciona tu Plan</h2>
+          <h2 className="text-xl font-semibold text-gray-900">{texts.planTitle}</h2>
           <p className="text-sm text-gray-600">
             Para la semana: <span className="font-medium text-gray-900">{activeWeek.week.week_name}</span>
           </p>
@@ -123,7 +126,7 @@ const CustomerMealPlanSelector: React.FC<CustomerMealPlanSelectorProps> = ({
 
                 <div className="mt-4">
                   <p className="text-sm text-gray-600">
-                    Selecciona tus comidas favoritas del menú semanal
+                    {texts.planCardHint}
                   </p>
                 </div>
               </div>

@@ -4,6 +4,7 @@ import { FamilyMember } from '../../../types/familyMember';
 import { familyMemberService } from '../../../services/familyMemberService';
 import { supabase } from '../../../config/supabase';
 import { friendlyError } from '../../utils/friendlyError';
+import { ORDER_PAGE_DEFAULT_TEXTS, type OrderPageTexts } from '../../sections/CustomerOrder/orderPageContent';
 
 interface CustomerFamilyMemberSelectorProps {
   customerId: string;
@@ -11,6 +12,7 @@ interface CustomerFamilyMemberSelectorProps {
   selectedFamilyMemberId: string | null;
   onFamilyMemberSelect: (familyMemberId: string | null, member: FamilyMember | null) => void;
   disabled?: boolean;
+  texts?: OrderPageTexts;
 }
 
 const CustomerFamilyMemberSelector: React.FC<CustomerFamilyMemberSelectorProps> = ({
@@ -18,7 +20,8 @@ const CustomerFamilyMemberSelector: React.FC<CustomerFamilyMemberSelectorProps> 
   customerName,
   selectedFamilyMemberId,
   onFamilyMemberSelect,
-  disabled = false
+  disabled = false,
+  texts = ORDER_PAGE_DEFAULT_TEXTS
 }) => {
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
   const [loading, setLoading] = useState(false);
@@ -111,8 +114,8 @@ const CustomerFamilyMemberSelector: React.FC<CustomerFamilyMemberSelectorProps> 
           <Users className="w-5 h-5 text-purple-600" />
         </div>
         <div>
-          <h2 className="text-xl font-semibold text-gray-900">¿Para quién es este pedido?</h2>
-          <p className="text-sm text-gray-600">Selecciona el miembro de la familia</p>
+          <h2 className="text-xl font-semibold text-gray-900">{texts.familyTitle}</h2>
+          <p className="text-sm text-gray-600">{texts.familySubtitle}</p>
         </div>
       </div>
 
@@ -235,7 +238,7 @@ const CustomerFamilyMemberSelector: React.FC<CustomerFamilyMemberSelectorProps> 
                     ))}
                   </div>
                   <p className="text-xs text-orange-700 mt-2">
-                    El menú se filtrará automáticamente según estas restricciones
+                    {texts.familyRestrictionsNote}
                   </p>
                 </div>
               </div>

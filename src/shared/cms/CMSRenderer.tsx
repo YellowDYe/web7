@@ -84,7 +84,7 @@ export const CMSRenderer: React.FC<CMSRendererProps> = ({ modules, basePath = ''
       case 'CustomerProfile':
         return <CustomerProfile key={module.id} />;
       case 'CustomerOrder':
-        return <CustomerOrder key={module.id} />;
+        return <CustomerOrder key={module.id} content={content} />;
       case 'CustomerCart':
         return <CustomerCart key={module.id} />;
       case 'CustomerCheckout':
