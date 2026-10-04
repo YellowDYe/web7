@@ -16,7 +16,7 @@ export const OrderPageContentEditor: React.FC<OrderPageContentEditorProps> = ({ 
   return (
     <div className="space-y-3">
       <p className="text-xs text-gray-500">
-        Si dejas un campo vacío, se mostrará el texto original.
+        Si dejas un campo vacío, ese texto no se mostrará en la página. Los nombres de los pasos y los botones siempre conservan su texto original si se dejan vacíos.
       </p>
       {ORDER_PAGE_EDITOR_SECTIONS.map((section, index) => {
         const isOpen = openSection === index;

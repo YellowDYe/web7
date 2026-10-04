@@ -7,7 +7,6 @@ import { DeliveryOption } from '../../../types/deliveryOption';
 import { Coupon } from '../../../types/coupon';
 import { DiscountWithAmount } from '../../../components/orders/OrderSummary';
 import { calculatePriceBreakdown } from '../../../utils/priceCalculations';
-import { getBillableMealCountForWeek, getTotalMealCountForWeek } from '../../../utils/orderValidation';
 import { getValidationMessage } from '../../../utils/orderValidation';
 import { validateOrderWeeks } from '../../../utils/orderValidation';
 import { ORDER_PAGE_DEFAULT_TEXTS, type OrderPageTexts } from '../../sections/CustomerOrder/orderPageContent';
@@ -28,6 +27,7 @@ interface CustomerOrderSidePanelProps {
   canAddToCart: boolean;
   isLoggedIn: boolean;
   selectedWeekNames?: string[];
+  weekLabels?: Record<string, string>;
   texts?: OrderPageTexts;
 }
 
@@ -50,6 +50,7 @@ const CustomerOrderSidePanel: React.FC<CustomerOrderSidePanelProps> = ({
   canAddToCart,
   isLoggedIn,
   selectedWeekNames = [],
+  weekLabels = {},
   texts = ORDER_PAGE_DEFAULT_TEXTS,
 }) => {
   const [confirmClear, setConfirmClear] = useState(false);
@@ -112,11 +113,11 @@ const CustomerOrderSidePanel: React.FC<CustomerOrderSidePanelProps> = ({
   return (
     <div className="bg-white rounded-2xl shadow-lg overflow-hidden flex flex-col">
       {/* Header - static title bar with meal count and total */}
-      <div className="bg-gradient-to-r from-gray-900 to-gray-700 px-5 py-4 flex-shrink-0 w-full">
-        <div className="flex items-center justify-between">
+      <div className="bg-gradient-to-r from-gray-900 to-gray-700 px-4 sm:px-5 py-4 flex-shrink-0 w-full">
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
           <div className="flex items-center space-x-2 min-w-0">
             <Receipt className="w-5 h-5 text-white flex-shrink-0" />
-            <h2 className="text-base font-semibold text-white truncate">{texts.summaryTitle}</h2>
+            {texts.summaryTitle && <h2 className="text-base font-semibold text-white truncate">{texts.summaryTitle}</h2>}
           </div>
           <div className="flex items-center space-x-2.5 flex-shrink-0">
             <span className="text-sm font-medium text-gray-300 whitespace-nowrap">
@@ -153,7 +154,7 @@ const CustomerOrderSidePanel: React.FC<CustomerOrderSidePanelProps> = ({
 
       {/* Detail section - always visible */}
       <div>
-        <div className="p-5 space-y-5">
+        <div className="p-4 sm:p-5 space-y-5">
           {/* Clear button */}
           {!loading && (
             <div className="flex justify-end">
@@ -171,8 +172,6 @@ const CustomerOrderSidePanel: React.FC<CustomerOrderSidePanelProps> = ({
           {/* Items by Week */}
           <div className="space-y-4">
             {Object.entries(itemsByWeek).map(([weekName, items]) => {
-              const billableCount = getBillableMealCountForWeek(orderItems, weekName);
-              const totalCount = getTotalMealCountForWeek(orderItems, weekName);
               const isWeekOpen = !!expandedWeeks[weekName];
 
               const planNames = Array.from(
@@ -192,14 +191,10 @@ const CustomerOrderSidePanel: React.FC<CustomerOrderSidePanelProps> = ({
 
               return (
                 <div key={weekName} className="border border-gray-200 rounded-xl overflow-hidden">
-                  <div className="bg-gray-50 px-3 py-2 border-b border-gray-200 flex items-center justify-between">
-                    <div className="flex items-center space-x-1.5">
-                      <Package className="w-3.5 h-3.5 text-gray-500" />
-                      <span className="text-xs font-semibold text-gray-700">{weekName}</span>
-                    </div>
-                    <span className="text-xs text-gray-500">
-                      {billableCount} comida{billableCount !== 1 ? 's' : ''}
-                      {totalCount > billableCount && ` + ${totalCount - billableCount} col.`}
+                  <div className="bg-gray-50 px-3 py-2.5 border-b border-gray-200 flex items-center space-x-2 min-w-0">
+                    <Package className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                    <span className="text-sm font-semibold text-gray-800">
+                      {weekLabels[weekName] ?? weekName}
                     </span>
                   </div>
 
@@ -252,10 +247,10 @@ const CustomerOrderSidePanel: React.FC<CustomerOrderSidePanelProps> = ({
                   {isWeekOpen && (
                     <div className="divide-y divide-gray-50 border-t border-gray-100">
                       {items.map(item => (
-                        <div key={item.tempId} className="flex items-start justify-between px-3 py-2">
-                          <div className="flex-1 min-w-0 pr-2">
+                        <div key={item.tempId} className="flex items-start justify-between gap-2 px-3 py-2">
+                          <div className="flex-1 min-w-0">
                             <div className="flex items-center flex-wrap gap-1">
-                              <span className="text-xs font-medium text-gray-900 truncate">
+                              <span className="text-xs font-medium text-gray-900">
                                 {item.day_of_week} · {item.meal_type}
                               </span>
                               {BILLABLE_MEAL_TYPES.includes(item.meal_type as any) && (
@@ -322,9 +317,9 @@ const CustomerOrderSidePanel: React.FC<CustomerOrderSidePanelProps> = ({
             )}
 
             {selectedDeliveryOption && (
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Envío ({selectedDeliveryOption.delivery_options_name})</span>
-                <span className="font-medium text-gray-900">{formatCurrency(deliveryPrice)}</span>
+              <div className="flex justify-between gap-3 text-sm">
+                <span className="text-gray-500 min-w-0">Envío ({selectedDeliveryOption.delivery_options_name})</span>
+                <span className="font-medium text-gray-900 whitespace-nowrap">{formatCurrency(deliveryPrice)}</span>
               </div>
             )}
 
@@ -349,7 +344,7 @@ const CustomerOrderSidePanel: React.FC<CustomerOrderSidePanelProps> = ({
       </div>
 
       {/* Always-visible footer: first-order banner, notes, and cart button */}
-      <div className="p-5 space-y-4 border-t border-gray-100">
+      <div className="p-4 sm:p-5 space-y-4 border-t border-gray-100">
         {/* First Order Banner */}
         {isFirstOrder && (
           <div className="bg-green-50 border border-green-200 rounded-xl p-3 flex items-start space-x-2">
@@ -410,9 +405,11 @@ const CustomerOrderSidePanel: React.FC<CustomerOrderSidePanelProps> = ({
           )}
           {!isLoggedIn && (
             <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-xl text-center">
-              <p className="text-sm text-amber-800 font-medium mb-2">
-                {texts.loginPrompt}
-              </p>
+              {texts.loginPrompt && (
+                <p className="text-sm text-amber-800 font-medium mb-2">
+                  {texts.loginPrompt}
+                </p>
+              )}
               <div className="flex gap-2">
                 <Link
                   to="/login?returnTo=/order"

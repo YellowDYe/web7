@@ -28,8 +28,8 @@ const PlanDurationSelector: React.FC<PlanDurationSelectorProps> = ({
           <Calendar className="w-5 h-5 text-blue-600" />
         </div>
         <div>
-          <h2 className="text-xl font-semibold text-gray-900">{texts.durationTitle}</h2>
-          <p className="text-sm text-gray-600">{texts.durationSubtitle}</p>
+          {texts.durationTitle && <h2 className="text-xl font-semibold text-gray-900">{texts.durationTitle}</h2>}
+          {texts.durationSubtitle && <p className="text-sm text-gray-600">{texts.durationSubtitle}</p>}
         </div>
       </div>
 
@@ -53,10 +53,10 @@ const PlanDurationSelector: React.FC<PlanDurationSelectorProps> = ({
             )}
 
             <div className="text-center mt-2">
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">
+              <h3 className={`text-2xl font-bold text-gray-900 ${duration.description ? 'mb-2' : ''}`}>
                 {duration.label}
               </h3>
-              <p className="text-sm text-gray-600">{duration.description}</p>
+              {duration.description && <p className="text-sm text-gray-600">{duration.description}</p>}
             </div>
           </button>
         ))}

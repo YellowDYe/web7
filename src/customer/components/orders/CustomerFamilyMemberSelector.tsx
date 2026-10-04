@@ -114,8 +114,8 @@ const CustomerFamilyMemberSelector: React.FC<CustomerFamilyMemberSelectorProps> 
           <Users className="w-5 h-5 text-purple-600" />
         </div>
         <div>
-          <h2 className="text-xl font-semibold text-gray-900">{texts.familyTitle}</h2>
-          <p className="text-sm text-gray-600">{texts.familySubtitle}</p>
+          {texts.familyTitle && <h2 className="text-xl font-semibold text-gray-900">{texts.familyTitle}</h2>}
+          {texts.familySubtitle && <p className="text-sm text-gray-600">{texts.familySubtitle}</p>}
         </div>
       </div>
 
@@ -237,9 +237,11 @@ const CustomerFamilyMemberSelector: React.FC<CustomerFamilyMemberSelectorProps> 
                       </span>
                     ))}
                   </div>
-                  <p className="text-xs text-orange-700 mt-2">
-                    {texts.familyRestrictionsNote}
-                  </p>
+                  {texts.familyRestrictionsNote && (
+                    <p className="text-xs text-orange-700 mt-2">
+                      {texts.familyRestrictionsNote}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>

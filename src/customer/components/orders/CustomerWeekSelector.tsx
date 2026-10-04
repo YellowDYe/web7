@@ -1,7 +1,6 @@
 import React from 'react';
 import { Calendar, Truck, Check } from 'lucide-react';
 import { SelectedWeek } from '../../../types/week';
-import { DeliveryOption } from '../../../types/deliveryOption';
 import { PendingOrderItem } from '../../../types/orderMenu';
 import { getTotalMealCountForWeek } from '../../../utils/orderValidation';
 import { ORDER_PAGE_DEFAULT_CONTENT, type OrderPageContent } from '../../sections/CustomerOrder/orderPageContent';
@@ -11,7 +10,6 @@ interface CustomerWeekSelectorProps {
   activeWeek: SelectedWeek | null;
   onWeekSelect: (week: SelectedWeek) => void;
   onToggleMondayDelivery: (weekTempId: string) => void;
-  deliveryOption: DeliveryOption | null;
   orderItems?: PendingOrderItem[];
   texts?: OrderPageContent;
 }
@@ -21,7 +19,6 @@ const CustomerWeekSelector: React.FC<CustomerWeekSelectorProps> = ({
   activeWeek,
   onWeekSelect,
   onToggleMondayDelivery,
-  deliveryOption,
   orderItems = [],
   texts = ORDER_PAGE_DEFAULT_CONTENT
 }) => {
@@ -55,25 +52,14 @@ const CustomerWeekSelector: React.FC<CustomerWeekSelectorProps> = ({
 
   return (
     <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-        <div className="flex items-center space-x-3 min-w-0">
+      <div className="flex items-center space-x-3 min-w-0 mb-6">
           <div className="bg-green-100 p-2 rounded-lg flex-shrink-0">
             <Calendar className="w-5 h-5 text-green-600" />
           </div>
           <div className="min-w-0">
-            <h2 className="text-xl font-semibold text-gray-900">{texts.weeksTitle}</h2>
-            <p className="text-sm text-gray-600">{texts.weeksSubtitle}</p>
+            {texts.weeksTitle && <h2 className="text-xl font-semibold text-gray-900">{texts.weeksTitle}</h2>}
+            {texts.weeksSubtitle && <p className="text-sm text-gray-600">{texts.weeksSubtitle}</p>}
           </div>
-        </div>
-
-        {deliveryOption && (
-          <div className="flex items-center space-x-2 px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-lg flex-shrink-0">
-            <Truck className="w-4 h-4 text-emerald-600" />
-            <span className="text-sm font-medium text-emerald-700 truncate max-w-[10rem]">
-              {deliveryOption.delivery_options_name}
-            </span>
-          </div>
-        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -116,20 +102,24 @@ const CustomerWeekSelector: React.FC<CustomerWeekSelectorProps> = ({
 
               {displayDate ? (
                 <div>
-                  <div className="flex items-center space-x-2 mb-1">
-                    <Truck className={`w-4 h-4 ${isMonday ? 'text-blue-600' : 'text-green-600'}`} />
-                    <span className={`text-xs font-medium ${isMonday ? 'text-blue-600' : 'text-green-600'}`}>
-                      {texts.deliveryDateLabel}
-                    </span>
-                  </div>
-                  <p className={`text-base font-semibold capitalize ${isMonday ? 'text-blue-900' : 'text-gray-900'}`}>
+                  {texts.deliveryDateLabel && (
+                    <div className="flex items-center space-x-2 mb-1">
+                      <Truck className={`w-4 h-4 ${isMonday ? 'text-blue-600' : 'text-green-600'}`} />
+                      <span className={`text-xs font-medium ${isMonday ? 'text-blue-600' : 'text-green-600'}`}>
+                        {texts.deliveryDateLabel}
+                      </span>
+                    </div>
+                  )}
+                  <p className={`text-lg font-semibold capitalize ${isMonday ? 'text-blue-900' : 'text-gray-900'}`}>
                     {formatDate(displayDate)}
                   </p>
-                  <p className={`text-xs mt-1 ${isMonday ? 'text-blue-600' : 'text-gray-500'}`}>
-                    {isMonday
-                      ? texts.mondayDeliveryHours
-                      : texts.sundayDeliveryHours}
-                  </p>
+                  {(isMonday ? texts.mondayDeliveryHours : texts.sundayDeliveryHours) && (
+                    <p className={`text-xs mt-1 ${isMonday ? 'text-blue-600' : 'text-gray-500'}`}>
+                      {isMonday
+                        ? texts.mondayDeliveryHours
+                        : texts.sundayDeliveryHours}
+                    </p>
+                  )}
 
                   {(texts.showMondayDelivery || isMonday) && (
                   <span

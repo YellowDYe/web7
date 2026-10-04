@@ -51,6 +51,8 @@ interface CustomerPackageSelectorProps {
   onRemovePackageMealType: (mealType: string, planId: string, weekName: string) => void;
   disabled?: boolean;
   texts?: OrderPageTexts;
+  weekNumber: number;
+  deliveryDateLabel: string;
 }
 
 const MIN_QUANTITY = 0;
@@ -160,6 +162,8 @@ const CustomerPackageSelector: React.FC<CustomerPackageSelectorProps> = ({
   onRemovePackageMealType,
   disabled = false,
   texts = ORDER_PAGE_DEFAULT_TEXTS,
+  weekNumber,
+  deliveryDateLabel,
 }) => {
   const [quantities, setQuantities] = useState<CardQuantity>({
     desayuno: DEFAULT_QUANTITY,
@@ -179,12 +183,6 @@ const CustomerPackageSelector: React.FC<CustomerPackageSelectorProps> = ({
   const [blockedRecipeIds, setBlockedRecipeIds] = useState<Set<string>>(new Set());
 
   const weekName = activeWeek.week.week_name;
-  const deliveryDateLabel = (() => {
-    const dateStr = activeWeek.week.week_date;
-    if (!dateStr) return weekName;
-    const [y, m, d] = dateStr.split('-').map(Number);
-    return new Intl.DateTimeFormat('es-MX', { day: 'numeric', month: 'short' }).format(new Date(y, m - 1, d));
-  })();
 
   // Pre-compute maximum available (non-blocked) dishes per meal type
   const maxAvailablePerType = React.useMemo(() => {
@@ -599,48 +597,39 @@ const CustomerPackageSelector: React.FC<CustomerPackageSelectorProps> = ({
   };
 
   const totalInCart = addedMealTypes.reduce((sum, m) => sum + m.quantity, 0);
-  const totalCartValue = addedMealTypes.reduce((sum, m) => sum + m.quantity * m.pricePerDish, 0);
 
   return (
     <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center space-x-3">
-          <div className="bg-red-100 p-2 rounded-lg">
+      <div className="flex items-start justify-between gap-3 mb-6">
+        <div className="flex items-start space-x-3 min-w-0">
+          <div className="bg-red-100 p-2 rounded-lg flex-shrink-0">
             <Package className="w-5 h-5 text-red-600" />
           </div>
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900">{texts.menuTitle}</h2>
+          <div className="min-w-0">
+            {texts.menuTitle && <h2 className="text-xl font-semibold text-gray-900">{texts.menuTitle}</h2>}
             <p className="text-sm text-gray-600">
-              Entrega el <span className="font-medium text-gray-900">{deliveryDateLabel}</span>
-              {' · '}
-              <span className="font-medium text-gray-900">{selectedPlan.meal_plans_name}</span>
+              <span className="font-semibold text-gray-900">Semana {weekNumber}</span>
+              {deliveryDateLabel && (
+                <>
+                  {' · '}Entrega el <span className="font-medium text-gray-900">{deliveryDateLabel}</span>
+                </>
+              )}
             </p>
+            <p className="mt-1 text-2xl font-bold text-red-600 leading-tight">{selectedPlan.meal_plans_name}</p>
           </div>
         </div>
-        <div className="hidden sm:flex items-center space-x-2">
-          <div className="px-3 py-1.5 bg-red-50 border border-red-200 rounded-full text-sm font-semibold text-red-700">
-            {selectedPlan.meal_plans_name}
+        {totalInCart > 0 && (
+          <div className="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 bg-gray-900 rounded-full text-sm font-semibold text-white flex-shrink-0">
+            <ShoppingBag className="w-3.5 h-3.5" />
+            <span>{totalInCart} platillos en pedido</span>
           </div>
-          {totalInCart > 0 && (
-            <div className="flex items-center space-x-1.5 px-3 py-1.5 bg-gray-900 rounded-full text-sm font-semibold text-white">
-              <ShoppingBag className="w-3.5 h-3.5" />
-              <span>{totalInCart} platillos en pedido</span>
-            </div>
-          )}
-        </div>
+        )}
       </div>
 
       {/* Already-confirmed items */}
       {addedMealTypes.length > 0 && (
         <div className="mb-6 rounded-xl border border-gray-200 overflow-hidden">
-          <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <ShoppingBag className="w-4 h-4 text-gray-600" />
-              <span className="text-sm font-semibold text-gray-700">Ya en tu pedido esta semana</span>
-            </div>
-            <span className="text-xs text-gray-500">{totalInCart} platillos · {formatCurrency(totalCartValue)}</span>
-          </div>
           <div className="divide-y divide-gray-100">
             {addedMealTypes.map(entry => {
               const colors = getMealCategoryColor(entry.mealType);
@@ -673,10 +662,6 @@ const CustomerPackageSelector: React.FC<CustomerPackageSelectorProps> = ({
                 </div>
               );
             })}
-          </div>
-          <div className="bg-gray-50 px-4 py-2.5 border-t border-gray-200 flex items-center justify-between">
-            <span className="text-xs text-gray-500">Subtotal acumulado</span>
-            <span className="text-sm font-bold text-gray-900">{formatCurrency(totalCartValue)}</span>
           </div>
         </div>
       )}
@@ -771,7 +756,7 @@ const CustomerPackageSelector: React.FC<CustomerPackageSelectorProps> = ({
                 </div>
 
                 <h3 className="text-lg font-bold text-gray-900">{category.label}</h3>
-                <p className="text-sm text-gray-500 mt-0.5 mb-3">{texts[category.descriptionKey]}</p>
+                {texts[category.descriptionKey] && <p className="text-sm text-gray-500 mt-0.5 mb-3">{texts[category.descriptionKey]}</p>}
 
                 {/* Dish list from weekly menu */}
                 {dishes.length > 0 && (

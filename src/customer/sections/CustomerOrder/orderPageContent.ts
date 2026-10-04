@@ -70,12 +70,23 @@ export const ORDER_PAGE_DEFAULT_CONTENT: OrderPageContent = {
   ...ORDER_PAGE_DEFAULT_TOGGLES,
 };
 
+const ALWAYS_FILLED_KEYS: OrderPageTextKey[] = [
+  'stepLabelDuration', 'stepLabelWeek', 'stepLabelPlan', 'stepLabelMenu', 'stepLabelSummary',
+  'backButton', 'continueButton', 'nextWeekButton', 'viewSummaryButton',
+  'duration1Label', 'duration2Label', 'duration4Label',
+  'switchToMondayLabel', 'switchToSundayLabel',
+  'loginButton', 'signupButton',
+];
+
 export function resolveOrderPageContent(raw: unknown): OrderPageContent {
   const source = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
   const texts = { ...ORDER_PAGE_DEFAULT_TEXTS };
   for (const key of Object.keys(texts) as OrderPageTextKey[]) {
     const value = source[key];
-    if (typeof value === 'string' && value.trim() !== '') texts[key] = value;
+    if (typeof value !== 'string') continue;
+    const trimmed = value.trim();
+    if (trimmed === '' && ALWAYS_FILLED_KEYS.includes(key)) continue;
+    texts[key] = trimmed;
   }
   const toggles = { ...ORDER_PAGE_DEFAULT_TOGGLES };
   for (const key of Object.keys(toggles) as OrderPageToggleKey[]) {

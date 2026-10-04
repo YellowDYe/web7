@@ -12,6 +12,8 @@ interface CustomerMealPlanSelectorProps {
   onPlanSelect: (plan: MealPlan | null) => void;
   disabled?: boolean;
   orderItems?: PendingOrderItem[];
+  weekNumber: number;
+  deliveryDateLabel: string;
   texts?: OrderPageTexts;
 }
 
@@ -21,6 +23,8 @@ const CustomerMealPlanSelector: React.FC<CustomerMealPlanSelectorProps> = ({
   onPlanSelect,
   disabled = false,
   orderItems = [],
+  weekNumber,
+  deliveryDateLabel,
   texts = ORDER_PAGE_DEFAULT_TEXTS
 }) => {
   const [mealPlans, setMealPlans] = useState<MealPlan[]>([]);
@@ -63,9 +67,14 @@ const CustomerMealPlanSelector: React.FC<CustomerMealPlanSelectorProps> = ({
           <Utensils className="w-5 h-5 text-orange-600" />
         </div>
         <div>
-          <h2 className="text-xl font-semibold text-gray-900">{texts.planTitle}</h2>
+          {texts.planTitle && <h2 className="text-xl font-semibold text-gray-900">{texts.planTitle}</h2>}
           <p className="text-sm text-gray-600">
-            Para la semana: <span className="font-medium text-gray-900">{activeWeek.week.week_name}</span>
+            <span className="font-semibold text-gray-900">Semana {weekNumber}</span>
+            {deliveryDateLabel && (
+              <>
+                {' · '}Entrega el <span className="font-medium text-gray-900">{deliveryDateLabel}</span>
+              </>
+            )}
           </p>
         </div>
       </div>
@@ -124,11 +133,13 @@ const CustomerMealPlanSelector: React.FC<CustomerMealPlanSelectorProps> = ({
                   {plan.meal_plans_name}
                 </h3>
 
-                <div className="mt-4">
-                  <p className="text-sm text-gray-600">
-                    {texts.planCardHint}
-                  </p>
-                </div>
+                {texts.planCardHint && (
+                  <div className="mt-4">
+                    <p className="text-sm text-gray-600">
+                      {texts.planCardHint}
+                    </p>
+                  </div>
+                )}
               </div>
             </button>
           );

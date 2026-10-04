@@ -696,6 +696,19 @@ export const CustomerOrder: React.FC<CustomerOrderProps> = ({ content }) => {
     ? selectedWeeks.findIndex(w => w.tempId === activeWeek.tempId)
     : -1;
 
+  const formatLongDeliveryDate = (dateStr?: string | null): string => {
+    if (!dateStr) return '';
+    const [y, m, d] = dateStr.split('-').map(Number);
+    return new Intl.DateTimeFormat('es-MX', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(y, m - 1, d));
+  };
+  const activeWeekDeliveryLabel = formatLongDeliveryDate(activeWeek?.week.week_date);
+  const weekLabels: Record<string, string> = Object.fromEntries(
+    selectedWeeks.map((w, i) => {
+      const date = formatLongDeliveryDate(w.week.week_date);
+      return [w.week.week_name, date ? `Semana ${i + 1} · ${date}` : `Semana ${i + 1}`];
+    })
+  );
+
   const incompleteWeeks = selectedWeeks.filter(
     w => getBillableMealCountForWeek(orderItems, w.week.week_name) < 3
   );
@@ -762,6 +775,16 @@ export const CustomerOrder: React.FC<CustomerOrderProps> = ({ content }) => {
     .reduce((sum, item) => sum + item.quantity, 0);
   const formatCurrency = (amount: number): string =>
     new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(amount);
+  const showFloatingSummary = orderItems.length > 0 && step < 5;
+  const floatingSummaryContent = (
+    <>
+      <span className="flex items-center gap-1.5 text-sm font-medium text-gray-600">
+        <ShoppingCart className="w-4 h-4" />
+        {totalBillableCount} comida{totalBillableCount !== 1 ? 's' : ''}
+      </span>
+      <span className="text-base font-bold">{formatCurrency(floatingBreakdown.finalTotal)}</span>
+    </>
+  );
 
   const validationWarnings = orderItems.length > 0 && !orderValidation.isValid ? (
     <>
@@ -770,18 +793,22 @@ export const CustomerOrder: React.FC<CustomerOrderProps> = ({ content }) => {
           <div className="flex items-start space-x-3">
             <AlertCircle className="w-5 h-5 text-orange-600 mt-0.5 flex-shrink-0" />
             <div>
-              <h3 className="text-sm font-semibold text-orange-800 mb-2">
-                {texts.minMealsTitle}
-              </h3>
-              <p className="text-sm text-orange-700 mb-2">
-                {texts.minMealsDescription}
-              </p>
+              {texts.minMealsTitle && (
+                <h3 className="text-sm font-semibold text-orange-800 mb-2">
+                  {texts.minMealsTitle}
+                </h3>
+              )}
+              {texts.minMealsDescription && (
+                <p className="text-sm text-orange-700 mb-2">
+                  {texts.minMealsDescription}
+                </p>
+              )}
               <ul className="text-sm text-orange-700 space-y-1">
                 {orderValidation.incompleteWeeks.map((week, index) => (
                   <li key={index} className="flex items-center space-x-2">
                     <span className="w-1.5 h-1.5 bg-orange-600 rounded-full"></span>
                     <span>
-                      <strong>{week.weekName}:</strong> {week.billableMealCount} de 3 comidas principales seleccionadas
+                      <strong>{weekLabels[week.weekName] ?? week.weekName}:</strong> {week.billableMealCount} de 3 comidas principales seleccionadas
                     </span>
                   </li>
                 ))}
@@ -796,18 +823,22 @@ export const CustomerOrder: React.FC<CustomerOrderProps> = ({ content }) => {
           <div className="flex items-start space-x-3">
             <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
             <div>
-              <h3 className="text-sm font-semibold text-blue-800 mb-2">
-                {texts.colacionesTitle}
-              </h3>
-              <p className="text-sm text-blue-700 mb-2">
-                {texts.colacionesDescription}
-              </p>
+              {texts.colacionesTitle && (
+                <h3 className="text-sm font-semibold text-blue-800 mb-2">
+                  {texts.colacionesTitle}
+                </h3>
+              )}
+              {texts.colacionesDescription && (
+                <p className="text-sm text-blue-700 mb-2">
+                  {texts.colacionesDescription}
+                </p>
+              )}
               <ul className="text-sm text-blue-700 space-y-1">
                 {orderValidation.weeksNeedingColaciones.map((week, index) => (
                   <li key={index} className="flex items-center space-x-2">
                     <span className="w-1.5 h-1.5 bg-blue-600 rounded-full"></span>
                     <span>
-                      <strong>{week.weekName}:</strong> {week.colacionesSelected} de {week.colacionesRequired} colaciones seleccionadas
+                      <strong>{weekLabels[week.weekName] ?? week.weekName}:</strong> {week.colacionesSelected} de {week.colacionesRequired} colaciones seleccionadas
                     </span>
                   </li>
                 ))}
@@ -820,7 +851,7 @@ export const CustomerOrder: React.FC<CustomerOrderProps> = ({ content }) => {
   ) : null;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-28 lg:pb-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-40 lg:pb-8">
       {/* Error Message */}
       {error && (
         <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl flex items-center space-x-2">
@@ -886,7 +917,6 @@ export const CustomerOrder: React.FC<CustomerOrderProps> = ({ content }) => {
               activeWeek={activeWeek}
               onWeekSelect={handleWeekSelect}
               onToggleMondayDelivery={handleToggleMondayDelivery}
-              deliveryOption={selectedDeliveryOption}
               orderItems={orderItems}
               texts={texts}
             />
@@ -903,7 +933,7 @@ export const CustomerOrder: React.FC<CustomerOrderProps> = ({ content }) => {
             />
           )}
 
-          {texts.showNextStepNotice && activeWeek && (
+          {texts.showNextStepNotice && texts.nextStepNotice && activeWeek && (
             <div className="mt-6 bg-red-50 border border-red-200 rounded-xl p-4 flex items-start space-x-3">
               <Calendar className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
               <p className="text-sm text-red-800">
@@ -923,6 +953,8 @@ export const CustomerOrder: React.FC<CustomerOrderProps> = ({ content }) => {
           onPlanSelect={handlePlanSelect}
           disabled={loading}
           orderItems={orderItems}
+          weekNumber={activeWeekIndex + 1}
+          deliveryDateLabel={activeWeekDeliveryLabel}
           texts={texts}
         />
       )}
@@ -946,6 +978,8 @@ export const CustomerOrder: React.FC<CustomerOrderProps> = ({ content }) => {
             onConfirmPackage={handleConfirmPackage}
             onRemovePackageMealType={handleRemovePackageMealType}
             disabled={loading}
+            weekNumber={activeWeekIndex + 1}
+            deliveryDateLabel={activeWeekDeliveryLabel}
             texts={texts}
           />
         </>
@@ -971,6 +1005,7 @@ export const CustomerOrder: React.FC<CustomerOrderProps> = ({ content }) => {
             canAddToCart={!!canAddToCart}
             isLoggedIn={!!customer}
             selectedWeekNames={selectedWeekNames}
+            weekLabels={weekLabels}
             texts={texts}
           />
         </>
@@ -978,7 +1013,17 @@ export const CustomerOrder: React.FC<CustomerOrderProps> = ({ content }) => {
 
       {/* Bottom navigation bar: fixed on mobile, inline on desktop */}
       <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] lg:static lg:z-auto lg:shadow-none lg:border-t-0 lg:mt-8 lg:bg-transparent">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-3">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+          {showFloatingSummary && (
+            <button
+              type="button"
+              onClick={() => goToStep(5)}
+              className="lg:hidden w-full mb-2.5 pb-2.5 border-b border-gray-100 flex items-center justify-between text-gray-900"
+            >
+              {floatingSummaryContent}
+            </button>
+          )}
+          <div className="flex items-center justify-between gap-3">
           {step > 1 ? (
             <button
               type="button"
@@ -986,23 +1031,19 @@ export const CustomerOrder: React.FC<CustomerOrderProps> = ({ content }) => {
               className="inline-flex items-center gap-1.5 px-4 sm:px-5 py-3 rounded-xl border border-gray-300 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-colors active:scale-95 flex-shrink-0"
             >
               <ChevronLeft className="w-4 h-4" />
-              <span className="hidden sm:inline">{texts.backButton}</span>
+              <span className={step === 5 ? '' : 'hidden sm:inline'}>{texts.backButton}</span>
             </button>
           ) : (
             <div className="flex-shrink-0" />
           )}
 
-          {orderItems.length > 0 && (
+          {showFloatingSummary && (
             <button
               type="button"
               onClick={() => goToStep(5)}
-              className="flex-1 min-w-0 flex items-center justify-center gap-2 sm:gap-3 text-gray-900"
+              className="hidden lg:flex flex-1 min-w-0 items-center justify-center gap-3 text-gray-900"
             >
-              <span className="flex items-center gap-1.5 text-xs sm:text-sm font-medium text-gray-600">
-                <ShoppingCart className="w-4 h-4" />
-                {totalBillableCount} comida{totalBillableCount !== 1 ? 's' : ''}
-              </span>
-              <span className="text-sm sm:text-base font-bold">{formatCurrency(floatingBreakdown.finalTotal)}</span>
+              {floatingSummaryContent}
             </button>
           )}
 
@@ -1019,6 +1060,7 @@ export const CustomerOrder: React.FC<CustomerOrderProps> = ({ content }) => {
           ) : (
             <div className="flex-shrink-0" />
           )}
+          </div>
         </div>
       </div>
     </div>
