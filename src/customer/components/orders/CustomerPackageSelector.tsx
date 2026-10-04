@@ -616,12 +616,6 @@ const CustomerPackageSelector: React.FC<CustomerPackageSelectorProps> = ({
                 </>
               )}
             </p>
-            <div className="mt-2 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-50 border border-red-200">
-              <Package className="w-4 h-4 text-red-500 flex-shrink-0" />
-              <span className="text-sm text-red-700">
-                Plan <span className="font-bold">{selectedPlan.meal_plans_name}</span>
-              </span>
-            </div>
           </div>
         </div>
         {totalInCart > 0 && (
@@ -695,6 +689,14 @@ const CustomerPackageSelector: React.FC<CustomerPackageSelectorProps> = ({
           </div>
         );
       })()}
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <div className="rounded-2xl border-2 border-red-200 bg-red-50 px-5 py-3 text-center">
+          <span className="text-base text-red-700">
+            Plan <span className="font-bold">{selectedPlan.meal_plans_name}</span>
+          </span>
+        </div>
+      </div>
 
       {/* Selectable Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
