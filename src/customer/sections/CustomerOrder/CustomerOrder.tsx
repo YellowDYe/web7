@@ -696,15 +696,15 @@ export const CustomerOrder: React.FC<CustomerOrderProps> = ({ content }) => {
     ? selectedWeeks.findIndex(w => w.tempId === activeWeek.tempId)
     : -1;
 
-  const formatLongDeliveryDate = (dateStr?: string | null): string => {
+  const formatShortDeliveryDate = (dateStr?: string | null): string => {
     if (!dateStr) return '';
     const [y, m, d] = dateStr.split('-').map(Number);
-    return new Intl.DateTimeFormat('es-MX', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(y, m - 1, d));
+    return new Intl.DateTimeFormat('es-MX', { day: '2-digit', month: '2-digit', year: '2-digit' }).format(new Date(y, m - 1, d));
   };
-  const activeWeekDeliveryLabel = formatLongDeliveryDate(activeWeek?.week.week_date);
+  const activeWeekDeliveryLabel = formatShortDeliveryDate(activeWeek?.week.week_date);
   const weekLabels: Record<string, string> = Object.fromEntries(
     selectedWeeks.map((w, i) => {
-      const date = formatLongDeliveryDate(w.week.week_date);
+      const date = formatShortDeliveryDate(w.week.week_date);
       return [w.week.week_name, date ? `Semana ${i + 1} · ${date}` : `Semana ${i + 1}`];
     })
   );
@@ -906,11 +906,6 @@ export const CustomerOrder: React.FC<CustomerOrderProps> = ({ content }) => {
       {/* Step 2: Week Selection */}
       {step === 2 && (
         <>
-          {selectedWeeks.length > 1 && activeWeekIndex >= 0 && (
-            <div className="mb-4 text-sm font-medium text-gray-600">
-              Semana {activeWeekIndex + 1} de {selectedWeeks.length}
-            </div>
-          )}
           {selectedWeeks.length > 0 && (
             <CustomerWeekSelector
               selectedWeeks={selectedWeeks}

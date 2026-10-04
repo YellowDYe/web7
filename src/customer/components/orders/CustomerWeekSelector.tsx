@@ -25,12 +25,7 @@ const CustomerWeekSelector: React.FC<CustomerWeekSelectorProps> = ({
   const formatDate = (dateString: string) => {
     const [year, month, day] = dateString.split('-').map(Number);
     const date = new Date(year, month - 1, day);
-    return date.toLocaleDateString('es-MX', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
+    return date.toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: '2-digit' });
   };
 
   const getDisplayDate = (week: SelectedWeek): string | null => {
@@ -110,7 +105,7 @@ const CustomerWeekSelector: React.FC<CustomerWeekSelectorProps> = ({
                       </span>
                     </div>
                   )}
-                  <p className={`text-lg font-semibold capitalize ${isMonday ? 'text-blue-900' : 'text-gray-900'}`}>
+                  <p className={`text-lg font-semibold ${isMonday ? 'text-blue-900' : 'text-gray-900'}`}>
                     {formatDate(displayDate)}
                   </p>
                   {(isMonday ? texts.mondayDeliveryHours : texts.sundayDeliveryHours) && (

@@ -5,7 +5,7 @@ import { MealPlan } from '../../../types/mealPlan';
 import { PendingOrderItem, BILLABLE_MEAL_TYPES } from '../../../types/orderMenu';
 import { DAYS_OF_WEEK, buildRecipeColumn } from '../../../types/mealTypes';
 import { supabase } from '../../../config/supabase';
-import { ORDER_PAGE_DEFAULT_TEXTS, type OrderPageTexts } from '../../sections/CustomerOrder/orderPageContent';
+import { ORDER_PAGE_DEFAULT_CONTENT, type OrderPageContent } from '../../sections/CustomerOrder/orderPageContent';
 
 interface CardQuantity {
   desayuno: number;
@@ -50,7 +50,7 @@ interface CustomerPackageSelectorProps {
   onConfirmPackage: (items: PendingOrderItem[], pendingIds: string[]) => void;
   onRemovePackageMealType: (mealType: string, planId: string, weekName: string) => void;
   disabled?: boolean;
-  texts?: OrderPageTexts;
+  texts?: OrderPageContent;
   weekNumber: number;
   deliveryDateLabel: string;
 }
@@ -161,7 +161,7 @@ const CustomerPackageSelector: React.FC<CustomerPackageSelectorProps> = ({
   onConfirmPackage,
   onRemovePackageMealType,
   disabled = false,
-  texts = ORDER_PAGE_DEFAULT_TEXTS,
+  texts = ORDER_PAGE_DEFAULT_CONTENT,
   weekNumber,
   deliveryDateLabel,
 }) => {
@@ -616,7 +616,12 @@ const CustomerPackageSelector: React.FC<CustomerPackageSelectorProps> = ({
                 </>
               )}
             </p>
-            <p className="mt-1 text-2xl font-bold text-red-600 leading-tight">{selectedPlan.meal_plans_name}</p>
+            <div className="mt-2 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-50 border border-red-200">
+              <Package className="w-4 h-4 text-red-500 flex-shrink-0" />
+              <span className="text-sm text-red-700">
+                Plan <span className="font-bold">{selectedPlan.meal_plans_name}</span>
+              </span>
+            </div>
           </div>
         </div>
         {totalInCart > 0 && (
@@ -667,7 +672,7 @@ const CustomerPackageSelector: React.FC<CustomerPackageSelectorProps> = ({
       )}
 
       {/* Minimum total indicator */}
-      {(() => {
+      {texts.showMenuMinimumBar && (() => {
         const pendingTotal = Object.entries(selected).reduce((sum, [key, isSelected]) => {
           return isSelected ? sum + quantities[key as keyof CardQuantity] : sum;
         }, 0);

@@ -57,6 +57,7 @@ export const ORDER_PAGE_DEFAULT_TOGGLES = {
   showMondayDelivery: true,
   showNextStepNotice: true,
   showMinMealsNotice: true,
+  showMenuMinimumBar: true,
   showColacionesNotice: true,
 };
 
@@ -168,6 +169,7 @@ export const ORDER_PAGE_EDITOR_SECTIONS: { title: string; texts: TextField[]; to
     ],
     toggles: [
       { key: 'showMinMealsNotice', label: 'Mostrar aviso de mínimo de comidas' },
+      { key: 'showMenuMinimumBar', label: 'Mostrar barra de mínimo de platillos (contador 0 / 3)' },
       { key: 'showColacionesNotice', label: 'Mostrar aviso de colaciones' },
     ],
   },
