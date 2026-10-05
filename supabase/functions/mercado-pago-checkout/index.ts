@@ -858,7 +858,7 @@ async function handleConfirmOrderPayment(
       .update({
         payment_provider: "mercadopago",
         mp_payment_id: paymentId,
-        stripe_payment_status: "pending",
+        stripe_payment_status: "processing",
         ...(isCash ? { order_status: "pending_cash_payment" } : {}),
       })
       .eq("id", orderId)

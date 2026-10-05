@@ -209,22 +209,45 @@ Deno.serve(async (req: Request) => {
 
     if (!orderId) {
       console.warn(`Webhook: No order found for payment ${paymentId}`);
-      if (mpStatus === "approved") {
-        // Give the customer's browser time to register the order before alerting.
-        const alertTask = (async () => {
+      const creatable = ["approved", "pending", "in_process", "authorized"].includes(mpStatus);
+      if (creatable) {
+        // The customer's browser normally saves the order right after paying; give it
+        // time first. Cash payers never come back, so the server builds the order.
+        const fallbackTask = (async () => {
           await new Promise((r) => setTimeout(r, 90_000));
-          const res = await fetch(`${supabaseUrl}/functions/v1/send-admin-payment-alert`, {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${supabaseServiceKey}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ payment_id: String(paymentId) }),
-          });
-          if (!res.ok) console.error("Admin payment alert failed:", await res.text());
-        })().catch((e) => console.error("Admin payment alert error:", e));
+          const created = quoteId
+            ? await createOrderFromQuote(supabase, quoteId, String(paymentId), payment)
+            : null;
+          if (created?.created && mpStatus === "approved") {
+            await sendOrderEmail(supabaseUrl, supabaseServiceKey, {
+              customerName: created.customer_name || "",
+              customerEmail: created.customer_email || "",
+              orderNumber: created.order_number,
+              totals: {
+                subtotal: Number(created.subtotal) || 0,
+                planDiscount: Number(created.plan_discount) || 0,
+                deliveryPrice: Number(created.delivery_price) || 0,
+                couponDiscount: Number(created.coupon_discount) || 0,
+                taxAmount: Number(created.tax_amount) || 0,
+                finalTotal: Number(created.final_total) || 0,
+              },
+              deliveryOptionName: created.delivery_option_name || "",
+            });
+          }
+          if (!created && mpStatus === "approved") {
+            const res = await fetch(`${supabaseUrl}/functions/v1/send-admin-payment-alert`, {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${supabaseServiceKey}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ payment_id: String(paymentId) }),
+            });
+            if (!res.ok) console.error("Admin payment alert failed:", await res.text());
+          }
+        })().catch((e) => console.error("Webhook fallback order error:", e));
         // @ts-ignore EdgeRuntime is provided by the Supabase runtime
-        if (typeof EdgeRuntime !== "undefined") EdgeRuntime.waitUntil(alertTask);
+        if (typeof EdgeRuntime !== "undefined") EdgeRuntime.waitUntil(fallbackTask);
       }
       return jsonResponse({ received: true, order_found: false });
     }
@@ -288,7 +311,7 @@ Deno.serve(async (req: Request) => {
       const { data: invoice } = await supabase
         .from("invoices")
         .select("id")
-        .eq("order_id", orderId)
+        .eq("order_id", order.order_id)
         .maybeSingle();
 
       if (invoice?.id) {
@@ -301,11 +324,7 @@ Deno.serve(async (req: Request) => {
           .eq("id", invoice.id);
       }
 
-      // Send confirmation email
       try {
-        const emailUrl = `${supabaseUrl}/functions/v1/send-order-email`;
-        
-        // Fetch customer details for the email
         let customerName = order.order_customer_name || "";
         let customerEmail = order.order_customer_email || "";
 
@@ -321,47 +340,33 @@ Deno.serve(async (req: Request) => {
           }
         }
 
-        if (customerEmail) {
-          const siteUrl = Deno.env.get("PUBLIC_SITE_URL") || Deno.env.get("SITE_URL") || supabaseUrl;
-
-          await fetch(emailUrl, {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${supabaseServiceKey}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              customerName,
-              customerEmail,
-              orderNumber: order.order_id || orderId,
-              deliveryAddress: "",
-              deliveryWeeks: [],
-              totals: {
-                subtotal: Number(order.order_total_price) || 0,
-                planDiscount: 0,
-                deliveryPrice: 0,
-                couponDiscount: 0,
-                taxAmount: 0,
-                finalTotal: Number(order.order_total_price) || 0,
-              },
-              deliveryOptionName: "",
-              shopUrl: siteUrl,
-            }),
-          });
-        }
+        await sendOrderEmail(supabaseUrl, supabaseServiceKey, {
+          customerName,
+          customerEmail,
+          orderNumber: order.order_id || orderId,
+          totals: {
+            subtotal: Number(order.order_total_price) || 0,
+            planDiscount: 0,
+            deliveryPrice: 0,
+            couponDiscount: 0,
+            taxAmount: 0,
+            finalTotal: Number(order.order_total_price) || 0,
+          },
+          deliveryOptionName: "",
+        });
       } catch (emailErr) {
         console.warn("Webhook: Could not send confirmation email:", emailErr);
       }
 
       console.log(`Webhook: Order ${orderId} marked as paid (payment ${paymentId})`);
     } else if (["pending", "in_process", "authorized"].includes(mpStatus) && order.stripe_payment_status !== "succeeded") {
-      const isCash = ["ticket", "atm", "bank_transfer"].includes(String(payment.payment_type_id || ""));
+      const isCash = CASH_PAYMENT_TYPES.includes(String(payment.payment_type_id || ""));
       await supabase
         .from("orders")
         .update({
           payment_provider: "mercadopago",
           mp_payment_id: String(paymentId),
-          stripe_payment_status: "pending",
+          stripe_payment_status: "processing",
           ...(isCash ? { order_status: "pending_cash_payment" } : {}),
         })
         .eq("id", orderId)
@@ -373,7 +378,7 @@ Deno.serve(async (req: Request) => {
           .from("orders")
           .update({
             order_status: "cancelled",
-            stripe_payment_status: mpStatus,
+            stripe_payment_status: "canceled",
           })
           .eq("id", orderId);
 
@@ -387,6 +392,52 @@ Deno.serve(async (req: Request) => {
     return jsonResponse({ error: "Internal server error" }, 500);
   }
 });
+
+const CASH_PAYMENT_TYPES = ["ticket", "atm", "bank_transfer"];
+
+async function createOrderFromQuote(supabase: any, quoteId: string, paymentId: string, payment: any) {
+  const { data, error } = await supabase.rpc("create_order_from_payment_quote", {
+    p_quote_id: quoteId,
+    p_payment_id: paymentId,
+    p_paid_amount: Number(payment.transaction_amount ?? 0),
+    p_paid: payment.status === "approved",
+    p_cash: CASH_PAYMENT_TYPES.includes(String(payment.payment_type_id || "")),
+  });
+  if (error || !data?.order_id) {
+    console.error(`Webhook: could not create order for payment ${paymentId}:`, error?.message);
+    return null;
+  }
+  if (data.created) console.log(`Webhook: created order ${data.order_number} for payment ${paymentId}`);
+  return data;
+}
+
+async function sendOrderEmail(supabaseUrl: string, serviceKey: string, details: {
+  customerName: string;
+  customerEmail: string;
+  orderNumber: string;
+  totals: Record<string, number>;
+  deliveryOptionName: string;
+}) {
+  if (!details.customerEmail) return;
+  const siteUrl = Deno.env.get("PUBLIC_SITE_URL") || Deno.env.get("SITE_URL") || supabaseUrl;
+  try {
+    await fetch(`${supabaseUrl}/functions/v1/send-order-email`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${serviceKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        ...details,
+        deliveryAddress: "",
+        deliveryWeeks: [],
+        shopUrl: siteUrl,
+      }),
+    });
+  } catch (emailErr) {
+    console.warn("Webhook: Could not send confirmation email:", emailErr);
+  }
+}
 
 function jsonResponse(data: any, status = 200) {
   return new Response(JSON.stringify(data), {
