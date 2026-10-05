@@ -16,6 +16,7 @@ import DelegacionDropdown from '../../../components/customers/DelegacionDropdown
 import type { Customer } from '../../../types/customer';
 import { supabase } from '../../../config/supabase';
 import { trackSignup } from '../../../utils/analytics';
+import { GoogleSignInButton, AuthDivider } from '../../components/GoogleSignInButton';
 
 
 const STEPS = [
@@ -47,10 +48,15 @@ export const CustomerSignup: React.FC = () => {
   const [emailCheckMessage, setEmailCheckMessage] = useState('');
   const [emailStatus, setEmailStatus] = useState<'available' | 'blocked' | 'link_only' | 'incomplete' | 'throttled' | null>(null);
   const [existingCustomerId, setExistingCustomerId] = useState<string | null>(null);
-  const { signup, linkExistingCustomer, checkEmailExists, user, customer } = useCustomerAuth();
+  const { signup, signupGoogleUser, linkExistingCustomer, checkEmailExists, logout, user, customer } = useCustomerAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const returnTo = searchParams.get('returnTo') || '/account';
+  const googleMode = !!user && !customer && (
+    user.app_metadata?.provider === 'google' ||
+    (user.app_metadata?.providers as string[] | undefined)?.includes('google') ||
+    !!user.identities?.some((identity) => identity.provider === 'google')
+  );
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -127,7 +133,7 @@ export const CustomerSignup: React.FC = () => {
   };
 
   useEffect(() => {
-    if (searchParams.get('incomplete') !== 'true') {
+    if (searchParams.get('incomplete') !== 'true' && searchParams.get('google') !== 'true') {
       localStorage.removeItem('customerSignupDraft');
       return;
     }
@@ -144,6 +150,38 @@ export const CustomerSignup: React.FC = () => {
   useEffect(() => {
     localStorage.setItem('customerSignupDraft', JSON.stringify(formData));
   }, [formData]);
+
+  // Google already provided the email and session, so the account step is
+  // skipped and the name is prefilled from the Google profile.
+  useEffect(() => {
+    if (!googleMode || !user) return;
+    const meta = user.user_metadata || {};
+    const fullName: string = meta.full_name || meta.name || '';
+    const [firstFromFull, ...restFromFull] = fullName.trim().split(/\s+/);
+    setFormData((prev) => ({
+      ...prev,
+      email: user.email || prev.email,
+      password: '',
+      confirmPassword: '',
+      first_name: prev.first_name || meta.given_name || firstFromFull || '',
+      last_name: prev.last_name || meta.family_name || restFromFull.join(' ') || '',
+    }));
+    setCurrentStep((step) => (step === 0 ? 1 : step));
+  }, [googleMode, user]);
+
+  useEffect(() => {
+    if (user && customer && searchParams.get('google') === 'true') {
+      navigate(returnTo, { replace: true });
+    }
+  }, [user, customer]);
+
+  const handleUseAnotherAccount = async () => {
+    try {
+      await logout();
+    } catch { /* already signed out */ }
+    setFormData((prev) => ({ ...prev, email: '', first_name: '', last_name: '' }));
+    setCurrentStep(0);
+  };
 
   useEffect(() => {
     const members = getFamilyMembers();
@@ -415,7 +453,7 @@ export const CustomerSignup: React.FC = () => {
   };
 
   const handleBack = () => {
-    setCurrentStep(prev => Math.max(prev - 1, 0));
+    setCurrentStep(prev => Math.max(prev - 1, googleMode ? 1 : 0));
   };
 
   const handleSubmit = async () => {
@@ -453,14 +491,18 @@ export const CustomerSignup: React.FC = () => {
         invoice_address: formData.invoice_address || undefined,
       };
 
-      await signup(formData.email, formData.password, customerData);
+      if (googleMode) {
+        await signupGoogleUser(customerData);
+      } else {
+        await signup(formData.email, formData.password, customerData);
+      }
       trackSignup(formData.email);
       localStorage.removeItem('customerSignupDraft');
       navigate(returnTo);
     } catch (err: any) {
       const msg = err instanceof Error ? err.message : String(err);
       setError(msg || 'Error al crear la cuenta');
-      setCurrentStep(0);
+      if (!googleMode) setCurrentStep(0);
     } finally {
       setLoading(false);
     }
@@ -471,6 +513,10 @@ export const CustomerSignup: React.FC = () => {
       case 0:
         return (
           <div className="space-y-6">
+            <div>
+              <GoogleSignInButton returnTo={returnTo} label="Registrarme con Google" onError={setError} />
+              <AuthDivider />
+            </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Correo Electrónico *
@@ -1020,7 +1066,28 @@ export const CustomerSignup: React.FC = () => {
           </div>
         </div>
 
-        {searchParams.get('incomplete') === 'true' && !error && (
+        {googleMode && (
+          <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-green-50 border border-green-200 rounded-lg">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-9 h-9 shrink-0 rounded-full bg-green-500 text-white flex items-center justify-center">
+                <Check className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-green-900">Conectado con Google</p>
+                <p className="text-sm text-green-800 truncate">{user?.email}</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleUseAnotherAccount}
+              className="text-sm font-medium text-green-800 hover:text-green-950 underline underline-offset-2 self-start sm:self-auto"
+            >
+              Usar otra cuenta
+            </button>
+          </div>
+        )}
+
+        {searchParams.get('incomplete') === 'true' && !googleMode && !error && (
           <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-sm">
             Tu registro anterior no se completó correctamente. Por favor, llena tus datos nuevamente para terminar de crear tu cuenta.
           </div>
@@ -1046,7 +1113,7 @@ export const CustomerSignup: React.FC = () => {
         <div className="mb-8">{renderStep()}</div>
 
         <div className="flex justify-between gap-4">
-          {currentStep > 0 && (
+          {currentStep > (googleMode ? 1 : 0) && (
             <Button
               onClick={handleBack}
               variant="outline"

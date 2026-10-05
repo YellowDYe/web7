@@ -6,6 +6,7 @@ import { Card } from '../../components/ui/card';
 import { Mail, Lock, LogIn, UserPlus } from 'lucide-react';
 import { friendlyError } from '../../utils/friendlyError';
 import { trackLogin } from '../../../utils/analytics';
+import { GoogleSignInButton, AuthDivider } from '../../components/GoogleSignInButton';
 
 export const CustomerLogin: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -46,6 +47,9 @@ export const CustomerLogin: React.FC = () => {
             {error}
           </div>
         )}
+
+        <GoogleSignInButton returnTo={returnTo} onError={setError} />
+        <AuthDivider />
 
         <form onSubmit={handleEmailLogin} className="space-y-6">
           <div>

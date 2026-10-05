@@ -174,6 +174,12 @@ export const CustomerProfile: React.FC = () => {
               Correo Electrónico
             </label>
             <p className="text-gray-900 mt-1">{customer.customer_email}</p>
+            {user?.identities?.some((identity) => identity.provider === 'google') && (
+              <span className="inline-flex items-center gap-1.5 mt-2 px-2.5 py-1 rounded-full bg-blue-50 border border-blue-200 text-xs font-medium text-blue-700">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                Conectado con Google
+              </span>
+            )}
           </div>
           <div>
             <label className="text-sm font-medium text-gray-500 flex items-center gap-1">

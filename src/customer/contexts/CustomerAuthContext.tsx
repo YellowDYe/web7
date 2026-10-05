@@ -51,47 +51,12 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      // If not found by auth_user_id, try to find by email as fallback
+      // A profile may exist for this email without a login attached yet (for
+      // example, created by staff). Claim it so the customer keeps their data.
       if (userEmail) {
-        console.log('[CustomerAuth] Customer not found by auth_user_id, trying email fallback:', userEmail);
-        const { data: customerByEmail, error: emailError } = await supabase
-          .from('customers')
-          .select('*')
-          .eq('customer_email', userEmail)
-          .is('auth_user_id', null)
-          .maybeSingle();
-
-        if (emailError) {
-          console.error('[CustomerAuth] Error querying by email:', emailError);
-          throw emailError;
-        }
-
-        if (customerByEmail) {
-          console.log('[CustomerAuth] Found customer by email, linking auth_user_id');
-          // Link the auth_user_id to this customer
-          const { error: updateError } = await supabase
-            .from('customers')
-            .update({
-              auth_user_id: authUserId,
-              last_login: new Date().toISOString(),
-              email_verified: true
-            })
-            .eq('id', customerByEmail.id);
-
-          if (updateError) {
-            console.error('[CustomerAuth] Error linking auth_user_id:', updateError);
-            throw updateError;
-          }
-
-          // Fetch the updated customer data
-          const { data: updatedCustomer } = await supabase
-            .from('customers')
-            .select('*')
-            .eq('id', customerByEmail.id)
-            .single();
-
-          console.log('[CustomerAuth] Customer linked successfully:', updatedCustomer?.id);
-          setCustomer(updatedCustomer);
+        const claimed = await claimExistingCustomerByEmail(authUserId, userEmail);
+        if (claimed) {
+          setCustomer(claimed);
           return;
         }
       }
@@ -237,17 +202,18 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const findCustomerByEmailDirect = async (email: string): Promise<Customer | null> => {
-    const { data, error } = await supabase
-      .from('customers')
-      .select('*')
-      .eq('customer_email', email.toLowerCase().trim())
-      .maybeSingle();
-    if (error) {
-      console.error('[AUTH] Direct email lookup error:', error);
+  // Attaches the signed-in login to an unclaimed profile with the same email.
+  // Empty fields are ignored by the database, so existing data is preserved.
+  const claimExistingCustomerByEmail = async (authUserId: string, email: string): Promise<Customer | null> => {
+    try {
+      const check = await checkEmailExists(email);
+      if (!check.hasCustomer || !check.customer?.id) return null;
+      const result = await callCreateCustomerAccount(authUserId, email, {}, check.customer.id);
+      return result && typeof result === 'object' ? (result as Customer) : null;
+    } catch (error) {
+      console.error('[CustomerAuth] Could not claim existing profile:', error);
       return null;
     }
-    return data;
   };
 
   const login = async (email: string, password: string) => {
@@ -274,7 +240,8 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}${destination}`,
+          redirectTo: `${window.location.origin}/auth/google?returnTo=${encodeURIComponent(destination)}`,
+          queryParams: { prompt: 'select_account' },
         },
       });
 
@@ -400,6 +367,31 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     );
   };
 
+  // Notifies admins (if enabled) that a new customer registered. Never blocks
+  // or breaks the sign-up itself.
+  const notifyNewSignup = async (email: string, customerData: Partial<Customer>) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) return;
+      const fullName = `${(customerData as any).first_name || ''} ${(customerData as any).last_name || ''}`.trim();
+      fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-signup-notification`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          customerName: fullName,
+          customerEmail: email,
+          customerPhone: (customerData as any).phone || '',
+          shopUrl: `${window.location.origin}/admin`,
+        }),
+      }).catch((err) => console.warn('Could not send signup notification:', err));
+    } catch (notifyErr) {
+      console.warn('Could not send signup notification:', notifyErr);
+    }
+  };
+
   const signup = async (email: string, password: string, customerData: Partial<Customer>) => {
     // Tracks whether this attempt created a brand-new login. If the profile
     // step then fails, we must remove that orphaned login so the email stays
@@ -496,30 +488,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
 
       console.log('Customer account created:', accountResult);
       profileSaved = true;
-      // Notify admins (if enabled) that a new customer registered. Non-blocking:
-      // a failure here must never break the sign-up itself.
-      try {
-        const { data: { session: notifySession } } = await supabase.auth.getSession();
-        if (notifySession?.access_token) {
-          const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-          const fullName = `${(customerData as any).first_name || ''} ${(customerData as any).last_name || ''}`.trim();
-          fetch(`${supabaseUrl}/functions/v1/send-signup-notification`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${notifySession.access_token}`,
-            },
-            body: JSON.stringify({
-              customerName: fullName,
-              customerEmail: email,
-              customerPhone: (customerData as any).phone || '',
-              shopUrl: `${window.location.origin}/admin`,
-            }),
-          }).catch((err) => console.warn('Could not send signup notification:', err));
-        }
-      } catch (notifyErr) {
-        console.warn('Could not send signup notification:', notifyErr);
-      }
+      notifyNewSignup(email, customerData);
       // The profile exists now, so make this flow the source of truth: set the
       // signed-in person and their profile directly. This prevents the brief
       // "signed in but no profile" window that was wrongly sending brand-new
@@ -557,27 +526,19 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // The Google login stays in place if this fails, so the customer can come
+  // back and finish their profile later.
   const signupGoogleUser = async (customerData: Partial<Customer>) => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) throw new Error('No hay sesión activa. Por favor intenta de nuevo.');
+      if (!session?.user?.email) throw new Error('No hay sesión activa. Por favor intenta de nuevo.');
 
       const authUserId = session.user.id;
-      const email = session.user.email || '';
+      const email = session.user.email;
 
-      let existingCustomerId: string | null = null;
-
-      const emailCheck = await checkEmailExists(email);
-      existingCustomerId = emailCheck.customer?.id || null;
-
-      if (!existingCustomerId) {
-        const directCustomer = await findCustomerByEmailDirect(email);
-        if (directCustomer) {
-          existingCustomerId = directCustomer.id;
-        }
-      }
-
-      const accountResult = await callCreateCustomerAccount(authUserId, email, customerData, existingCustomerId);
+      await waitForAccessToken();
+      const accountResult = await callCreateCustomerAccount(authUserId, email, customerData, null);
+      notifyNewSignup(email, customerData);
       if (accountResult && typeof accountResult === 'object') {
         setCustomer(accountResult as Customer);
       } else {
@@ -591,62 +552,12 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
   };
 
   const linkGoogleToExistingCustomer = async (): Promise<boolean> => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) return false;
-
-      const email = session.user.email || '';
-      if (!email) return false;
-      const authUserId = session.user.id;
-
-      let existingCustomer: Customer | null = null;
-      let existingCustomerId: string | null = null;
-
-      const emailCheck = await checkEmailExists(email);
-      if (emailCheck.hasCustomer && emailCheck.customer?.id) {
-        existingCustomerId = emailCheck.customer.id;
-        const { data } = await supabase
-          .from('customers')
-          .select('*')
-          .eq('id', existingCustomerId)
-          .maybeSingle();
-        existingCustomer = data;
-      }
-
-      if (!existingCustomer) {
-        existingCustomer = await findCustomerByEmailDirect(email);
-        if (existingCustomer) {
-          existingCustomerId = existingCustomer.id;
-        }
-      }
-
-      if (!existingCustomer || !existingCustomerId) return false;
-
-      const minimalData: Partial<Customer> = {
-        first_name: existingCustomer.customer_name || '',
-        last_name: existingCustomer.customer_lastname || '',
-        phone: existingCustomer.customer_phone || '',
-        street_address: existingCustomer.customer_street || '',
-        address_number: existingCustomer.customer_street_number || '',
-        interior_number: existingCustomer.customer_interior_number || '',
-        colonia: existingCustomer.customer_colonia || '',
-        delegacion: existingCustomer.customer_delegacion || '',
-        postal_code: existingCustomer.customer_postal_code || '',
-        delivery_instructions: existingCustomer.customer_delivery_instructions || '',
-        restrictions: existingCustomer.customer_restrictions || [],
-      } as any;
-
-      const accountResult = await callCreateCustomerAccount(authUserId, email, minimalData, existingCustomerId);
-      if (accountResult && typeof accountResult === 'object') {
-        setCustomer(accountResult as Customer);
-      } else {
-        await fetchCustomerData(authUserId, email);
-      }
-      return true;
-    } catch (error: any) {
-      console.error('Google link error:', error);
-      return false;
-    }
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user?.email) return false;
+    const claimed = await claimExistingCustomerByEmail(session.user.id, session.user.email);
+    if (!claimed) return false;
+    setCustomer(claimed);
+    return true;
   };
 
   const linkExistingCustomer = async (email: string, password: string, existingCustomerId: string) => {

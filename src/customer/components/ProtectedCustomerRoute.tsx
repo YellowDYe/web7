@@ -48,7 +48,8 @@ export function ProtectedCustomerRoute({ children }: { children: ReactNode }) {
   }
 
   if (!customer) {
-    return <Navigate to="/signup?incomplete=true" replace />;
+    const returnTo = location.pathname + location.search;
+    return <Navigate to={`/signup?incomplete=true&returnTo=${encodeURIComponent(returnTo)}`} replace />;
   }
 
   return <>{children}</>;
