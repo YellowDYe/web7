@@ -307,23 +307,6 @@ Deno.serve(async (req: Request) => {
         return jsonResponse({ received: true, status: mpStatus, order_id: orderId });
       }
 
-      // Also update related invoice if exists
-      const { data: invoice } = await supabase
-        .from("invoices")
-        .select("id")
-        .eq("order_id", order.order_id)
-        .maybeSingle();
-
-      if (invoice?.id) {
-        await supabase
-          .from("invoices")
-          .update({
-            invoice_status: "paid",
-            payment_date: new Date().toISOString(),
-          })
-          .eq("id", invoice.id);
-      }
-
       try {
         let customerName = order.order_customer_name || "";
         let customerEmail = order.order_customer_email || "";
