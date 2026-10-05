@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/button';
 import { Card } from '../../components/ui/card';
 import { Mail, Lock, LogIn, UserPlus } from 'lucide-react';
 import { friendlyError } from '../../utils/friendlyError';
+import { trackLogin } from '../../../utils/analytics';
 
 export const CustomerLogin: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -23,6 +24,7 @@ export const CustomerLogin: React.FC = () => {
 
     try {
       await login(email, password);
+      trackLogin();
       navigate(returnTo);
     } catch (err: any) {
       setError(friendlyError(err, 'Correo electrónico o contraseña inválidos'));

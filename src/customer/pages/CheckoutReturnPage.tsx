@@ -6,6 +6,7 @@ import { supabase } from '../../config/supabase';
 import { useCart } from '../contexts/CartContext';
 import { BILLABLE_MEAL_TYPES } from '../../types/orderMenu';
 import { friendlyError } from '../utils/friendlyError';
+import { trackPurchase } from '../../utils/analytics';
 
 type PaymentStatus = 'loading' | 'approved' | 'pending' | 'failure' | 'unregistered';
 
@@ -210,6 +211,10 @@ export const CheckoutReturn: React.FC = () => {
           setTotals(orderTotals);
           setEmailSent(orderEmailSent);
           setEmailError(orderEmailError);
+
+          if (paymentApproved && createdOrderNumber && orderTotals) {
+            trackPurchase(createdOrderNumber, orderTotals.finalTotal);
+          }
 
           clearCart();
           clearProteinCart();

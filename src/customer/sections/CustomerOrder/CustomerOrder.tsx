@@ -15,6 +15,7 @@ import { deliveryOptionService } from '../../../services/deliveryOptionService';
 import { discountService } from '../../../services/discountService';
 import { couponService } from '../../../services/couponService';
 import { calculatePriceBreakdown } from '../../../utils/priceCalculations';
+import { trackAddToCart } from '../../../utils/analytics';
 import { validateOrderWeeks, getValidationMessage, getColacionesValidationMessage, getBillableMealCountForWeek } from '../../../utils/orderValidation';
 import { planIncludesColaciones, calculateRequiredColaciones, getBillableMealsForWeek } from '../../../utils/colacionesHelper';
 import { DAYS_OF_WEEK, buildRecipeColumn } from '../../../types/mealTypes';
@@ -660,6 +661,11 @@ export const CustomerOrder: React.FC<CustomerOrderProps> = ({ content }) => {
       appliedCoupon,
       couponDiscountAmount
     });
+
+    const itemCount = orderItems.reduce((sum, item) => sum + item.quantity, 0);
+    trackAddToCart(floatingBreakdown.finalTotal, [
+      { id: selectedPlan?.meal_plans_id || 'plan', name: selectedPlan?.meal_plans_name || 'Meal Plan', quantity: itemCount, price: floatingBreakdown.finalTotal / Math.max(itemCount, 1) },
+    ]);
 
     // Redirect to cart page to review
     navigate('/cart');

@@ -7,6 +7,7 @@ import { Coupon } from '../../types/coupon';
 import { MealPlan } from '../../types/mealPlan';
 import { FamilyMember } from '../../types/familyMember';
 import { ProteinPlan } from '../../types/proteinPlan';
+import { trackAddToCart } from '../../utils/analytics';
 
 interface CartItem {
   planDuration: 1 | 2 | 4;

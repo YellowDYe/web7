@@ -11,6 +11,7 @@ import { BILLABLE_MEAL_TYPES } from '../../../types/orderMenu';
 import { calculatePriceBreakdown } from '../../../utils/priceCalculations';
 import { supabase } from '../../../config/supabase';
 import { friendlyError } from '../../utils/friendlyError';
+import { trackInitiateCheckout, trackPurchase } from '../../../utils/analytics';
 import { weekService, isWeekStillOrderable } from '../../../services/weekService';
 
 
@@ -497,6 +498,9 @@ export const CustomerCheckout: React.FC = () => {
 
                 if (orderResult) {
                   setCreatedOrderNumber(orderResult.orderNumber);
+                  if (result.status === 'approved') {
+                    trackPurchase(orderResult.orderNumber, paymentTotalAmount || 0);
+                  }
                 } else {
                   setCreatedOrderNumber(`MP-${result.payment_id}`);
                   console.error('Payment succeeded but order creation failed. Payment ID:', result.payment_id);
@@ -558,6 +562,8 @@ export const CustomerCheckout: React.FC = () => {
     try {
       setSubmitting(true);
       setSubmitError(null);
+
+      trackInitiateCheckout(cartTotals?.finalTotal ?? 0);
 
       // Build itemized list and calculate total
       let totalAmount = 0;
@@ -774,6 +780,9 @@ export const CustomerCheckout: React.FC = () => {
 
       if (orderResult) {
         setCreatedOrderNumber(orderResult.orderNumber);
+        if (simulatedStatus === 'approved') {
+          trackPurchase(orderResult.orderNumber, paymentTotalAmount || 0);
+        }
       } else {
         setCreatedOrderNumber(fakePaymentId);
         console.error('Simulated payment succeeded but order creation failed.');

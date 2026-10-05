@@ -43,20 +43,25 @@ function injectHTML(html: string, target: HTMLElement) {
   });
 }
 
-function injectGoogleAnalytics(gaId: string) {
+function injectGoogleAnalytics(gaIds: string) {
+  const ids = gaIds.split(',').map(id => id.trim()).filter(Boolean);
+  if (ids.length === 0) return;
+  const primaryId = ids[0];
+
   const gtagScript = document.createElement('script');
   gtagScript.setAttribute(MARKER, '');
   gtagScript.async = true;
-  gtagScript.src = `https://www.googletagmanager.com/gtag/js?id=${gaId}`;
+  gtagScript.src = `https://www.googletagmanager.com/gtag/js?id=${primaryId}`;
   document.head.appendChild(gtagScript);
 
+  const configLines = ids.map(id => `gtag('config', '${id}');`).join('\n');
   const inlineScript = document.createElement('script');
   inlineScript.setAttribute(MARKER, '');
   inlineScript.textContent = `
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
     gtag('js', new Date());
-    gtag('config', '${gaId}');
+    ${configLines}
   `;
   document.head.appendChild(inlineScript);
 }

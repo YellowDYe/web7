@@ -15,6 +15,7 @@ import FamilyMemberForm from '../../../components/customers/FamilyMemberForm';
 import DelegacionDropdown from '../../../components/customers/DelegacionDropdown';
 import type { Customer } from '../../../types/customer';
 import { supabase } from '../../../config/supabase';
+import { trackSignup } from '../../../utils/analytics';
 
 
 const STEPS = [
@@ -398,6 +399,7 @@ export const CustomerSignup: React.FC = () => {
       setError('');
       try {
         await linkExistingCustomer(formData.email, formData.password, existingCustomerId);
+        trackSignup(formData.email);
         localStorage.removeItem('customerSignupDraft');
         navigate(returnTo);
       } catch (err: any) {
@@ -452,6 +454,7 @@ export const CustomerSignup: React.FC = () => {
       };
 
       await signup(formData.email, formData.password, customerData);
+      trackSignup(formData.email);
       localStorage.removeItem('customerSignupDraft');
       navigate(returnTo);
     } catch (err: any) {
