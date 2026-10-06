@@ -197,6 +197,61 @@ const CustomerOrderSidePanel: React.FC<CustomerOrderSidePanelProps> = ({
             </div>
           </div>
 
+          {/* Add to Cart Button */}
+          <div>
+            <button
+              onClick={onAddToCart}
+              disabled={!canAddToCart || loading}
+              className="w-full bg-red-500 hover:bg-red-600 disabled:bg-gray-200 disabled:text-gray-400 text-white px-4 py-3.5 rounded-xl font-semibold text-sm transition-all active:scale-95 disabled:cursor-not-allowed disabled:active:scale-100 flex items-center justify-center space-x-2"
+            >
+              {loading ? (
+                <>
+                  <Loader className="w-4 h-4 animate-spin" />
+                  <span>Procesando...</span>
+                </>
+              ) : (
+                <>
+                  <ShoppingCart className="w-4 h-4" />
+                  <span>Agregar al Carrito</span>
+                </>
+              )}
+            </button>
+            {!canAddToCart && !loading && orderItems.length > 0 && (
+              <p className="mt-2 text-center text-xs text-orange-600 font-medium">
+                {!isLoggedIn
+                  ? ''
+                  : !orderValidation.isValid
+                    ? getValidationMessage(orderValidation.incompleteWeeks)
+                    : !selectedDeliveryOption
+                      ? texts.deliveryOptionRequired
+                      : ''}
+              </p>
+            )}
+            {!isLoggedIn && (
+              <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-xl text-center">
+                {texts.loginPrompt && (
+                  <p className="text-sm text-amber-800 font-medium mb-2">
+                    {texts.loginPrompt}
+                  </p>
+                )}
+                <div className="flex gap-2">
+                  <Link
+                    to="/login?returnTo=/order"
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 bg-red-500 hover:bg-red-600 text-white text-xs font-semibold py-2 px-3 rounded-lg transition-colors"
+                  >
+                    <LogIn className="w-3.5 h-3.5" />
+                    {texts.loginButton}
+                  </Link>
+                  <Link
+                    to="/signup?returnTo=/order"
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 border border-red-500 text-red-500 hover:bg-red-50 text-xs font-semibold py-2 px-3 rounded-lg transition-colors"
+                  >
+                    {texts.signupButton}
+                  </Link>
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Items by Week */}
           <div className="space-y-4">
@@ -356,61 +411,6 @@ const CustomerOrderSidePanel: React.FC<CustomerOrderSidePanelProps> = ({
           <p className="mt-1 text-xs text-gray-400">{orderNotes.length}/500</p>
         </div>
 
-        {/* Add to Cart Button */}
-        <div>
-          <button
-            onClick={onAddToCart}
-            disabled={!canAddToCart || loading}
-            className="w-full bg-red-500 hover:bg-red-600 disabled:bg-gray-200 disabled:text-gray-400 text-white px-4 py-3.5 rounded-xl font-semibold text-sm transition-all active:scale-95 disabled:cursor-not-allowed disabled:active:scale-100 flex items-center justify-center space-x-2"
-          >
-            {loading ? (
-              <>
-                <Loader className="w-4 h-4 animate-spin" />
-                <span>Procesando...</span>
-              </>
-            ) : (
-              <>
-                <ShoppingCart className="w-4 h-4" />
-                <span>Agregar al Carrito</span>
-              </>
-            )}
-          </button>
-          {!canAddToCart && !loading && orderItems.length > 0 && (
-            <p className="mt-2 text-center text-xs text-orange-600 font-medium">
-              {!isLoggedIn
-                ? ''
-                : !orderValidation.isValid
-                  ? getValidationMessage(orderValidation.incompleteWeeks)
-                  : !selectedDeliveryOption
-                    ? texts.deliveryOptionRequired
-                    : ''}
-            </p>
-          )}
-          {!isLoggedIn && (
-            <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-xl text-center">
-              {texts.loginPrompt && (
-                <p className="text-sm text-amber-800 font-medium mb-2">
-                  {texts.loginPrompt}
-                </p>
-              )}
-              <div className="flex gap-2">
-                <Link
-                  to="/login?returnTo=/order"
-                  className="flex-1 inline-flex items-center justify-center gap-1.5 bg-red-500 hover:bg-red-600 text-white text-xs font-semibold py-2 px-3 rounded-lg transition-colors"
-                >
-                  <LogIn className="w-3.5 h-3.5" />
-                  {texts.loginButton}
-                </Link>
-                <Link
-                  to="/signup?returnTo=/order"
-                  className="flex-1 inline-flex items-center justify-center gap-1.5 border border-red-500 text-red-500 hover:bg-red-50 text-xs font-semibold py-2 px-3 rounded-lg transition-colors"
-                >
-                  {texts.signupButton}
-                </Link>
-              </div>
-            </div>
-          )}
-        </div>
       </div>
     </div>
   );
