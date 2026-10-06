@@ -383,7 +383,7 @@ async function handleCreatePreference(
     }
     quotedTotal += unitPrice * quantity;
     normalizedItems.push({
-      title: typeof item?.title === "string" && item.title.trim() ? item.title.trim().slice(0, 120) : "Pedido",
+      title: "Hola Dieta Web Order",
       description: typeof item?.description === "string" && item.description.trim() ? item.description.trim().slice(0, 256) : undefined,
       quantity,
       unit_price: Math.round(unitPrice * 100) / 100,
@@ -399,9 +399,7 @@ async function handleCreatePreference(
     quotedTotal = serverTotal;
     normalizedItems.length = 0;
     normalizedItems.push({
-      title: typeof description === "string" && description.trim()
-        ? description.trim().slice(0, 120)
-        : "Pedido",
+      title: "Hola Dieta Web Order",
       description: undefined,
       quantity: 1,
       unit_price: serverTotal,
@@ -454,7 +452,7 @@ async function handleCreatePreference(
   if (config.enable_bank_transfer === false) excludedTypes.push({ id: "bank_transfer" });
 
   const maxInstallments = Number(config.max_installments) || safeInstallments;
-  const descriptor = (config.statement_descriptor || "Pedido Comida").slice(0, 22);
+  const descriptor = (config.statement_descriptor || "Hola Dieta").slice(0, 22);
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
   const notificationUrl = supabaseUrl ? `${supabaseUrl}/functions/v1/mercado-pago-webhook` : undefined;
@@ -594,11 +592,11 @@ async function handleProcessPayment(
   const paymentBody: any = {
     transaction_amount: amount,
     token: payment_data.token,
-    description: payment_data.description || (config.statement_descriptor || "Pedido"),
+    description: "Hola Dieta Web Order",
     installments: Number(payment_data.installments) > 0 ? Number(payment_data.installments) : 1,
     payment_method_id: payment_data.payment_method_id,
     issuer_id: payment_data.issuer_id,
-    statement_descriptor: (config.statement_descriptor || "Pedido Comida").slice(0, 22),
+    statement_descriptor: (config.statement_descriptor || "Hola Dieta").slice(0, 22),
     binary_mode: true,
     external_reference: `quote_${quote_id}`,
     notification_url: `${Deno.env.get("SUPABASE_URL")}/functions/v1/mercado-pago-webhook`,
