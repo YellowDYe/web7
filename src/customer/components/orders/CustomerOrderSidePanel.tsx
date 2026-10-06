@@ -197,6 +197,21 @@ const CustomerOrderSidePanel: React.FC<CustomerOrderSidePanelProps> = ({
             </div>
           </div>
 
+          {/* Order Notes */}
+          <div>
+            <p className="text-sm font-semibold text-gray-700 mb-2">Notas (Opcional)</p>
+            <textarea
+              value={orderNotes}
+              onChange={e => onOrderNotesChange(e.target.value)}
+              disabled={loading}
+              maxLength={500}
+              rows={2}
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none"
+              placeholder="Instrucciones especiales..."
+            />
+            <p className="mt-1 text-xs text-gray-400">{orderNotes.length}/500</p>
+          </div>
+
           {/* Add to Cart Button */}
           <div>
             <button
@@ -395,21 +410,6 @@ const CustomerOrderSidePanel: React.FC<CustomerOrderSidePanelProps> = ({
             </div>
           </div>
         )}
-
-        {/* Order Notes */}
-        <div>
-          <p className="text-sm font-semibold text-gray-700 mb-2">Notas (Opcional)</p>
-          <textarea
-            value={orderNotes}
-            onChange={e => onOrderNotesChange(e.target.value)}
-            disabled={loading}
-            maxLength={500}
-            rows={2}
-            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none"
-            placeholder="Instrucciones especiales..."
-          />
-          <p className="mt-1 text-xs text-gray-400">{orderNotes.length}/500</p>
-        </div>
 
       </div>
     </div>
