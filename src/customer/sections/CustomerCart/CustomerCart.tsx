@@ -161,7 +161,7 @@ export const CustomerCart: React.FC = () => {
             <div className="flex justify-center mb-6">
               <ShoppingCart className="h-24 w-24 text-gray-300" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Tu carrito está vacío</h2>
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Tu carrito está vacío</h2>
             <p className="text-gray-600 mb-8">
               Agrega planes de comida o proteínas a tu carrito para continuar
             </p>
@@ -231,7 +231,7 @@ export const CustomerCart: React.FC = () => {
               <Card className="p-6">
                 <div className="flex items-start justify-between mb-4">
                   <div>
-                    <h3 className="text-xl font-bold text-gray-900 mb-1">Planes de Proteína</h3>
+                    <h3 className="text-lg font-bold text-gray-900 mb-1">Planes de Proteína</h3>
                     <p className="text-sm text-gray-500">Productos seleccionados</p>
                   </div>
                   <Zap className="h-6 w-6 text-red-500" />
@@ -271,7 +271,7 @@ export const CustomerCart: React.FC = () => {
                 <Card className="p-6">
                   <div className="flex items-start justify-between mb-4">
                     <div>
-                      <h3 className="text-xl font-bold text-gray-900 mb-2">Semanas</h3>
+                      <h3 className="text-lg font-bold text-gray-900 mb-2">Semanas</h3>
                       <p className="text-gray-600">
                         Duración: <span className="font-medium">{cart.planDuration} {cart.planDuration === 1 ? 'semana' : 'semanas'}</span>
                       </p>
@@ -309,7 +309,7 @@ export const CustomerCart: React.FC = () => {
                 <Card className="p-6">
                   <div className="flex items-center justify-between mb-4">
                     <h4 className="font-bold text-gray-900">Comidas Seleccionadas</h4>
-                    <span className="inline-flex items-center justify-center min-w-[2.5rem] px-3 py-1 rounded-full bg-red-600 text-white text-xl font-bold leading-none">
+                    <span className="inline-flex items-center justify-center min-w-[2.5rem] px-3 py-1 rounded-full bg-red-600 text-white text-base font-bold leading-none">
                       {cart.orderItems.reduce((sum, item) => sum + (BILLABLE_MEAL_TYPES.includes(item.meal_type as any) ? item.quantity : 0), 0)}
                     </span>
                   </div>
@@ -414,7 +414,7 @@ export const CustomerCart: React.FC = () => {
           <div className="lg:col-span-1 hidden lg:block">
             <div className="sticky top-8">
               <Card className="p-6">
-                <h3 className="text-xl font-bold text-gray-900 mb-6">Resumen del Pedido</h3>
+                <h3 className="text-lg font-bold text-gray-900 mb-6">Resumen del Pedido</h3>
 
                 {priceBreakdown && (
                   <div className="space-y-3">
@@ -471,7 +471,7 @@ export const CustomerCart: React.FC = () => {
                     <div className="space-y-3 pt-4">
                       <Link
                         to="/checkout"
-                        className="w-full inline-flex items-center justify-center bg-red-600 hover:bg-red-700 text-white py-4 text-lg rounded-xl font-semibold transition-colors"
+                        className="w-full inline-flex items-center justify-center bg-red-600 hover:bg-red-700 text-white py-4 text-base rounded-xl font-semibold transition-colors"
                       >
                         Proceder al Pago
                       </Link>
@@ -501,7 +501,7 @@ export const CustomerCart: React.FC = () => {
         {showClearConfirm && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <Card className="max-w-md w-full p-6">
-              <h3 className="text-xl font-bold text-gray-900 mb-4">¿Vaciar carrito?</h3>
+              <h3 className="text-lg font-bold text-gray-900 mb-4">¿Vaciar carrito?</h3>
               <p className="text-gray-600 mb-6">
                 Esta acción eliminará todos los artículos de tu carrito. ¿Estás seguro?
               </p>

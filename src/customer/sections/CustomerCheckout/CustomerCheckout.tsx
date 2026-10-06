@@ -1154,7 +1154,7 @@ export const CustomerCheckout: React.FC = () => {
               <button
                 onClick={handleProceedToPayment}
                 disabled={submitting || loadingDiscounts}
-                className="flex-1 max-w-[60%] inline-flex items-center justify-center bg-red-600 hover:bg-red-700 text-white py-3 rounded-xl font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 max-w-[60%] inline-flex items-center justify-center bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {submitting ? 'Procesando...' : 'Realiza tu pedido y paga'}
               </button>
@@ -1173,7 +1173,7 @@ export const CustomerCheckout: React.FC = () => {
           <div className="mb-6 bg-gradient-to-r from-green-50 to-green-100 border-2 border-green-300 rounded-xl p-6">
             <div className="flex items-center mb-4">
               <Calendar className="w-6 h-6 text-green-700 mr-3" />
-              <h3 className="text-2xl font-bold text-green-900">Fechas de Entrega</h3>
+              <h3 className="text-lg font-bold text-green-900">Fechas de Entrega</h3>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {cart.selectedWeeks.map((week, index) => (
@@ -1193,7 +1193,7 @@ export const CustomerCheckout: React.FC = () => {
           <div className="lg:col-span-2 space-y-4">
             {customer && (
               <div className="bg-white rounded-xl p-6 border-2 border-gray-200 shadow-sm">
-                <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
+                <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
                   <MapPin className="w-5 h-5 mr-2 text-green-600" /> Informacion de Entrega
                 </h3>
                 <div className="space-y-3">
@@ -1275,7 +1275,7 @@ export const CustomerCheckout: React.FC = () => {
                 <div className="bg-gray-50 rounded-xl p-6">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="font-bold text-gray-900">Comidas Seleccionadas</h3>
-                    <span className="inline-flex items-center justify-center min-w-[2.5rem] px-3 py-1 rounded-full bg-red-600 text-white text-xl font-bold leading-none">
+                    <span className="inline-flex items-center justify-center min-w-[2.5rem] px-3 py-1 rounded-full bg-red-600 text-white text-base font-bold leading-none">
                       {cart.orderItems.reduce((sum, i) => sum + (BILLABLE_MEAL_TYPES.includes(i.meal_type as any) ? i.quantity : 0), 0)}
                     </span>
                   </div>
@@ -1323,7 +1323,7 @@ export const CustomerCheckout: React.FC = () => {
 
           <div className="lg:col-span-1 hidden lg:block">
             <div className="bg-gray-50 rounded-xl p-6 sticky top-6">
-              <h3 className="font-bold text-gray-900 mb-4">Resumen</h3>
+              <h3 className="text-lg font-bold text-gray-900 mb-4">Resumen</h3>
               {cartTotals && (
                 <div className="space-y-3 text-sm mb-6">
                   <div className="flex justify-between">
@@ -1379,7 +1379,7 @@ export const CustomerCheckout: React.FC = () => {
                 <button
                   onClick={handleProceedToPayment}
                   disabled={submitting || loadingDiscounts}
-                  className="w-full bg-red-600 hover:bg-red-700 text-white px-6 py-3.5 rounded-xl font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="w-full bg-green-600 hover:bg-green-700 text-white px-6 py-3.5 rounded-xl font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {submitting ? (
                     <><Loader2 className="w-5 h-5 animate-spin" /> Procesando...</>
