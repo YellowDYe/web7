@@ -1154,7 +1154,7 @@ export const CustomerCheckout: React.FC = () => {
               <button
                 onClick={handleProceedToPayment}
                 disabled={submitting || loadingDiscounts}
-                className="flex-1 max-w-[60%] inline-flex items-center justify-center bg-red-600 hover:bg-red-700 text-white py-3 rounded-xl font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 max-w-[60%] inline-flex items-center justify-center bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {submitting ? 'Procesando...' : 'Realiza tu pedido y paga'}
               </button>
@@ -1379,7 +1379,7 @@ export const CustomerCheckout: React.FC = () => {
                 <button
                   onClick={handleProceedToPayment}
                   disabled={submitting || loadingDiscounts}
-                  className="w-full bg-red-600 hover:bg-red-700 text-white px-6 py-3.5 rounded-xl font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="w-full bg-green-600 hover:bg-green-700 text-white px-6 py-3.5 rounded-xl font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {submitting ? (
                     <><Loader2 className="w-5 h-5 animate-spin" /> Procesando...</>

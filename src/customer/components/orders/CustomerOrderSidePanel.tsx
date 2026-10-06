@@ -112,62 +112,91 @@ const CustomerOrderSidePanel: React.FC<CustomerOrderSidePanelProps> = ({
 
   return (
     <div className="bg-white rounded-2xl shadow-lg overflow-hidden flex flex-col">
-      {/* Header - static title bar with meal count and total */}
-      <div className="bg-gradient-to-r from-gray-900 to-gray-700 px-4 sm:px-5 py-4 flex-shrink-0 w-full">
-        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-          <div className="flex items-center space-x-2 min-w-0">
-            <Receipt className="w-5 h-5 text-white flex-shrink-0" />
-            {texts.summaryTitle && <h2 className="text-base font-semibold text-white truncate">{texts.summaryTitle}</h2>}
-          </div>
-          <div className="flex items-center space-x-2.5 flex-shrink-0">
-            <span className="text-sm font-medium text-gray-300 whitespace-nowrap">
-              {totalBillableMeals} comida{totalBillableMeals !== 1 ? 's' : ''}
-              {totalMeals > totalBillableMeals && ` + ${totalMeals - totalBillableMeals} col.`}
-            </span>
-            <span className="text-gray-500">|</span>
-            <span className="text-base font-bold text-white whitespace-nowrap">{formatCurrency(priceBreakdown.finalTotal)}</span>
-          </div>
-        </div>
-
-        {confirmClear && (
-          <div className="mt-3 bg-white/10 rounded-xl px-4 py-3">
-            <p className="text-xs text-white font-medium mb-2">¿Vaciar todos los platillos seleccionados?</p>
-            <div className="flex space-x-2">
+      {/* Title */}
+      <div className="px-4 sm:px-5 pt-5 pb-3 flex items-center justify-between">
+        <h2 className="text-xl font-bold font-antonio text-gray-900">Resumen del pedido</h2>
+        <div className="flex items-center gap-2">
+          {!loading && (
+            <button
+              onClick={handleClearClick}
+              title="Vaciar pedido"
+              className="flex items-center space-x-1.5 text-xs text-gray-400 hover:text-red-500 transition-colors"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Vaciar pedido</span>
+            </button>
+          )}
+          {confirmClear && (
+            <div className="bg-red-50 border border-red-200 rounded-lg px-2 py-1 flex items-center gap-1.5">
+              <span className="text-xs text-red-700 font-medium">¿Vaciar?</span>
               <button
                 type="button"
                 onClick={handleConfirmClear}
-                className="flex-1 bg-red-500 hover:bg-red-600 text-white text-xs font-semibold py-1.5 rounded-lg transition-colors"
+                className="bg-red-500 hover:bg-red-600 text-white text-xs font-semibold px-2 py-0.5 rounded transition-colors"
               >
-                Sí, vaciar
+                Sí
               </button>
               <button
                 type="button"
                 onClick={handleCancelClear}
-                className="flex-1 bg-white/20 hover:bg-white/30 text-white text-xs font-semibold py-1.5 rounded-lg transition-colors"
+                className="bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-semibold px-2 py-0.5 rounded transition-colors"
               >
-                Cancelar
+                No
               </button>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Detail section - always visible */}
       <div>
-        <div className="p-4 sm:p-5 space-y-5">
-          {/* Clear button */}
-          {!loading && (
-            <div className="flex justify-end">
-              <button
-                onClick={handleClearClick}
-                title="Vaciar pedido"
-                className="flex items-center space-x-1.5 text-xs text-gray-400 hover:text-red-500 transition-colors"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>Vaciar pedido</span>
-              </button>
+        <div className="px-4 sm:px-5 pb-5 space-y-5">
+          {/* Price Breakdown */}
+          <div className="border-t border-gray-100 pt-4 space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-500">Subtotal</span>
+              <span className="font-medium text-gray-900">{formatCurrency(itemsTotal)}</span>
             </div>
-          )}
+
+            {appliedDiscounts.length > 0 && (
+              <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center space-x-1.5">
+                    <Tag className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />
+                    <span className="text-sm font-medium text-green-800">
+                      Descuento por cantidad
+                    </span>
+                  </div>
+                  <span className="text-sm font-bold text-green-700">-{formatCurrency(appliedDiscounts.reduce((sum, d) => sum + d.amount, 0))}</span>
+                </div>
+              </div>
+            )}
+
+            {selectedDeliveryOption && (
+              <div className="flex justify-between gap-3 text-sm">
+                <span className="text-gray-500 min-w-0">Envío ({selectedDeliveryOption.delivery_options_name})</span>
+                <span className="font-medium text-gray-900 whitespace-nowrap">{formatCurrency(deliveryPrice)}</span>
+              </div>
+            )}
+
+            {appliedCoupon && couponDiscountAmount > 0 && (
+              <div className="flex justify-between text-sm text-green-600">
+                <span>Cupón ({appliedCoupon.code})</span>
+                <span>-{formatCurrency(couponDiscountAmount)}</span>
+              </div>
+            )}
+
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-500">IVA (16%)</span>
+              <span className="font-medium text-gray-900">{formatCurrency(priceBreakdown.taxAmount + priceBreakdown.deliveryTaxAmount)}</span>
+            </div>
+
+            <div className="pt-2 border-t border-gray-200 flex justify-between items-baseline">
+              <span className="text-base font-bold text-gray-900">Total</span>
+              <span className="text-xl font-bold text-red-600">{formatCurrency(priceBreakdown.finalTotal)}</span>
+            </div>
+          </div>
+
 
           {/* Items by Week */}
           <div className="space-y-4">
@@ -293,52 +322,6 @@ const CustomerOrderSidePanel: React.FC<CustomerOrderSidePanelProps> = ({
                 </div>
               );
             })}
-          </div>
-
-          {/* Price Breakdown */}
-          <div className="border-t border-gray-100 pt-4 space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500">Subtotal</span>
-              <span className="font-medium text-gray-900">{formatCurrency(itemsTotal)}</span>
-            </div>
-
-            {appliedDiscounts.length > 0 && (
-              <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2">
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center space-x-1.5">
-                    <Tag className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />
-                    <span className="text-sm font-medium text-green-800">
-                      Descuento por cantidad
-                    </span>
-                  </div>
-                  <span className="text-sm font-bold text-green-700">-{formatCurrency(appliedDiscounts.reduce((sum, d) => sum + d.amount, 0))}</span>
-                </div>
-              </div>
-            )}
-
-            {selectedDeliveryOption && (
-              <div className="flex justify-between gap-3 text-sm">
-                <span className="text-gray-500 min-w-0">Envío ({selectedDeliveryOption.delivery_options_name})</span>
-                <span className="font-medium text-gray-900 whitespace-nowrap">{formatCurrency(deliveryPrice)}</span>
-              </div>
-            )}
-
-            {appliedCoupon && couponDiscountAmount > 0 && (
-              <div className="flex justify-between text-sm text-green-600">
-                <span>Cupón ({appliedCoupon.code})</span>
-                <span>-{formatCurrency(couponDiscountAmount)}</span>
-              </div>
-            )}
-
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500">IVA (16%)</span>
-              <span className="font-medium text-gray-900">{formatCurrency(priceBreakdown.taxAmount + priceBreakdown.deliveryTaxAmount)}</span>
-            </div>
-
-            <div className="pt-2 border-t border-gray-200 flex justify-between items-baseline">
-              <span className="text-base font-bold text-gray-900">Total</span>
-              <span className="text-xl font-bold text-red-600">{formatCurrency(priceBreakdown.finalTotal)}</span>
-            </div>
           </div>
         </div>
       </div>
