@@ -302,27 +302,7 @@ class CustomerOrderSubmissionService {
   }
 
   async sendOrderConfirmationEmail(data: OrderConfirmationData): Promise<void> {
-    const { orderId, orderNumber, customer, selectedWeeks, totals, deliveryOptionName, couponCode } = data;
-
-    try {
-      const { data: invoiceRows } = await supabase
-        .from('invoices')
-        .select('id')
-        .eq('order_id', orderId)
-        .maybeSingle();
-
-      if (invoiceRows?.id) {
-        await supabase
-          .from('invoices')
-          .update({
-            invoice_status: 'paid',
-            payment_date: new Date().toISOString()
-          })
-          .eq('id', invoiceRows.id);
-      }
-    } catch (err) {
-      console.warn('Could not update invoice status:', err);
-    }
+    const { orderNumber, customer, selectedWeeks, totals, deliveryOptionName, couponCode } = data;
 
     try {
       const formatAddress = (): string => {
