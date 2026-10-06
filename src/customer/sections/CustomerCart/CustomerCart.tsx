@@ -168,14 +168,14 @@ export const CustomerCart: React.FC = () => {
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Link
                 to="/order"
-                className="inline-flex items-center justify-center bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-full text-lg font-medium transition-colors"
+                className="inline-flex items-center justify-center bg-red-600 hover:bg-red-700 text-white px-8 py-3 rounded-xl text-lg font-semibold transition-colors"
               >
                 <Plus className="h-5 w-5 mr-2" />
                 Explorar Planes
               </Link>
               <Link
                 to="/proteinas"
-                className="inline-flex items-center justify-center bg-red-500 hover:bg-red-600 text-white px-8 py-3 rounded-full text-lg font-medium transition-colors"
+                className="inline-flex items-center justify-center bg-gray-100 hover:bg-gray-200 text-gray-900 px-8 py-3 rounded-xl text-lg font-semibold transition-colors"
               >
                 <Zap className="h-5 w-5 mr-2" />
                 Ver Proteínas
@@ -187,9 +187,29 @@ export const CustomerCart: React.FC = () => {
     );
   }
 
+  const totalAmount = priceBreakdown ? Math.round(priceBreakdown.finalTotal || 0) : 0;
+
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="max-w-6xl mx-auto">
+        {/* Mobile Sticky Summary Bar */}
+        {priceBreakdown && (
+          <div className="lg:hidden sticky top-0 z-20 -mx-4 mb-6 bg-white border-b border-gray-200 shadow-sm">
+            <div className="flex items-center justify-between gap-3 px-4 py-3">
+              <div className="shrink-0">
+                <p className="text-xs text-gray-500 font-medium">Total</p>
+                <p className="text-xl font-bold text-gray-900">${totalAmount.toLocaleString()} <span className="text-sm font-normal text-gray-500">MXN</span></p>
+              </div>
+              <Link
+                to="/checkout"
+                className="flex-1 max-w-[60%] inline-flex items-center justify-center bg-red-600 hover:bg-red-700 text-white py-3 rounded-xl font-semibold transition-colors"
+              >
+                Proceder al Pago
+              </Link>
+            </div>
+          </div>
+        )}
+
         {/* Header */}
         <div className="mb-8">
           <Link
@@ -391,8 +411,8 @@ export const CustomerCart: React.FC = () => {
             )}
           </div>
 
-          {/* Order Summary Sidebar */}
-          <div className="lg:col-span-1">
+          {/* Order Summary Sidebar - Desktop only on mobile the sticky bar handles it */}
+          <div className="lg:col-span-1 hidden lg:block">
             <div className="sticky top-8">
               <Card className="p-6">
                 <h3 className="text-xl font-bold text-gray-900 mb-6">Resumen del Pedido</h3>
@@ -452,14 +472,14 @@ export const CustomerCart: React.FC = () => {
                     <div className="space-y-3 pt-4">
                       <Link
                         to="/checkout"
-                        className="w-full inline-flex items-center justify-center bg-green-600 hover:bg-green-700 text-white py-4 text-lg rounded-full font-medium transition-colors"
+                        className="w-full inline-flex items-center justify-center bg-red-600 hover:bg-red-700 text-white py-4 text-lg rounded-xl font-semibold transition-colors"
                       >
                         Proceder al Pago
                       </Link>
 
                       <Link
                         to="/order"
-                        className="w-full inline-flex items-center justify-center border border-gray-300 hover:bg-gray-50 text-gray-900 py-4 text-lg rounded-full font-medium transition-colors"
+                        className="w-full inline-flex items-center justify-center border border-gray-300 hover:bg-gray-50 text-gray-900 py-3.5 rounded-xl font-medium transition-colors"
                       >
                         Continuar Comprando
                       </Link>

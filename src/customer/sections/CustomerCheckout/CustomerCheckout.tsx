@@ -1130,9 +1130,31 @@ export const CustomerCheckout: React.FC = () => {
   // --- REVIEW STEP ---
   if (!hasItems && !hasProteinItems) return null;
 
+  const checkoutTotal = cartTotals ? Math.round(cartTotals.finalTotal || 0) : 0;
+
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="max-w-6xl mx-auto">
+        {/* Mobile Sticky Summary Bar */}
+        {cartTotals && (
+          <div className="lg:hidden sticky top-0 z-20 -mx-4 mb-6 bg-white border-b border-gray-200 shadow-sm">
+            <div className="flex items-center justify-between gap-3 px-4 py-3">
+              <div className="shrink-0">
+                <p className="text-xs text-gray-500 font-medium">Total</p>
+                <p className="text-xl font-bold text-gray-900">${checkoutTotal.toLocaleString()} <span className="text-sm font-normal text-gray-500">MXN</span></p>
+              </div>
+              <button
+                onClick={handleProceedToPayment}
+                disabled={submitting || loadingDiscounts}
+                className="flex-1 max-w-[60%] inline-flex items-center justify-center bg-red-600 hover:bg-red-700 text-white py-3 rounded-xl font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {submitting ? 'Procesando...' : 'Realiza tu pedido y paga'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Header */}
         <div className="mb-8">
           <Link to="/cart" className="flex items-center text-gray-600 hover:text-gray-900 mb-4 transition-colors">
             <ArrowLeft className="h-5 w-5 mr-2" /> Volver al carrito
@@ -1300,7 +1322,7 @@ export const CustomerCheckout: React.FC = () => {
             )}
           </div>
 
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-1 hidden lg:block">
             <div className="bg-gray-50 rounded-xl p-6 sticky top-6">
               <h3 className="font-bold text-gray-900 mb-4">Resumen</h3>
               {cartTotals && (
@@ -1358,12 +1380,12 @@ export const CustomerCheckout: React.FC = () => {
                 <button
                   onClick={handleProceedToPayment}
                   disabled={submitting || loadingDiscounts}
-                  className="w-full bg-[#009ee3] hover:bg-[#007eb5] text-white px-6 py-3.5 rounded-xl font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="w-full bg-red-600 hover:bg-red-700 text-white px-6 py-3.5 rounded-xl font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {submitting ? (
                     <><Loader2 className="w-5 h-5 animate-spin" /> Procesando...</>
                   ) : (
-                    <><CreditCard className="w-5 h-5" /> Proceder al Pago</>
+                    <><CreditCard className="w-5 h-5" /> Realiza tu pedido y paga</>
                   )}
                 </button>
                 <p className="text-xs text-center text-gray-500">
