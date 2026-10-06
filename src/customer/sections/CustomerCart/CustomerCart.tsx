@@ -192,9 +192,21 @@ export const CustomerCart: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="max-w-6xl mx-auto">
-        {/* Mobile Sticky Summary Bar */}
+        {/* Header */}
+        <div className="mb-4">
+          <Link
+            to="/order"
+            className="flex items-center text-gray-600 hover:text-gray-900 mb-2 transition-colors"
+          >
+            <ArrowLeft className="h-5 w-5 mr-2" />
+            Continuar comprando
+          </Link>
+          <h1 className="text-xl font-bold font-antonio text-gray-900">Tu Carrito</h1>
+        </div>
+
+        {/* Mobile Summary Bar */}
         {priceBreakdown && (
-          <div className="lg:hidden sticky top-0 z-20 -mx-4 mb-6 bg-white border-b border-gray-200 shadow-sm">
+          <div className="lg:hidden mb-6 bg-white border border-gray-200 rounded-xl shadow-sm">
             <div className="flex items-center justify-between gap-3 px-4 py-3">
               <div className="shrink-0">
                 <p className="text-xs text-gray-500 font-medium">Total</p>
@@ -209,19 +221,6 @@ export const CustomerCart: React.FC = () => {
             </div>
           </div>
         )}
-
-        {/* Header */}
-        <div className="mb-8">
-          <Link
-            to="/order"
-            className="flex items-center text-gray-600 hover:text-gray-900 mb-4 transition-colors"
-          >
-            <ArrowLeft className="h-5 w-5 mr-2" />
-            Continuar comprando
-          </Link>
-          <h1 className="text-3xl font-bold font-antonio text-gray-900">Tu Carrito</h1>
-          <p className="text-gray-600 mt-2">Revisa tu pedido antes de proceder al pago</p>
-        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Cart Items */}
