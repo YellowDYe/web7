@@ -127,7 +127,9 @@ export const PageManager: React.FC = () => {
     try {
       const updatedPage = await websiteService.updatePage(page.id, {
         path: page.path,
-        title: page.title
+        title: page.title,
+        meta_title: page.meta_title || null,
+        meta_description: page.meta_description || null,
       });
       setPages(pages.map(p => p.id === page.id ? updatedPage : p));
       setEditingPage(null);
@@ -412,6 +414,20 @@ export const PageManager: React.FC = () => {
                         type="text"
                         value={editingPage.title}
                         onChange={(e) => setEditingPage({ ...editingPage, title: e.target.value })}
+                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                      />
+                      <input
+                        type="text"
+                        value={editingPage.meta_title || ''}
+                        onChange={(e) => setEditingPage({ ...editingPage, meta_title: e.target.value })}
+                        placeholder="Meta titulo (SEO) - opcional"
+                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                      />
+                      <input
+                        type="text"
+                        value={editingPage.meta_description || ''}
+                        onChange={(e) => setEditingPage({ ...editingPage, meta_description: e.target.value })}
+                        placeholder="Meta descripcion (SEO) - opcional"
                         className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
                       />
                       <div className="flex space-x-2">

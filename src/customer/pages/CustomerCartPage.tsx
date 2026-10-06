@@ -4,6 +4,7 @@ import { cmsApiDirect } from '../../shared/cms/cmsApiDirect';
 import { CMSRenderer } from '../../shared/cms/CMSRenderer';
 import { Page, Module } from '../../shared/cms/cmsApi';
 import { friendlyError } from '../utils/friendlyError';
+import { useSEO } from '../hooks/useSEO';
 
 const CustomerCartPage: React.FC = () => {
   const location = useLocation();
@@ -11,6 +12,12 @@ const CustomerCartPage: React.FC = () => {
   const [modules, setModules] = useState<Module[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useSEO({
+    title: page?.meta_title || page?.title || 'Carrito de Compras',
+    description: page?.meta_description || 'Revisa los productos en tu carrito antes de continuar.',
+    canonicalPath: '/cart',
+  });
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0 });

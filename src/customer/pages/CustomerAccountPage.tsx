@@ -2,12 +2,19 @@ import { useState, useEffect } from 'react';
 import { cmsApi, Page, Module } from '../../shared/cms/cmsApi';
 import { CMSRenderer } from '../../shared/cms/CMSRenderer';
 import { friendlyError } from '../utils/friendlyError';
+import { useSEO } from '../hooks/useSEO';
 
 export default function CustomerAccountPage() {
   const [page, setPage] = useState<Page | null>(null);
   const [modules, setModules] = useState<Module[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useSEO({
+    title: page?.meta_title || page?.title || 'Mi Cuenta',
+    description: page?.meta_description || 'Administra tu perfil, historial de pedidos y configuracion.',
+    canonicalPath: '/account',
+  });
 
   useEffect(() => {
     loadPageContent();
