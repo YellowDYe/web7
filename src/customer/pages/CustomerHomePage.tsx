@@ -18,6 +18,7 @@ const CMSPage: React.FC = () => {
     title: page?.meta_title || page?.title,
     description: page?.meta_description || undefined,
     canonicalPath: location.pathname || '/',
+    noindex: page ? !page.published : true,
   });
 
   useEffect(() => {

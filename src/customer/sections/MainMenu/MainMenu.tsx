@@ -101,9 +101,9 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                   onError={() => setImageError(true)}
                 />
               ) : (
-                <h1 className="text-2xl md:text-3xl font-bold text-gray-800">
+                <span className="text-2xl md:text-3xl font-bold text-gray-800">
                   {siteName || "Hola Dieta"}
-                </h1>
+                </span>
               )}
             </div>
           </Link>

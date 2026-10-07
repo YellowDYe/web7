@@ -9,6 +9,7 @@ interface SEOOverrides {
   canonicalPath?: string;
   publishedTime?: string;
   author?: string;
+  noindex?: boolean;
 }
 
 interface SeoDefaults {
@@ -93,7 +94,7 @@ function upsertOgImage(imageUrl: string) {
 }
 
 export function useSEO(overrides: SEOOverrides = {}) {
-  const { title, description, image, type = 'website', canonicalPath, publishedTime, author } = overrides;
+  const { title, description, image, type = 'website', canonicalPath, publishedTime, author, noindex } = overrides;
 
   useEffect(() => {
     let cancelled = false;
@@ -115,6 +116,14 @@ export function useSEO(overrides: SEOOverrides = {}) {
         : siteUrl || window.location.href;
 
       document.title = finalTitle;
+
+      let robotsTag = document.head.querySelector<HTMLMetaElement>('meta[name="robots"]');
+      if (!robotsTag) {
+        robotsTag = document.createElement('meta');
+        robotsTag.setAttribute('name', 'robots');
+        document.head.appendChild(robotsTag);
+      }
+      robotsTag.setAttribute('content', noindex ? 'noindex, nofollow' : 'index, follow');
 
       if (finalDescription) {
         upsertMeta('name', 'description', finalDescription);
@@ -148,7 +157,7 @@ export function useSEO(overrides: SEOOverrides = {}) {
     })();
 
     return () => { cancelled = true; };
-  }, [title, description, image, type, canonicalPath, publishedTime, author]);
+  }, [title, description, image, type, canonicalPath, publishedTime, author, noindex]);
 }
 
 export function resetSeoCache() {

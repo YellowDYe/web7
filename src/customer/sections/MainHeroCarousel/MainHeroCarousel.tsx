@@ -12,6 +12,7 @@ interface HeroSlide {
   buttonLink: string;
   leftBackgroundColor: string;
   rightBackgroundImage: string;
+  imageAlt?: string;
 }
 
 interface MainHeroCarouselProps {
@@ -36,7 +37,7 @@ const SlideView: React.FC<SlideViewProps> = ({ slide }) => {
         <div className="hidden md:block absolute inset-0 left-1/2 w-1/2 rounded-[0px_45px_45px_0px] overflow-hidden">
           <img
             src={heroImageUrl}
-            alt="Hero background"
+            alt={slide.imageAlt || (slide.title ? `Hola Dieta - ${slide.title.replace(/<[^>]*>/g, '').slice(0, 60)}` : 'Hola Dieta - Come sano, ahorra tiempo y alcanza tus metas')}
             className="w-full h-full object-cover object-center"
             onError={() => setImageError(true)}
           />
@@ -76,7 +77,7 @@ const SlideView: React.FC<SlideViewProps> = ({ slide }) => {
           {heroImageUrl && !imageError ? (
             <img
               src={heroImageUrl}
-              alt="Hero"
+              alt={slide.imageAlt || (slide.title ? `Hola Dieta - ${slide.title.replace(/<[^>]*>/g, '').slice(0, 60)}` : 'Hola Dieta - Come sano, ahorra tiempo y alcanza tus metas')}
               className="w-full h-full object-cover object-center md:hidden rounded-b-[45px]"
               onError={() => setImageError(true)}
             />

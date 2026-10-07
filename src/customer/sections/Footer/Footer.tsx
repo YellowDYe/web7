@@ -59,9 +59,9 @@ export const Footer: React.FC<FooterProps> = ({
                   }}
                 />
               ) : (
-                <h2 className="text-2xl font-bold text-gray-800">
+                <span className="text-2xl font-bold text-gray-800">
                   {siteName || "Hola Dieta"}
-                </h2>
+                </span>
               )}
             </Link>
             <p className="[font-family:'Inria_Serif',Helvetica] font-normal text-[#1d1c21] text-base leading-6 mb-6">

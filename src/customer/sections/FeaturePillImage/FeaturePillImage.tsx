@@ -10,6 +10,8 @@ interface FeaturePillImageProps {
   leftImage?: string;
   backgroundColor?: string;
   iconImage?: string;
+  imageAlt?: string;
+  iconAlt?: string;
 }
 
 export const FeaturePillImage: React.FC<FeaturePillImageProps> = ({
@@ -18,6 +20,8 @@ export const FeaturePillImage: React.FC<FeaturePillImageProps> = ({
   leftImage = "/clip-path-group-1.png",
   backgroundColor = "#ffb3e3",
   iconImage = "/phone-call.svg",
+  imageAlt = "",
+  iconAlt = "",
   contactInfo = {
     phone: "52 1 5545559432",
     email: "yellowdye@dobf.com"
@@ -39,7 +43,7 @@ export const FeaturePillImage: React.FC<FeaturePillImageProps> = ({
               {iconUrl && !iconError ? (
                 <img
                   className="w-10 h-10 md:w-12 md:h-12 mr-3 md:mr-4"
-                  alt="Contact icon"
+alt={iconAlt || "Hola Dieta - Icono de contacto"}
                   src={iconUrl}
                   onError={() => setIconError(true)}
                 />
@@ -72,7 +76,7 @@ export const FeaturePillImage: React.FC<FeaturePillImageProps> = ({
               {imageUrl && !imageError ? (
                 <img
                   className="w-full h-full object-contain object-center rounded-full border-4 border-black"
-                  alt="Contact illustration"
+alt={imageAlt || (title ? `Hola Dieta - ${title.replace(/<[^>]*>/g, '')}` : 'Hola Dieta - Contacto')}
                   src={imageUrl}
                   onError={() => setImageError(true)}
                 />

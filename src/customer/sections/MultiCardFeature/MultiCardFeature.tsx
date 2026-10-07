@@ -88,7 +88,7 @@ const PlanCardComponent: React.FC<{ card: PlanCard }> = ({ card }) => {
           {imageUrl && !imageError ? (
             <img
               className="absolute inset-0 w-full h-full object-cover"
-              alt="Plan background"
+              alt={card.imageAlt || (card.title ? `Hola Dieta - Plan ${card.title.replace(/<[^>]*>/g, '')}` : 'Hola Dieta - Plan de alimentación')}
               src={imageUrl}
               onError={() => setImageError(true)}
             />
