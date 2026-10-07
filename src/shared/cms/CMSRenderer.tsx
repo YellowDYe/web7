@@ -26,6 +26,7 @@ import { CustomerLogin } from '../../customer/sections/CustomerLogin/CustomerLog
 import { CustomerForgotPassword } from '../../customer/sections/CustomerForgotPassword/CustomerForgotPassword';
 import { CustomerResetPassword } from '../../customer/sections/CustomerResetPassword/CustomerResetPassword';
 import { TitleBlock } from '../../customer/sections/TitleBlock/TitleBlock';
+import { SimpleText } from '../../customer/sections/SimpleText/SimpleText';
 import { WeeklyMenu } from '../../customer/sections/WeeklyMenu/WeeklyMenu';
 
 export interface Module {
@@ -111,6 +112,8 @@ export const CMSRenderer: React.FC<CMSRendererProps> = ({ modules, basePath = ''
         return <TitleBlock key={module.id} {...content} />;
       case 'WeeklyMenu':
         return <WeeklyMenu key={module.id} {...content} />;
+      case 'SimpleText':
+        return <SimpleText key={module.id} {...content} />;
       case 'Footer':
         return <Footer key={module.id} {...content} />;
       default:

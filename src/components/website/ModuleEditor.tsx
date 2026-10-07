@@ -45,6 +45,7 @@ export const ModuleEditor: React.FC = () => {
     { value: 'FeaturePillImage', label: 'Feature Imagen Pill' },
     { value: 'Gallery', label: 'Galeria' },
     { value: 'StructuredGallery', label: 'Galeria Estructurada' },
+    { value: 'SimpleText', label: 'Texto Simple' },
     { value: 'Footer', label: 'Footer' },
   ];
 
@@ -581,6 +582,12 @@ export const ModuleEditor: React.FC = () => {
         defaultContent = { isSystemModule: true, showImages: true, showNutrition: false };
       } else if (type === 'ProteinShakes') {
         defaultContent = { isSystemModule: true };
+      } else if (type === 'SimpleText') {
+        defaultContent = {
+          title: "Section Title",
+          body: "<p>Write your content here. You can use <strong>bold</strong>, <em>italic</em>, lists, and more.</p>",
+          backgroundColor: "#ffffff"
+        };
       } else if (type === 'Footer') {
         defaultContent = {
           logoUrl: "",

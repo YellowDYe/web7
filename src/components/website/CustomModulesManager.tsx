@@ -38,6 +38,7 @@ export const CustomModulesManager: React.FC = () => {
     { value: 'StructuredGallery', label: 'Galeria Estructurada' },
     { value: 'Objectives', label: 'Objetivos', isSystem: true },
     { value: 'FAQ', label: 'Preguntas Frecuentes', isSystem: true },
+    { value: 'SimpleText', label: 'Texto Simple' },
     { value: 'TitleBlock', label: 'Bloque de Titulo', isSystem: true },
     { value: 'BlogGrid', label: 'Grid de Blog', isSystem: true },
     { value: 'ProteinShakes', label: 'Protein Shakes', isSystem: true },
@@ -228,6 +229,12 @@ export const CustomModulesManager: React.FC = () => {
         subtitle: "Featured collection",
         images: [],
         backgroundColor: "bg-white"
+      };
+    } else if (type === 'SimpleText') {
+      return {
+        title: "Section Title",
+        body: "<p>Write your content here. You can use <strong>bold</strong>, <em>italic</em>, lists, and more.</p>",
+        backgroundColor: "#ffffff"
       };
     } else if (type === 'Footer') {
       return {
