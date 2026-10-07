@@ -235,7 +235,7 @@ export class MailgunService {
           <div class="header">
             <div class="logo">🥗 Hola Dieta</div>
             <h1>Email Configuration Test</h1>
-            <p>Sistema de Gestión Empresarial</p>
+            <p>Comida saludable a domicilio</p>
           </div>
           
           <div class="content">
@@ -585,7 +585,7 @@ export class MailgunService {
           </div>
 
           <div class="footer">
-            <p><strong>Hola Dieta</strong> - Sistema de Gestión Empresarial</p>
+            <p><strong>Hola Dieta</strong> - Comida saludable a domicilio</p>
             <div class="footer-divider"></div>
             <p>© ${new Date().getFullYear()} Hola Dieta. Todos los derechos reservados.</p>
             <p>Este correo contiene información confidencial. Si lo recibiste por error, por favor elimínalo.</p>

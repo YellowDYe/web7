@@ -2,6 +2,9 @@ User-agent: *
 Allow: /
 Allow: /blog
 Allow: /blog/*
+Allow: /menu
+Allow: /faq
+Allow: /contact
 Disallow: /admin
 Disallow: /admin/*
 Disallow: /account
@@ -11,8 +14,11 @@ Disallow: /cart
 Disallow: /checkout
 Disallow: /checkout/*
 Disallow: /login
+Disallow: /signup
 Disallow: /forgot-password
 Disallow: /reset-password
 Disallow: /auth/*
+Disallow: /preview
+Disallow: /preview/*
 
 Sitemap: /sitemap.xml
