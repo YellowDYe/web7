@@ -7,6 +7,7 @@ import { sanitizeHtml } from '../../../utils/sanitizeHtml';
 interface MainHeroProps extends CMSContent {
   leftBackgroundColor?: string;
   rightBackgroundImage?: string;
+  imageAlt?: string;
 }
 
 export const MainHero: React.FC<MainHeroProps> = ({
@@ -15,7 +16,8 @@ export const MainHero: React.FC<MainHeroProps> = ({
   buttonText = "SELECCIONA TU PLAN",
   buttonLink = "",
   leftBackgroundColor = "#ffcfe3",
-  rightBackgroundImage = "/rectangle-1.png"
+  rightBackgroundImage = "/rectangle-1.png",
+  imageAlt = ""
 }) => {
   const [imageError, setImageError] = useState(false);
   const heroImageUrl = resolveImageUrl(rightBackgroundImage);
@@ -28,7 +30,7 @@ export const MainHero: React.FC<MainHeroProps> = ({
         <div className="hidden md:block absolute inset-0 left-1/2 w-1/2 rounded-[0px_45px_45px_0px] overflow-hidden">
           <img
             src={heroImageUrl}
-            alt="Hero background"
+alt={imageAlt || (title ? `Hola Dieta - ${title.replace(/<[^>]*>/g, '').slice(0, 60)}` : 'Hola Dieta - Come sano, ahorra tiempo y alcanza tus metas')}
             className="w-full h-full object-cover object-center"
             onError={() => setImageError(true)}
           />
@@ -66,7 +68,7 @@ export const MainHero: React.FC<MainHeroProps> = ({
           {heroImageUrl && !imageError ? (
             <img
               src={heroImageUrl}
-              alt="Hero"
+  alt={imageAlt || (title ? `Hola Dieta - ${title.replace(/<[^>]*>/g, '').slice(0, 60)}` : 'Hola Dieta - Come sano, ahorra tiempo y alcanza tus metas')}
               className="w-full h-full object-cover object-center md:hidden rounded-b-[45px]"
               onError={() => setImageError(true)}
             />

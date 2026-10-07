@@ -6,12 +6,23 @@ import type { BlogPost } from '../../types/website';
 import { MainMenu } from '../sections/MainMenu/MainMenu';
 import { Footer } from '../sections/Footer/Footer';
 import { sanitizeHtml } from '../../utils/sanitizeHtml';
+import { useSEO } from '../hooks/useSEO';
 
 const CustomerBlogPostPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const [post, setPost] = useState<BlogPost | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+
+  useSEO({
+    title: post?.meta_title || post?.title,
+    description: post?.meta_description || post?.summary,
+    image: post?.cover_image_url || undefined,
+    type: 'article',
+    canonicalPath: slug ? `/blog/${slug}` : '/blog',
+    publishedTime: post?.published_at || undefined,
+    author: post?.author || undefined,
+  });
 
   useEffect(() => {
     if (!slug) return;
@@ -22,17 +33,6 @@ const CustomerBlogPostPage: React.FC = () => {
           setNotFound(true);
         } else {
           setPost(data);
-          document.title = data.meta_title || data.title;
-
-          const metaDesc = document.querySelector('meta[name="description"]');
-          if (metaDesc) {
-            metaDesc.setAttribute('content', data.meta_description || data.summary);
-          } else {
-            const tag = document.createElement('meta');
-            tag.name = 'description';
-            tag.content = data.meta_description || data.summary;
-            document.head.appendChild(tag);
-          }
         }
       })
       .catch(() => setNotFound(true))

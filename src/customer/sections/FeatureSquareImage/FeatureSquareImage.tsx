@@ -8,12 +8,14 @@ interface FeatureSquareImageProps {
   benefits?: Benefit[];
   leftImage?: string;
   rightBackgroundColor?: string;
+  imageAlt?: string;
 }
 
 export const FeatureSquareImage: React.FC<FeatureSquareImageProps> = ({
   title = "BENEFICIOS",
   leftImage = "/rectangle.png",
   rightBackgroundColor = "#e9ff93",
+  imageAlt = "",
   benefits = [
     {
       id: "tiempo",
@@ -64,7 +66,7 @@ export const FeatureSquareImage: React.FC<FeatureSquareImageProps> = ({
             {imageUrl && !imageError ? (
               <img
                 className="w-full h-full object-contain object-center rounded-[45px]"
-                alt="Benefits illustration"
+alt={imageAlt || (title ? `Hola Dieta - ${title.replace(/<[^>]*>/g, '')}` : 'Hola Dieta - Beneficios')}
                 src={imageUrl}
                 onError={() => setImageError(true)}
               />

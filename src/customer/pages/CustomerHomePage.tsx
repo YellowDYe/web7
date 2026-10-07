@@ -4,6 +4,7 @@ import { cmsApi, Page, Module, testConnection } from '../../shared/cms/cmsApi';
 import { cmsApiDirect } from '../../shared/cms/cmsApiDirect';
 import { CMSRenderer } from '../../shared/cms/CMSRenderer';
 import { friendlyError } from '../utils/friendlyError';
+import { useSEO } from '../hooks/useSEO';
 
 const CMSPage: React.FC = () => {
   const location = useLocation();
@@ -12,6 +13,13 @@ const CMSPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isTestingConnection, setIsTestingConnection] = useState(false);
+
+  useSEO({
+    title: page?.meta_title || page?.title,
+    description: page?.meta_description || undefined,
+    canonicalPath: location.pathname || '/',
+    noindex: page ? !page.published : true,
+  });
 
   useEffect(() => {
     loadPageContent();

@@ -2,12 +2,19 @@ import { useState, useEffect } from 'react';
 import { cmsApi, Page, Module } from '../../shared/cms/cmsApi';
 import { CMSRenderer } from '../../shared/cms/CMSRenderer';
 import { friendlyError } from '../utils/friendlyError';
+import { useSEO } from '../hooks/useSEO';
 
 export default function CustomerCheckoutPage() {
   const [page, setPage] = useState<Page | null>(null);
   const [modules, setModules] = useState<Module[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useSEO({
+    title: page?.meta_title || page?.title || 'Finalizar Compra',
+    description: page?.meta_description || 'Completa tu pedido y elige tu metodo de pago.',
+    canonicalPath: '/checkout',
+  });
 
   useEffect(() => {
     loadPageContent();

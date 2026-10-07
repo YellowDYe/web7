@@ -6,6 +6,8 @@ export interface Page {
   title: string;
   module_order: string[];
   published: boolean;
+  meta_title?: string | null;
+  meta_description?: string | null;
   created_at: string;
   updated_at: string;
 }

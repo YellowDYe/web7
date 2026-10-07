@@ -3,7 +3,7 @@ import { websiteService } from '../../services/websiteService';
 import type { Page, Module, ModuleType } from '../../types/website';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Plus, CreditCard as Edit, Trash2, Eye, EyeOff, ChevronUp, ChevronDown, Save, X, CircleCheck as CheckCircle, CircleAlert as AlertCircle, ExternalLink, Globe, FileText, Package } from 'lucide-react';
+import { Plus, CreditCard as Edit, Trash2, Eye, EyeOff, ChevronUp, ChevronDown, Save, X, CircleCheck as CheckCircle, CircleAlert as AlertCircle, ExternalLink, Globe, FileText, Package, Search } from 'lucide-react';
 
 const SYSTEM_MODULE_TYPES: { value: ModuleType; label: string }[] = [
   { value: 'MainMenu', label: 'Menu Principal' },
@@ -52,6 +52,9 @@ export const PageManager: React.FC = () => {
   const [showAddModule, setShowAddModule] = useState(false);
   const [customModules, setCustomModules] = useState<Module[]>([]);
   const [addingModule, setAddingModule] = useState(false);
+  const [seoForm, setSeoForm] = useState({ meta_title: '', meta_description: '' });
+  const [savingSeo, setSavingSeo] = useState(false);
+  const [seoStatus, setSeoStatus] = useState<{ type: 'success' | 'error' | null; message: string }>({ type: null, message: '' });
 
   useEffect(() => {
     loadPages();
@@ -91,8 +94,34 @@ export const PageManager: React.FC = () => {
       setModules(sortedModules);
       setSelectedPage(page);
       setPreviewPage(null);
+      setSeoForm({
+        meta_title: page.meta_title || '',
+        meta_description: page.meta_description || '',
+      });
+      setSeoStatus({ type: null, message: '' });
     } catch (error) {
       console.error('Error loading page modules:', error);
+    }
+  };
+
+  const handleSaveSeo = async () => {
+    if (!selectedPage) return;
+    setSavingSeo(true);
+    setSeoStatus({ type: null, message: '' });
+    try {
+      const updatedPage = await websiteService.updatePage(selectedPage.id, {
+        meta_title: seoForm.meta_title || null,
+        meta_description: seoForm.meta_description || null,
+      });
+      setPages(pages.map(p => p.id === selectedPage.id ? updatedPage : p));
+      setSelectedPage(updatedPage);
+      setSeoStatus({ type: 'success', message: 'SEO guardado correctamente.' });
+      setTimeout(() => setSeoStatus({ type: null, message: '' }), 3000);
+    } catch (error) {
+      console.error('Error saving SEO:', error);
+      setSeoStatus({ type: 'error', message: 'Error al guardar SEO. Intenta de nuevo.' });
+    } finally {
+      setSavingSeo(false);
     }
   };
 
@@ -127,7 +156,7 @@ export const PageManager: React.FC = () => {
     try {
       const updatedPage = await websiteService.updatePage(page.id, {
         path: page.path,
-        title: page.title
+        title: page.title,
       });
       setPages(pages.map(p => p.id === page.id ? updatedPage : p));
       setEditingPage(null);
@@ -426,7 +455,7 @@ export const PageManager: React.FC = () => {
                   ) : (
                     <div className="flex items-center justify-between gap-2">
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <div className="font-medium text-gray-900 truncate">{page.title}</div>
                           <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium flex-shrink-0 ${
                             page.published
@@ -439,6 +468,11 @@ export const PageManager: React.FC = () => {
                               <><FileText className="w-2.5 h-2.5" />Borrador</>
                             )}
                           </span>
+                          {(page.meta_title || page.meta_description) && (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium flex-shrink-0 bg-blue-100 text-blue-700">
+                              <Search className="w-2.5 h-2.5" />SEO
+                            </span>
+                          )}
                         </div>
                         <div className="text-sm text-gray-500 truncate">{page.path}</div>
                       </div>
@@ -511,7 +545,63 @@ export const PageManager: React.FC = () => {
           </CardHeader>
           <CardContent>
             {selectedPage ? (
-              <div className="space-y-2">
+              <div className="space-y-4">
+                {/* SEO Settings Panel */}
+                <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Search className="w-4 h-4 text-gray-500" />
+                    <h4 className="text-sm font-semibold text-gray-700">Configuracion SEO</h4>
+                    {seoStatus.type && (
+                      <span className={`text-xs ml-auto ${
+                        seoStatus.type === 'success' ? 'text-green-600' : 'text-red-600'
+                      }`}>
+                        {seoStatus.message}
+                      </span>
+                    )}
+                  </div>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Meta Titulo (SEO)
+                      </label>
+                      <input
+                        type="text"
+                        value={seoForm.meta_title}
+                        onChange={(e) => setSeoForm({ ...seoForm, meta_title: e.target.value })}
+                        placeholder="Titulo para buscadores - opcional"
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <p className="text-xs text-gray-400 mt-1">Aparece en la pestana del navegador y en resultados de Google. Si lo dejas vacio, se usa el titulo de la pagina.</p>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Meta Descripcion (SEO)
+                      </label>
+                      <textarea
+                        value={seoForm.meta_description}
+                        onChange={(e) => setSeoForm({ ...seoForm, meta_description: e.target.value })}
+                        placeholder="Descripcion para buscadores - opcional"
+                        rows={2}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                      />
+                      <p className="text-xs text-gray-400 mt-1">Resumen que aparece bajo el titulo en resultados de Google. Recomendado: 150-160 caracteres.</p>
+                    </div>
+                    <div className="flex justify-end">
+                      <Button
+                        size="sm"
+                        onClick={handleSaveSeo}
+                        disabled={savingSeo}
+                        className="flex items-center gap-2"
+                      >
+                        <Save className="w-3.5 h-3.5" />
+                        {savingSeo ? 'Guardando...' : 'Guardar SEO'}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Modules Section */}
+                <div className="space-y-2">
                 {modules.map((module, index) => {
                   const isActive = module.is_active !== false;
                   return (
@@ -586,6 +676,8 @@ export const PageManager: React.FC = () => {
                     No hay módulos en esta página
                   </div>
                 )}
+
+                </div>
 
                 {/* Add Module Button */}
                 <div className="mt-4 pt-4 border-t border-gray-200">

@@ -319,7 +319,8 @@ export const ModuleEditor: React.FC = () => {
           buttonText: "Get Started",
           buttonLink: "",
           leftBackgroundColor: "#2563eb",
-          rightBackgroundImage: ""
+          rightBackgroundImage: "",
+          imageAlt: ""
         };
       } else if (type === 'MainHeroCarousel') {
         defaultContent = {
@@ -331,7 +332,8 @@ export const ModuleEditor: React.FC = () => {
               buttonText: 'Get Started',
               buttonLink: '',
               leftBackgroundColor: '#ffcfe3',
-              rightBackgroundImage: ''
+              rightBackgroundImage: '',
+              imageAlt: ''
             },
             {
               id: 'slide-2',
@@ -340,7 +342,8 @@ export const ModuleEditor: React.FC = () => {
               buttonText: 'Learn More',
               buttonLink: '',
               leftBackgroundColor: '#bfd730',
-              rightBackgroundImage: ''
+              rightBackgroundImage: '',
+              imageAlt: ''
             }
           ],
           autoPlay: true,
@@ -367,6 +370,7 @@ export const ModuleEditor: React.FC = () => {
               buttonText: "Learn More",
               buttonLink: "",
               imageUrl: "",
+              imageAlt: "",
               macros: defaultMacros
             },
             {
@@ -377,6 +381,7 @@ export const ModuleEditor: React.FC = () => {
               buttonText: "Learn More",
               buttonLink: "",
               imageUrl: "",
+              imageAlt: "",
               macros: defaultMacros
             }
           ]
@@ -414,13 +419,15 @@ export const ModuleEditor: React.FC = () => {
           buttonText: "Discover More",
           buttonLink: "",
           leftImage: "",
-          rightBackgroundColor: "#2563eb"
+          rightBackgroundColor: "#2563eb",
+          imageAlt: ""
         };
       } else if (type === 'FeatureSquareImage') {
         defaultContent = {
           title: "Why Choose Us",
           leftImage: "",
           rightBackgroundColor: "#ffffff",
+          imageAlt: "",
           benefits: [
             {
               id: "benefit-1",
@@ -449,6 +456,8 @@ export const ModuleEditor: React.FC = () => {
           leftImage: "",
           backgroundColor: "#f9fafb",
           iconImage: "",
+          imageAlt: "",
+          iconAlt: "",
           contactInfo: {
             phone: "123-456-7890",
             email: "info@example.com"

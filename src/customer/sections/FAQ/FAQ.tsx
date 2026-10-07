@@ -65,11 +65,11 @@ const AccordionItem: React.FC<{
         onClick={onToggle}
         aria-expanded={isOpen}
       >
-        <span
+        <h3
           className="[font-family:'Chivo',Helvetica] font-semibold text-[#1e1e1e] text-base md:text-lg leading-snug flex-1 tracking-[-0.01em] group-hover:text-gray-700 transition-colors"
         >
           {item.question}
-        </span>
+        </h3>
         <span
           className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300"
           style={{ backgroundColor: isOpen ? accentColor : 'transparent', border: `2px solid ${accentColor}` }}

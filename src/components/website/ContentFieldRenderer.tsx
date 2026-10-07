@@ -302,16 +302,21 @@ export const ContentFieldRenderer: React.FC<ContentFieldRendererProps> = ({
       return (
         <div key={key} className="space-y-2">
           {key.toLowerCase().includes('image') ? (
-            <ImageFieldEditor
-              value={value}
-              onChange={(newValue) => parentKey
-                ? onNestedContentChange(parentKey, key, newValue)
-                : onContentChange(key, newValue)
-              }
-              label={key.charAt(0).toUpperCase() + key.slice(1)}
-              media={media}
-              onMediaLibraryRefresh={onMediaLibraryRefresh}
-            />
+            <>
+              <ImageFieldEditor
+                value={value}
+                onChange={(newValue) => parentKey
+                  ? onNestedContentChange(parentKey, key, newValue)
+                  : onContentChange(key, newValue)
+                }
+                label={key.charAt(0).toUpperCase() + key.slice(1)}
+                media={media}
+                onMediaLibraryRefresh={onMediaLibraryRefresh}
+              />
+              {key.toLowerCase().includes('alt') && (
+                <p className="text-xs text-gray-400">Texto alternativo para SEO y accesibilidad. Describe la imagen para buscadores y lectores de pantalla.</p>
+              )}
+            </>
           ) : key.toLowerCase().endsWith('color') ? (
             renderColorField(
               key,
@@ -410,7 +415,8 @@ export const ContentFieldRenderer: React.FC<ContentFieldRendererProps> = ({
                       backgroundColor: 'bg-white',
                       buttonText: '',
                       buttonLink: '',
-                      imageUrl: ''
+                      imageUrl: '',
+                      imageAlt: ''
                     };
                   } else if (key === 'steps') {
                     defaultItem = {
@@ -457,7 +463,8 @@ export const ContentFieldRenderer: React.FC<ContentFieldRendererProps> = ({
                       buttonText: '',
                       buttonLink: '',
                       leftBackgroundColor: '#ffcfe3',
-                      rightBackgroundImage: ''
+                      rightBackgroundImage: '',
+                      imageAlt: ''
                     };
                   } else {
                     defaultItem = { id: `item-${Date.now()}`, name: 'Nuevo Item' };
@@ -530,13 +537,18 @@ export const ContentFieldRenderer: React.FC<ContentFieldRendererProps> = ({
                               )}
                             </>
                           ) : itemKey.toLowerCase().includes('image') ? (
-                            <ImageFieldEditor
-                              value={String(itemValue)}
-                              onChange={(newValue) => onArrayContentChange(key, index, itemKey, newValue)}
-                              label={itemKey.charAt(0).toUpperCase() + itemKey.slice(1)}
-                              media={media}
-                              onMediaLibraryRefresh={onMediaLibraryRefresh}
-                            />
+                            <>
+                              <ImageFieldEditor
+                                value={String(itemValue)}
+                                onChange={(newValue) => onArrayContentChange(key, index, itemKey, newValue)}
+                                label={itemKey.charAt(0).toUpperCase() + itemKey.slice(1)}
+                                media={media}
+                                onMediaLibraryRefresh={onMediaLibraryRefresh}
+                              />
+                              {itemKey.toLowerCase().includes('alt') && (
+                                <p className="text-xs text-gray-400 mt-1">Texto alternativo para SEO y accesibilidad.</p>
+                              )}
+                            </>
                           ) : itemKey === 'active' && typeof itemValue === 'boolean' ? (
                             <label className="flex items-center space-x-2">
                               <input

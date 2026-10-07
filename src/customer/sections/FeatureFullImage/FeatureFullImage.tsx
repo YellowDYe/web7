@@ -7,6 +7,7 @@ import { sanitizeHtml } from '../../../utils/sanitizeHtml';
 interface FeatureFullImageProps extends CMSContent {
   leftImage?: string;
   rightBackgroundColor?: string;
+  imageAlt?: string;
 }
 
 export const FeatureFullImage: React.FC<FeatureFullImageProps> = ({
@@ -15,7 +16,8 @@ export const FeatureFullImage: React.FC<FeatureFullImageProps> = ({
   buttonText = "SELECCIONA TU PLAN",
   buttonLink = "",
   leftImage = "/clip-path-group.png",
-  rightBackgroundColor = "#ffffff"
+  rightBackgroundColor = "#ffffff",
+  imageAlt = ""
 }) => {
   const [imageError, setImageError] = useState(false);
   const imageUrl = resolveImageUrl(leftImage);
@@ -30,7 +32,7 @@ export const FeatureFullImage: React.FC<FeatureFullImageProps> = ({
             {imageUrl && !imageError ? (
               <img
                 className="w-full h-full object-contain object-center rounded-[45px]"
-                alt="Feature illustration"
+alt={imageAlt || (title ? `Hola Dieta - ${title.replace(/<[^>]*>/g, '').slice(0, 60)}` : 'Hola Dieta')}
                 src={imageUrl}
                 onError={() => setImageError(true)}
               />
