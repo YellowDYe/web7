@@ -11,6 +11,7 @@ import {
   Italic,
   Underline as UnderlineIcon,
   Strikethrough,
+  Heading1,
   Heading2,
   Heading3,
   List,
@@ -77,7 +78,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange,
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
-        heading: { levels: [2, 3] },
+        heading: { levels: [1, 2, 3] },
       }),
       Underline,
       Image.configure({ inline: false, allowBase64: false }),
@@ -169,6 +170,13 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange,
         <ToolbarDivider />
 
         {/* Headings */}
+        <ToolbarButton
+          onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+          isActive={editor.isActive('heading', { level: 1 })}
+          title="Título 1"
+        >
+          <Heading1 className="w-4 h-4" />
+        </ToolbarButton>
         <ToolbarButton
           onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
           isActive={editor.isActive('heading', { level: 2 })}

@@ -10,6 +10,11 @@ import {
   Italic,
   Underline as UnderlineIcon,
   Strikethrough,
+  Heading1,
+  Heading2,
+  Heading3,
+  List,
+  ListOrdered,
   Link as LinkIcon,
   AlignLeft,
   AlignCenter,
@@ -68,12 +73,8 @@ export const CompactRichTextEditor: React.FC<CompactRichTextEditorProps> = ({
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
-        heading: false,
-        bulletList: false,
-        orderedList: false,
-        blockquote: false,
+        heading: { levels: [1, 2, 3] },
         codeBlock: false,
-        horizontalRule: false,
         code: false,
       }),
       Underline,
@@ -152,6 +153,50 @@ export const CompactRichTextEditor: React.FC<CompactRichTextEditorProps> = ({
 
           <Divider />
 
+          {/* Headings */}
+          <ToolbarBtn
+            onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+            isActive={editor.isActive('heading', { level: 1 })}
+            title="Título 1"
+          >
+            <Heading1 className="w-3.5 h-3.5" />
+          </ToolbarBtn>
+          <ToolbarBtn
+            onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+            isActive={editor.isActive('heading', { level: 2 })}
+            title="Título 2"
+          >
+            <Heading2 className="w-3.5 h-3.5" />
+          </ToolbarBtn>
+          <ToolbarBtn
+            onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
+            isActive={editor.isActive('heading', { level: 3 })}
+            title="Título 3"
+          >
+            <Heading3 className="w-3.5 h-3.5" />
+          </ToolbarBtn>
+
+          <Divider />
+
+          {/* Lists */}
+          <ToolbarBtn
+            onClick={() => editor.chain().focus().toggleBulletList().run()}
+            isActive={editor.isActive('bulletList')}
+            title="Lista con viñetas"
+          >
+            <List className="w-3.5 h-3.5" />
+          </ToolbarBtn>
+          <ToolbarBtn
+            onClick={() => editor.chain().focus().toggleOrderedList().run()}
+            isActive={editor.isActive('orderedList')}
+            title="Lista numerada"
+          >
+            <ListOrdered className="w-3.5 h-3.5" />
+          </ToolbarBtn>
+
+          <Divider />
+
+          {/* Inline formatting */}
           <ToolbarBtn
             onClick={() => editor.chain().focus().toggleBold().run()}
             isActive={editor.isActive('bold')}
