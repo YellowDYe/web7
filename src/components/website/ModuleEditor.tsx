@@ -46,6 +46,7 @@ export const ModuleEditor: React.FC = () => {
     { value: 'Gallery', label: 'Galeria' },
     { value: 'StructuredGallery', label: 'Galeria Estructurada' },
     { value: 'SimpleText', label: 'Texto Simple' },
+    { value: 'PostalCodeValidator', label: 'Validador de Codigo Postal' },
     { value: 'Footer', label: 'Footer' },
   ];
 
@@ -586,6 +587,14 @@ export const ModuleEditor: React.FC = () => {
         defaultContent = {
           title: "Section Title",
           body: "<p>Write your content here. You can use <strong>bold</strong>, <em>italic</em>, lists, and more.</p>",
+          backgroundColor: "#ffffff"
+        };
+      } else if (type === 'PostalCodeValidator') {
+        defaultContent = {
+          title: "Verifica tu zona de entrega",
+          instructionText: "<p>Escribe tu codigo postal para verificar si tenemos cobertura de entrega en tu area.</p>",
+          successMessage: "Si tenemos entregas en tu zona",
+          notFoundMessage: "No tenemos entregas en tu zona",
           backgroundColor: "#ffffff"
         };
       } else if (type === 'Footer') {

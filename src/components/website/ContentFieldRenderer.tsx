@@ -113,7 +113,7 @@ function isValidCssColor(value: string): boolean {
 }
 
 const RICH_TEXT_KEYS = new Set([
-  'title', 'subtitle', 'description', 'body',
+  'title', 'subtitle', 'description', 'body', 'instructionText',
   'contactTitle', 'contactDescription',
 ]);
 

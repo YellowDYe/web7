@@ -155,4 +155,5 @@ export type ModuleType =
   | 'Objectives'
   | 'TitleBlock'
   | 'SimpleText'
+  | 'PostalCodeValidator'
   | 'WeeklyMenu';
