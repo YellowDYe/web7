@@ -154,4 +154,6 @@ export type ModuleType =
   | 'BlogGrid'
   | 'Objectives'
   | 'TitleBlock'
+  | 'SimpleText'
+  | 'PostalCodeValidator'
   | 'WeeklyMenu';

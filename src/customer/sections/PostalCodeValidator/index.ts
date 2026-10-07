@@ -1,0 +1,1 @@
+export { PostalCodeValidator } from './PostalCodeValidator';

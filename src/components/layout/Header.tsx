@@ -40,18 +40,9 @@ const Header: React.FC = () => {
 
   // Navigation items for mobile menu (mirrors Sidebar)
   const navigationItems = [
-    { label: 'Dashboard', path: '/', permission: 'dashboard_view' },
-    { label: 'Pedidos', path: '/pedidos', permission: 'orders_view' },
-    { label: 'Clientes', path: '/clientes', permission: 'customers_view' },
-    { label: 'Recetas y Menús', path: '/menus', permission: 'menus_view' },
-    { label: 'Cocina', path: '/cocina', permission: 'kitchen_view' },
-    { label: 'Envíos', path: '/envios', permission: 'delivery_view' },
-    { label: 'Semana', path: '/semana', permission: 'weeks_view' },
-    { label: 'Productos', path: '/planes', permission: 'products_view' },
-    { label: 'Sitio Web', path: '/website', permission: 'website_view' },
-    { label: 'WooCommerce', path: '/woocommerce', permission: 'admin_users' },
-    { label: 'Contabilidad', path: '/contabilidad', permission: 'accounting_view' },
-    { label: 'Nómina', path: '/nomina', permission: 'payroll_manage' },
+    { label: 'Sitio Web', path: '/admin/website', permission: 'website_view' },
+    { label: 'Admin', path: '/admin/users', permission: 'admin_users' },
+    { label: 'Marketing', path: '/admin/marketing', permission: 'coupons_view' },
   ];
 
   return (

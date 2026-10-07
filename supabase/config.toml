@@ -75,3 +75,6 @@ verify_jwt = false
 
 [functions.woocommerce-webhook]
 verify_jwt = false
+
+[functions.sitemap]
+verify_jwt = false
