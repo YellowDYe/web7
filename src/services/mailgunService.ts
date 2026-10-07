@@ -249,7 +249,7 @@ export class MailgunService {
             <h3>Detalles del Test:</h3>
             <ul>
               <li><strong>Fecha y hora:</strong> ${new Date().toLocaleString('es-ES')}</li>
-              <li><strong>Sistema:</strong> Hola Dieta Management System</li>
+              <li><strong>Sistema:</strong> Hola Dieta</li>
               <li><strong>Estado:</strong> Configuración verificada</li>
             </ul>
             
@@ -517,13 +517,13 @@ export class MailgunService {
           <div class="header">
             <div class="logo-container">🥗</div>
             <h1>¡Tu cuenta ha sido creada!</h1>
-            <p>Credenciales de acceso al Sistema Hola Dieta</p>
+            <p>Credenciales de acceso a Hola Dieta</p>
           </div>
 
           <div class="content">
             <div class="greeting">
               <p>Hola,</p>
-              <p><strong>${inviterName}</strong> te ha creado una cuenta en el sistema de gestión Hola Dieta con el rol de <span class="role-badge">${roleName}</span>.</p>
+              <p><strong>${inviterName}</strong> te ha creado una cuenta en Hola Dieta con el rol de <span class="role-badge">${roleName}</span>.</p>
             </div>
 
             <div class="credentials-card">

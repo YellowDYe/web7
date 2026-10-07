@@ -1,20 +1,18 @@
 import React from 'react';
 import { useState } from 'react';
-import { Users, Shield, Settings, UserCheck, LayoutDashboard } from 'lucide-react';
+import { Users, Shield, Settings, LayoutDashboard } from 'lucide-react';
 import Dashboard from '../components/admin/Dashboard';
 import UserManagement from '../components/admin/UserManagement';
 import RoleManagement from '../components/admin/RoleManagement';
 import SystemSettings from '../components/admin/SystemSettings';
-import EmployeeManagement from '../components/admin/EmployeeManagement';
 
 const Admin: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'users' | 'roles' | 'employees' | 'settings'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'users' | 'roles' | 'settings'>('dashboard');
 
   const tabs = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, component: Dashboard },
     { id: 'users', label: 'Usuarios', icon: Users, component: UserManagement },
     { id: 'roles', label: 'Roles y Permisos', icon: Shield, component: RoleManagement },
-    { id: 'employees', label: 'Empleados', icon: UserCheck, component: EmployeeManagement },
     { id: 'settings', label: 'Configuración', icon: Settings, component: SystemSettings }
   ];
 
