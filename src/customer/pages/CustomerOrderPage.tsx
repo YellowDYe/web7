@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { cmsApi, Page, Module } from '../../shared/cms/cmsApi';
+import { Page, Module } from '../../shared/cms/cmsApi';
+import { cmsApiDirect } from '../../shared/cms/cmsApiDirect';
 import { CMSRenderer } from '../../shared/cms/CMSRenderer';
 import { friendlyError } from '../utils/friendlyError';
 import { useSEO } from '../hooks/useSEO';
@@ -26,7 +27,7 @@ export const CustomerOrderPage: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      const pageData = await cmsApi.getPageByPath('/order');
+      const pageData = await cmsApiDirect.getPageByPath('/order');
 
       if (!pageData) {
         console.error('[CustomerOrderPage] Order page not found in CMS');
@@ -42,7 +43,7 @@ export const CustomerOrderPage: React.FC = () => {
       console.log('[CustomerOrderPage] Module IDs:', moduleIds);
 
       if (moduleIds.length > 0) {
-        const modulesData = await cmsApi.getModulesByIds(moduleIds);
+        const modulesData = await cmsApiDirect.getModulesByIds(moduleIds);
         console.log('[CustomerOrderPage] Modules loaded:', modulesData.length);
 
         const sortedModules = moduleIds
