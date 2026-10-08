@@ -163,18 +163,24 @@ export const Footer: React.FC<FooterProps> = ({
               © 2025 Hola Dieta. Todos los derechos reservados.
             </p>
             <div className="flex space-x-6">
-              <Link 
-                to="/politica-de-privacidad" 
+              <Link
+                to="/politica-de-privacidad"
                 className="[font-family:'Inria_Serif',Helvetica] font-normal text-[#1d1c21] text-sm hover:text-black transition-colors"
               >
                 Política de Privacidad
               </Link>
-              <Link 
-                to="/terminos-y-condiciones" 
+              <Link
+                to="/terminos-y-condiciones"
                 className="[font-family:'Inria_Serif',Helvetica] font-normal text-[#1d1c21] text-sm hover:text-black transition-colors"
               >
                 Términos y Condiciones
               </Link>
+              <a
+                href="https://hkpjbcovnrckihmxqytr.supabase.co/functions/v1/sitemap"
+                className="[font-family:'Inria_Serif',Helvetica] font-normal text-[#1d1c21] text-sm hover:text-black transition-colors"
+              >
+                Sitemap
+              </a>
             </div>
           </div>
         </div>
