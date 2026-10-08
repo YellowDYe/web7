@@ -21,4 +21,4 @@ Disallow: /auth/*
 Disallow: /preview
 Disallow: /preview/*
 
-Sitemap: https://hkpjbcovnrckihmxqytr.supabase.co/functions/v1/sitemap
+Sitemap: https://holadieta.mx/sitemap.xml
