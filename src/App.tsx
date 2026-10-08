@@ -25,6 +25,7 @@ import ResetPassword from './pages/ResetPassword';
 import AuthCallback from './pages/AuthCallback';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsAndConditions from './pages/TermsAndConditions';
+import SitemapPage from './pages/SitemapPage';
 import Website from './pages/Website';
 import Marketing from './pages/Marketing';
 import CouponsPage from './pages/CouponsPage';
@@ -37,6 +38,7 @@ function App() {
         {/* Public routes - NO auth provider */}
         <Route path="/politica-de-privacidad" element={<PrivacyPolicy />} />
         <Route path="/terminos-y-condiciones" element={<TermsAndConditions />} />
+        <Route path="/sitemap" element={<SitemapPage />} />
 
         {/* Admin auth routes */}
         <Route path="/admin/auth" element={
