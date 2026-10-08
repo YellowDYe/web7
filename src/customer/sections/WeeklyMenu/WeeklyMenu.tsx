@@ -39,7 +39,6 @@ export const WeeklyMenu: React.FC<WeeklyMenuProps> = ({
   showNutrition = false,
 }) => {
   const [loading, setLoading] = useState(true);
-  const [weekName, setWeekName] = useState('');
   const [weekDate, setWeekDate] = useState('');
   const [dayMenus, setDayMenus] = useState<DayMenu[]>([]);
   const [mealPlans, setMealPlans] = useState<{ id: string; name: string }[]>([]);
@@ -76,7 +75,6 @@ export const WeeklyMenu: React.FC<WeeklyMenuProps> = ({
       }
 
       const week = weeks[0];
-      setWeekName(week.week_name);
       setWeekDate(week.week_date);
 
       const mId = week.weekly_menus?.menu_id;
@@ -241,11 +239,8 @@ export const WeeklyMenu: React.FC<WeeklyMenuProps> = ({
           </h1>
           <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-full px-5 py-2 mt-4">
             <Calendar className="w-5 h-5" />
-            <span className="font-medium">{weekName}</span>
             {weekDate && (
-              <span className="text-white/80 text-sm">
-                &middot; {formatWeekDate(weekDate)}
-              </span>
+              <span className="font-medium">{formatWeekDate(weekDate)}</span>
             )}
           </div>
         </div>

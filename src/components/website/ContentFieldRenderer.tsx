@@ -114,7 +114,7 @@ function isValidCssColor(value: string): boolean {
 
 const RICH_TEXT_KEYS = new Set([
   'title', 'subtitle', 'description', 'body', 'instructionText',
-  'contactTitle', 'contactDescription',
+  'contactTitle', 'contactDescription', 'answer',
 ]);
 
 function isRichTextField(key: string): boolean {
