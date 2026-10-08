@@ -1,6 +1,9 @@
 Options -MultiViews
 RewriteEngine On
 
+# Sitemap: redirect to edge function that generates the XML
+RewriteRule ^sitemap\.xml$ https://hkpjbcovnrckihmxqytr.supabase.co/functions/v1/sitemap [R=302,L]
+
 # Redirect www to non-www
 RewriteCond %{HTTP_HOST} ^www\.holadieta\.mx [NC]
 RewriteRule ^(.*)$ https://holadieta.mx/$1 [R=301,L]
