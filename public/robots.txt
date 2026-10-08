@@ -5,6 +5,7 @@ Allow: /blog/*
 Allow: /menu
 Allow: /faq
 Allow: /contact
+Allow: /zonasdeentrega
 Disallow: /admin
 Disallow: /admin/*
 Disallow: /account
@@ -20,5 +21,14 @@ Disallow: /reset-password
 Disallow: /auth/*
 Disallow: /preview
 Disallow: /preview/*
+Disallow: /planes
+Disallow: /planes/*
+Disallow: /plan_balance
+Disallow: /plan_fitness
+Disallow: /plan_lowcarb
+Disallow: /about
+Disallow: /acerca
+Disallow: /bajar_de_peso
+Disallow: /proteinas
 
 Sitemap: https://holadieta.mx/sitemap.xml
