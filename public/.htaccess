@@ -1,5 +1,22 @@
 Options -MultiViews
 RewriteEngine On
+
+# Redirect www to non-www
+RewriteCond %{HTTP_HOST} ^www\.holadieta\.mx [NC]
+RewriteRule ^(.*)$ https://holadieta.mx/$1 [R=301,L]
+
+# Redirect old plan pages to homepage
+RewriteRule ^planes/?$ / [R=301,L]
+RewriteRule ^planes/.+$ / [R=301,L]
+RewriteRule ^plan_balance/?$ / [R=301,L]
+RewriteRule ^plan_fitness/?$ / [R=301,L]
+RewriteRule ^plan_lowcarb/?$ / [R=301,L]
+RewriteRule ^about/?$ / [R=301,L]
+RewriteRule ^acerca/?$ / [R=301,L]
+RewriteRule ^bajar_de_peso/?$ / [R=301,L]
+RewriteRule ^proteinas/?$ / [R=301,L]
+
+# SPA fallback
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^ index.html [QSA,L]

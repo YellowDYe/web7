@@ -1,1 +1,16 @@
+# Redirect www to non-www
+https://www.holadieta.mx/*  https://holadieta.mx/:splat  301!
+
+# Redirect old plan pages to homepage
+/planes              /  301
+/planes/*            /  301
+/plan_balance        /  301
+/plan_fitness        /  301
+/plan_lowcarb        /  301
+/about               /  301
+/acerca              /  301
+/bajar_de_peso       /  301
+/proteinas           /  301
+
+# SPA fallback
 /*    /index.html   200
