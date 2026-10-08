@@ -87,9 +87,10 @@ const AccordionItem: React.FC<{
         }`}
       >
         <div className="px-6 pb-6">
-          <p className="[font-family:'Inria_Serif',Helvetica] font-normal text-[#555555] text-base leading-[1.7] tracking-[-0.01em]">
-            {item.answer}
-          </p>
+          <div
+            className="[font-family:'Inria_Serif',Helvetica] font-normal text-[#555555] text-base leading-[1.7] tracking-[-0.01em] cms-rich-content [&_a]:text-[#1e1e1e] [&_a]:underline hover:[&_a]:opacity-80 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-1"
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(item.answer) }}
+          />
         </div>
       </div>
     </div>
