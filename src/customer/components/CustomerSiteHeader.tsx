@@ -27,6 +27,8 @@ export const CustomerSiteHeader: React.FC<CustomerSiteHeaderProps> = ({
                 alt={logoAlt || siteName || "Logo"}
                 src={logoUrl}
                 onError={() => setImageError(true)}
+                width={150}
+                height={48}
               />
             ) : (
               <h1 className="text-2xl md:text-3xl font-bold text-gray-800">

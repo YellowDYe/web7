@@ -54,9 +54,10 @@ export const Footer: React.FC<FooterProps> = ({
                   alt={brandingLogoAlt || siteName || logoAlt}
                   src={logoUrl}
                   onError={(e) => {
-                    // Hide image on error
                     e.currentTarget.style.display = 'none';
                   }}
+                  width={200}
+                  height={48}
                 />
               ) : (
                 <span className="text-2xl font-bold text-gray-800">

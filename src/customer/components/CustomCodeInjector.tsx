@@ -108,6 +108,28 @@ export const CustomCodeInjector: React.FC = () => {
   useEffect(() => {
     if (appliedRef.current) return;
 
+    const injectAll = (settings: CustomCodeSettings) => {
+      if (settings.googleAnalytics) {
+        injectGoogleAnalytics(settings.googleAnalytics.trim());
+      }
+
+      if (settings.metaPixel) {
+        injectMetaPixel(settings.metaPixel.trim());
+      }
+
+      if (settings.tiktokPixel) {
+        injectTikTokPixel(settings.tiktokPixel.trim());
+      }
+
+      if (settings.headerScripts) {
+        injectHTML(settings.headerScripts, document.head);
+      }
+
+      if (settings.footerScripts) {
+        injectHTML(settings.footerScripts, document.body);
+      }
+    };
+
     const load = async () => {
       try {
         const result = await cmsApiDirect.getSettingByName('custom_code');
@@ -118,24 +140,12 @@ export const CustomCodeInjector: React.FC = () => {
 
         removeMarked();
 
-        if (settings.googleAnalytics) {
-          injectGoogleAnalytics(settings.googleAnalytics.trim());
-        }
+        const run = () => injectAll(settings);
 
-        if (settings.metaPixel) {
-          injectMetaPixel(settings.metaPixel.trim());
-        }
-
-        if (settings.tiktokPixel) {
-          injectTikTokPixel(settings.tiktokPixel.trim());
-        }
-
-        if (settings.headerScripts) {
-          injectHTML(settings.headerScripts, document.head);
-        }
-
-        if (settings.footerScripts) {
-          injectHTML(settings.footerScripts, document.body);
+        if ('requestIdleCallback' in window) {
+          (window as any).requestIdleCallback(run, { timeout: 3000 });
+        } else {
+          setTimeout(run, 1500);
         }
       } catch {
         // Silently fail — tracking just won't load

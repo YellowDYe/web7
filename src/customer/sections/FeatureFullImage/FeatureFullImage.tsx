@@ -35,6 +35,7 @@ export const FeatureFullImage: React.FC<FeatureFullImageProps> = ({
 alt={imageAlt || (title ? `Hola Dieta - ${title.replace(/<[^>]*>/g, '').slice(0, 60)}` : 'Hola Dieta')}
                 src={imageUrl}
                 onError={() => setImageError(true)}
+                loading="lazy"
               />
             ) : (
               <div className="w-full h-full bg-gray-200 rounded-lg flex items-center justify-center">
