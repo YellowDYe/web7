@@ -54,9 +54,10 @@ export const Footer: React.FC<FooterProps> = ({
                   alt={brandingLogoAlt || siteName || logoAlt}
                   src={logoUrl}
                   onError={(e) => {
-                    // Hide image on error
                     e.currentTarget.style.display = 'none';
                   }}
+                  width={200}
+                  height={48}
                 />
               ) : (
                 <span className="text-2xl font-bold text-gray-800">
@@ -175,12 +176,12 @@ export const Footer: React.FC<FooterProps> = ({
               >
                 Términos y Condiciones
               </Link>
-              <a
-                href="https://hkpjbcovnrckihmxqytr.supabase.co/functions/v1/sitemap"
+              <Link
+                to="/sitemap"
                 className="[font-family:'Inria_Serif',Helvetica] font-normal text-[#1d1c21] text-sm hover:text-black transition-colors"
               >
                 Sitemap
-              </a>
+              </Link>
             </div>
           </div>
         </div>

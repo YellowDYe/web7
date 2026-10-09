@@ -69,6 +69,7 @@ export const FeatureSquareImage: React.FC<FeatureSquareImageProps> = ({
 alt={imageAlt || (title ? `Hola Dieta - ${title.replace(/<[^>]*>/g, '')}` : 'Hola Dieta - Beneficios')}
                 src={imageUrl}
                 onError={() => setImageError(true)}
+                loading="lazy"
               />
             ) : (
               <div className="w-full h-full bg-gray-200 rounded-[45px] flex items-center justify-center">

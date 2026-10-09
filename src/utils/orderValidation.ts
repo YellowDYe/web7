@@ -134,3 +134,32 @@ export function getTotalMealCountForWeek(
     .filter(item => item.week_name === weekName)
     .reduce((sum, item) => sum + item.quantity, 0);
 }
+
+export const VALID_DURATIONS = [1, 2, 4] as const;
+export type PlanDuration = (typeof VALID_DURATIONS)[number];
+
+export interface WeekCountValidation {
+  isValid: boolean;
+  message: string;
+}
+
+export function validateWeekCount(
+  planDuration: number,
+  selectedWeekCount: number
+): WeekCountValidation {
+  if (!VALID_DURATIONS.includes(planDuration as PlanDuration)) {
+    return {
+      isValid: false,
+      message: `Duración de plan inválida: ${planDuration}. Debe ser 1, 2 o 4 semanas.`,
+    };
+  }
+
+  if (selectedWeekCount !== planDuration) {
+    return {
+      isValid: false,
+      message: `El plan es de ${planDuration} ${planDuration === 1 ? 'semana' : 'semanas'} pero se seleccionaron ${selectedWeekCount}. Faltan ${planDuration - selectedWeekCount} ${planDuration - selectedWeekCount === 1 ? 'semana' : 'semanas'}.`,
+    };
+  }
+
+  return { isValid: true, message: '' };
+}

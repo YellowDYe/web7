@@ -33,6 +33,7 @@ export const MainHero: React.FC<MainHeroProps> = ({
 alt={imageAlt || (title ? `Hola Dieta - ${title.replace(/<[^>]*>/g, '').slice(0, 60)}` : 'Hola Dieta - Come sano, ahorra tiempo y alcanza tus metas')}
             className="w-full h-full object-cover object-center"
             onError={() => setImageError(true)}
+            fetchPriority="high"
           />
         </div>
       ) : (
@@ -71,6 +72,7 @@ alt={imageAlt || (title ? `Hola Dieta - ${title.replace(/<[^>]*>/g, '').slice(0,
   alt={imageAlt || (title ? `Hola Dieta - ${title.replace(/<[^>]*>/g, '').slice(0, 60)}` : 'Hola Dieta - Come sano, ahorra tiempo y alcanza tus metas')}
               className="w-full h-full object-cover object-center md:hidden rounded-b-[45px]"
               onError={() => setImageError(true)}
+              fetchPriority="high"
             />
           ) : (
             <div className="w-full h-full md:hidden rounded-b-[45px]" style={{ backgroundColor: leftBackgroundColor }} />

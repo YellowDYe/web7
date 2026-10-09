@@ -169,12 +169,12 @@ export const Footer: React.FC<FooterProps> = ({
               >
                 Términos y Condiciones
               </Link>
-              <a
-                href="https://hkpjbcovnrckihmxqytr.supabase.co/functions/v1/sitemap"
+              <Link
+                to="/preview/sitemap"
                 className="font-normal text-[#1d1c21] text-sm hover:text-black transition-colors"
               >
                 Sitemap
-              </a>
+              </Link>
             </div>
           </div>
         </div>

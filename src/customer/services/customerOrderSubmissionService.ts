@@ -8,6 +8,7 @@ import { Coupon } from '../../types/coupon';
 import { buildQuantityUpdates } from '../../utils/orderWeeksTransformer';
 import { Customer } from '../../types/customer';
 import { friendlyError } from '../utils/friendlyError';
+import { validateWeekCount, validateOrderWeeks, getValidationMessage } from '../../utils/orderValidation';
 
 
 interface OrderSubmissionData {
@@ -76,6 +77,27 @@ class CustomerOrderSubmissionService {
           success: false,
           message: 'Debes seleccionar al menos 3 comidas',
           error: 'MINIMUM_ITEMS_NOT_MET'
+        };
+      }
+
+      const weekCountCheck = validateWeekCount(planDuration, selectedWeeks.length);
+      if (!weekCountCheck.isValid) {
+        return {
+          success: false,
+          message: weekCountCheck.message,
+          error: 'INVALID_WEEK_COUNT'
+        };
+      }
+
+      const orderValidation = validateOrderWeeks(
+        orderItems,
+        selectedWeeks.map(w => w.week.week_name)
+      );
+      if (!orderValidation.isValid) {
+        return {
+          success: false,
+          message: getValidationMessage(orderValidation.incompleteWeeks),
+          error: 'INCOMPLETE_WEEKS'
         };
       }
 
