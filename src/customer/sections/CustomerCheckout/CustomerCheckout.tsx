@@ -83,6 +83,9 @@ export const CustomerCheckout: React.FC = () => {
   const brickControllerRef = useRef<any>(null);
   const brickContainerRef = useRef<HTMLDivElement>(null);
   const brickInitializedRef = useRef(false);
+  const brickTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const brickInitArgsRef = useRef<{ amount: number; prefId: string; pubKey: string; paymentMethodsConfig: Record<string, string | string[]> | null } | null>(null);
+  const [brickError, setBrickError] = useState<string | null>(null);
 
   const {
     cart, clearCart, hasItems,
@@ -421,10 +424,10 @@ export const CustomerCheckout: React.FC = () => {
 
   const initializeBrick = useCallback(async (amount: number, prefId: string, pubKey: string, paymentMethodsConfig: Record<string, string | string[]> | null) => {
     if (brickInitializedRef.current) return;
-    brickInitializedRef.current = true;
 
     try {
       setBrickLoading(true);
+      setBrickError(null);
       await loadMercadoPagoSdk();
       await new Promise((r) => setTimeout(r, 300));
 
@@ -439,10 +442,22 @@ export const CustomerCheckout: React.FC = () => {
       const container = document.getElementById(containerId);
       if (!container) {
         console.error('Payment brick container not found');
-        brickInitializedRef.current = false;
+        setBrickError('No se pudo encontrar el contenedor del formulario. Recarga la pagina e intenta de nuevo.');
         setBrickLoading(false);
         return;
       }
+
+      let brickReady = false;
+
+      if (brickTimeoutRef.current) clearTimeout(brickTimeoutRef.current);
+      brickTimeoutRef.current = setTimeout(() => {
+        if (!brickReady) {
+          console.error('Payment brick timeout: onReady did not fire within 25s');
+          setBrickLoading(false);
+          setBrickError('El formulario de pago tardo demasiado en cargar. Intenta de nuevo o recarga la pagina.');
+          brickInitializedRef.current = false;
+        }
+      }, 25000);
 
       const controller = await mp.bricks().create('payment', containerId, {
         initialization: {
@@ -463,6 +478,8 @@ export const CustomerCheckout: React.FC = () => {
         },
         callbacks: {
           onReady: () => {
+            brickReady = true;
+            if (brickTimeoutRef.current) { clearTimeout(brickTimeoutRef.current); brickTimeoutRef.current = null; }
             setBrickLoading(false);
           },
           onSubmit: async ({ selectedPaymentMethod, formData }: any) => {
@@ -525,9 +542,10 @@ export const CustomerCheckout: React.FC = () => {
       });
 
       brickControllerRef.current = controller;
+      brickInitializedRef.current = true;
     } catch (err: any) {
       console.error('Error initializing payment brick:', err);
-      setSubmitError('Error al cargar el formulario de pago. Recarga la pagina e intenta de nuevo.');
+      setBrickError('No se pudo cargar el formulario de pago. Revisa tu conexion e intenta de nuevo.');
       brickInitializedRef.current = false;
       setBrickLoading(false);
     }
@@ -535,6 +553,7 @@ export const CustomerCheckout: React.FC = () => {
 
   useEffect(() => {
     return () => {
+      if (brickTimeoutRef.current) { clearTimeout(brickTimeoutRef.current); brickTimeoutRef.current = null; }
       if (brickControllerRef.current) {
         try { brickControllerRef.current.unmount(); } catch (_) {}
         brickControllerRef.current = null;
@@ -542,6 +561,25 @@ export const CustomerCheckout: React.FC = () => {
       }
     };
   }, []);
+
+  const handleRetryBrick = () => {
+    if (brickControllerRef.current) {
+      try { brickControllerRef.current.unmount(); } catch (_) {}
+      brickControllerRef.current = null;
+    }
+    brickInitializedRef.current = false;
+    setBrickError(null);
+    setSubmitError(null);
+
+    const args = brickInitArgsRef.current;
+    if (args) {
+      setTimeout(() => {
+        initializeBrick(args.amount, args.prefId, args.pubKey, args.paymentMethodsConfig);
+      }, 100);
+    } else {
+      setStep('review');
+    }
+  };
 
   const handleProceedToPayment = async () => {
     if (!customer) { setSubmitError('Informacion del cliente incompleta'); return; }
@@ -748,6 +786,13 @@ export const CustomerCheckout: React.FC = () => {
       } catch (_) {}
 
       setStep('payment');
+
+      brickInitArgsRef.current = {
+        amount: totalAmount,
+        prefId: prefData.preference_id,
+        pubKey: prefData.public_key,
+        paymentMethodsConfig: mpPaymentMethods,
+      };
 
       setTimeout(() => {
         initializeBrick(totalAmount, prefData.preference_id, prefData.public_key, mpPaymentMethods);
@@ -996,11 +1041,14 @@ export const CustomerCheckout: React.FC = () => {
         <div className="max-w-3xl mx-auto">
           <button
             onClick={() => {
+              if (brickTimeoutRef.current) { clearTimeout(brickTimeoutRef.current); brickTimeoutRef.current = null; }
               if (brickControllerRef.current) {
                 try { brickControllerRef.current.unmount(); } catch (_) {}
                 brickControllerRef.current = null;
                 brickInitializedRef.current = false;
               }
+              setBrickLoading(false);
+              setBrickError(null);
               setSubmitError(null);
               setStep('review');
             }}
@@ -1030,6 +1078,21 @@ export const CustomerCheckout: React.FC = () => {
               <div className="mx-6 mt-4 bg-red-50 border border-red-200 rounded-xl p-4 flex items-center space-x-3">
                 <XCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
                 <span className="text-red-800 text-sm">{submitError}</span>
+              </div>
+            )}
+
+            {brickError && (
+              <div className="mx-6 mt-4 bg-orange-50 border border-orange-200 rounded-xl p-4 space-y-3">
+                <div className="flex items-center space-x-3">
+                  <AlertCircle className="w-5 h-5 text-orange-600 flex-shrink-0" />
+                  <span className="text-orange-800 text-sm">{brickError}</span>
+                </div>
+                <button
+                  onClick={handleRetryBrick}
+                  className="w-full flex items-center justify-center gap-2 bg-orange-600 hover:bg-orange-700 text-white py-2.5 rounded-lg font-semibold text-sm transition-colors"
+                >
+                  <Loader2 className="w-4 h-4" /> Reintentar carga del formulario
+                </button>
               </div>
             )}
 
