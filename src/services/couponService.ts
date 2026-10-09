@@ -117,8 +117,8 @@ export class CouponService {
     });
 
     if (error) {
-      console.error('Error validating coupon:', error);
-      return { valid: false, message: 'No se pudo validar el cupón. Intenta de nuevo.' };
+      console.error('Error validating coupon:', error.message, error.code);
+      return { valid: false, message: `No se pudo validar el cupón: ${error.message}` };
     }
 
     const result = data as any;

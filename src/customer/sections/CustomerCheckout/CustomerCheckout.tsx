@@ -13,6 +13,7 @@ import { supabase } from '../../../config/supabase';
 import { friendlyError } from '../../utils/friendlyError';
 import { trackInitiateCheckout, trackPurchase } from '../../../utils/analytics';
 import { weekService, isWeekStillOrderable } from '../../../services/weekService';
+import { validateWeekCount, validateOrderWeeks, getValidationMessage } from '../../../utils/orderValidation';
 
 
 declare global {
@@ -586,6 +587,21 @@ export const CustomerCheckout: React.FC = () => {
     if (!cart && !hasProteinItems) { setSubmitError('El carrito esta vacio'); return; }
 
     if (cart && cart.orderItems.length > 0 && cart.selectedWeeks?.length) {
+      const weekCountCheck = validateWeekCount(cart.planDuration, cart.selectedWeeks.length);
+      if (!weekCountCheck.isValid) {
+        setSubmitError(weekCountCheck.message);
+        return;
+      }
+
+      const weekValidation = validateOrderWeeks(
+        cart.orderItems,
+        cart.selectedWeeks.map(w => w.week.week_name)
+      );
+      if (!weekValidation.isValid) {
+        setSubmitError(getValidationMessage(weekValidation.incompleteWeeks));
+        return;
+      }
+
       const cutoff = await weekService.getOrderCutoff();
       const closedWeek = cart.selectedWeeks.find(w => {
         const baseDate = w.original_week_date ?? w.week.week_date;
