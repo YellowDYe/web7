@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ContactInfo } from '../../types';
 import { resolveImageUrl } from '../../../utils/imageHelper';
+import { ResponsiveImage } from '../../components/ResponsiveImage';
 import { sanitizeHtml } from '../../../utils/sanitizeHtml';
 
 interface FeaturePillImageProps {
@@ -41,8 +42,13 @@ export const FeaturePillImage: React.FC<FeaturePillImageProps> = ({
           <div className="w-full md:w-1/2 order-1 md:order-2 text-center md:text-left">
             <div className="flex items-center justify-center md:justify-start mb-6 md:mb-8">
               {iconUrl && !iconError ? (
-                <img
+                <ResponsiveImage
                   className="w-10 h-10 md:w-12 md:h-12 mr-3 md:mr-4"
+                  widths={[96, 144]}
+                  sizes="48px"
+                  width={48}
+                  height={48}
+                  loading="lazy"
 alt={iconAlt || "Hola Dieta - Icono de contacto"}
                   src={iconUrl}
                   onError={() => setIconError(true)}
@@ -74,8 +80,13 @@ alt={iconAlt || "Hola Dieta - Icono de contacto"}
           <div className="w-full md:w-1/2 flex justify-center order-2 md:order-1">
             <div className="w-3/4 md:w-4/5 aspect-square">
               {imageUrl && !imageError ? (
-                <img
+                <ResponsiveImage
                   className="w-full h-full object-contain object-center rounded-full border-4 border-black"
+                  widths={[480, 768, 1080]}
+                  sizes="(min-width: 768px) 50vw, 100vw"
+                  width={800}
+                  height={800}
+                  loading="lazy"
 alt={imageAlt || (title ? `Hola Dieta - ${title.replace(/<[^>]*>/g, '')}` : 'Hola Dieta - Contacto')}
                   src={imageUrl}
                   onError={() => setImageError(true)}

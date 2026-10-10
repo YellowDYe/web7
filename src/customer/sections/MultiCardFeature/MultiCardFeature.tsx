@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Button } from '../../components/ui/button';
 import { PlanCard } from '../../types';
 import { resolveImageUrl } from '../../../utils/imageHelper';
+import { ResponsiveImage } from '../../components/ResponsiveImage';
 import { sanitizeHtml } from '../../../utils/sanitizeHtml';
 
 interface MacroColumn {
@@ -86,10 +87,14 @@ const PlanCardComponent: React.FC<{ card: PlanCard }> = ({ card }) => {
       <div className="relative">
         <div className="h-[220px] relative overflow-hidden">
           {imageUrl && !imageError ? (
-            <img
+            <ResponsiveImage
               className="absolute inset-0 w-full h-full object-cover"
               alt={card.imageAlt || (card.title ? `Hola Dieta - Plan ${card.title.replace(/<[^>]*>/g, '')}` : 'Hola Dieta - Plan de alimentación')}
               src={imageUrl}
+              widths={[400, 640, 960]}
+              sizes="(min-width: 1024px) 360px, (min-width: 768px) 50vw, 100vw"
+              width={1000}
+              height={634}
               onError={() => setImageError(true)}
               loading="lazy"
             />

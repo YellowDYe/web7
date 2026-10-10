@@ -42,12 +42,8 @@ interface CMSRendererProps {
 }
 
 export const CMSRenderer: React.FC<CMSRendererProps> = ({ modules, basePath = '' }) => {
-  console.log('[CMSRenderer] Rendering', modules.length, 'modules');
-  console.log('[CMSRenderer] Module types:', modules.map(m => m.type));
-
   const renderModule = (module: Module) => {
     const { type, content } = module;
-    console.log('[CMSRenderer] Rendering module:', type);
 
     // Override navigation for customer routes
     if (type === 'MainMenu') {
@@ -140,7 +136,7 @@ export const CMSRenderer: React.FC<CMSRendererProps> = ({ modules, basePath = ''
       ))}
 
       {/* Content — grows to fill remaining space */}
-      <div className="flex-1">
+      <main className="flex-1">
         {contentModules.map((module, index) => (
           <React.Fragment key={module.id}>
             {renderModule(module)}
@@ -149,7 +145,7 @@ export const CMSRenderer: React.FC<CMSRendererProps> = ({ modules, basePath = ''
             )}
           </React.Fragment>
         ))}
-      </div>
+      </main>
 
       {/* Footer — always at the bottom */}
       {footerModules.map(module => (

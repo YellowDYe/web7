@@ -75,7 +75,7 @@ export const MediaUploader: React.FC<MediaUploaderProps> = ({
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('website-media')
         .upload(filePath, file, {
-          cacheControl: '3600',
+          cacheControl: '31536000',
           upsert: false
         });
 

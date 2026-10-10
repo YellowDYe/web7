@@ -71,7 +71,6 @@ export default {
       },
       fontFamily: {
         'sans': ['Chivo', 'Helvetica', 'Arial', 'sans-serif'],
-        'poppins': ['Poppins', 'system-ui', 'sans-serif'],
         'chivo': ['Chivo', 'Helvetica', 'sans-serif'],
         'antonio': ['Antonio', 'Helvetica', 'sans-serif'],
       },

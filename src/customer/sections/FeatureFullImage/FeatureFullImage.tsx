@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Button } from '../../components/ui/button';
 import { CMSContent } from '../../types';
 import { resolveImageUrl } from '../../../utils/imageHelper';
+import { ResponsiveImage } from '../../components/ResponsiveImage';
 import { sanitizeHtml } from '../../../utils/sanitizeHtml';
 
 interface FeatureFullImageProps extends CMSContent {
@@ -30,8 +31,12 @@ export const FeatureFullImage: React.FC<FeatureFullImageProps> = ({
           {/* Image - shows first on mobile, second on desktop */}
           <div className="w-full md:w-1/2 flex justify-center order-1 md:order-2 h-64 md:h-[500px] lg:h-[600px]">
             {imageUrl && !imageError ? (
-              <img
+              <ResponsiveImage
                 className="w-full h-full object-contain object-center rounded-[45px]"
+                widths={[480, 768, 1080]}
+                sizes="(min-width: 1280px) 600px, (min-width: 768px) 50vw, 100vw"
+                width={1000}
+                height={1000}
 alt={imageAlt || (title ? `Hola Dieta - ${title.replace(/<[^>]*>/g, '').slice(0, 60)}` : 'Hola Dieta')}
                 src={imageUrl}
                 onError={() => setImageError(true)}

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Facebook, Instagram, Twitter, Mail, Phone, MapPin } from 'lucide-react';
 import { NavigationItem, ContactInfo } from '../../types';
 import { useSiteBranding } from '../../hooks/useSiteBranding';
+import { ResponsiveImage } from '../../components/ResponsiveImage';
 
 interface FooterProps {
   navigationItems?: NavigationItem[];
@@ -47,17 +48,20 @@ export const Footer: React.FC<FooterProps> = ({
           
           {/* Logo and Description */}
           <div className="lg:col-span-1">
-            <Link to="/" className="inline-block mb-4">
+            <Link to="/" className="inline-block mb-4" aria-label={`${siteName || 'Hola Dieta'} - Inicio`}>
               {logoUrl && logoUrl.trim() ? (
-                <img
+                <ResponsiveImage
                   className="h-12 w-auto object-contain"
                   alt={brandingLogoAlt || siteName || logoAlt}
                   src={logoUrl}
+                  widths={[180, 360, 540]}
+                  sizes="180px"
+                  loading="lazy"
                   onError={(e) => {
                     e.currentTarget.style.display = 'none';
                   }}
-                  width={200}
-                  height={48}
+                  width={513}
+                  height={144}
                 />
               ) : (
                 <span className="text-2xl font-bold text-gray-800">
@@ -76,6 +80,7 @@ export const Footer: React.FC<FooterProps> = ({
                   href={socialLinks.facebook} 
                   target="_blank" 
                   rel="noopener noreferrer"
+                  aria-label="Facebook"
                   className="w-10 h-10 bg-[#bfd730] rounded-full flex items-center justify-center hover:bg-[#bfd730]/80 transition-colors"
                 >
                   <Facebook className="w-5 h-5 text-black" />
@@ -86,6 +91,7 @@ export const Footer: React.FC<FooterProps> = ({
                   href={socialLinks.instagram} 
                   target="_blank" 
                   rel="noopener noreferrer"
+                  aria-label="Instagram"
                   className="w-10 h-10 bg-[#bfd730] rounded-full flex items-center justify-center hover:bg-[#bfd730]/80 transition-colors"
                 >
                   <Instagram className="w-5 h-5 text-black" />
@@ -96,6 +102,7 @@ export const Footer: React.FC<FooterProps> = ({
                   href={socialLinks.twitter} 
                   target="_blank" 
                   rel="noopener noreferrer"
+                  aria-label="Twitter"
                   className="w-10 h-10 bg-[#bfd730] rounded-full flex items-center justify-center hover:bg-[#bfd730]/80 transition-colors"
                 >
                   <Twitter className="w-5 h-5 text-black" />

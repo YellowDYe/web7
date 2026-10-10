@@ -4,6 +4,7 @@ import { Button } from '../../components/ui/button';
 import { NavigationItem } from '../../types';
 import { Menu, X, User, LogOut, CircleUser as UserCircle2, ShoppingCart } from 'lucide-react';
 import { useSiteBranding } from '../../hooks/useSiteBranding';
+import { ResponsiveImage } from '../../components/ResponsiveImage';
 import { useCustomerAuth } from '../../contexts/CustomerAuthContext';
 import { useCart } from '../../contexts/CartContext';
 
@@ -91,13 +92,17 @@ export const MainMenu: React.FC<MainMenuProps> = ({
       <header className="flex flex-wrap w-full h-[90px] md:h-[104px] items-center gap-[0px_24px] py-4 md:py-8 px-4 md:px-8 rounded-[0px_0px_45px_45px] border-b border-[#d9d9d9]" style={{ backgroundColor: safeBgColor }}>
         {/* Logo */}
         <div className="inline-flex items-center gap-6 relative flex-[0_0_auto]">
-          <Link to={basePath || "/"} onClick={closeMobileMenu}>
+          <Link to={basePath || "/"} onClick={closeMobileMenu} aria-label={`${siteName || 'Hola Dieta'} - Inicio`}>
             <div className="flex items-center justify-center h-12 md:h-16 px-3 md:px-4">
               {!imageError && logoUrl && logoUrl.trim() ? (
-                <img
+                <ResponsiveImage
                   className="h-10 md:h-12 w-auto object-contain"
                   alt={brandingLogoAlt || siteName || logoAlt}
                   src={logoUrl}
+                  widths={[180, 360, 540]}
+                  sizes="180px"
+                  width={513}
+                  height={144}
                   onError={() => setImageError(true)}
                 />
               ) : (

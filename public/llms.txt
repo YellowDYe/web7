@@ -1,0 +1,12 @@
+# Hola Dieta
+
+> Hola Dieta es un servicio de comida saludable a domicilio en México. Ofrecemos planes de alimentación semanales preparados por expertos para comer sano, ahorrar tiempo y alcanzar tus metas sin cocinar.
+
+## Páginas principales
+
+- [Inicio](https://holadieta.mx/): Planes de alimentación y cómo funciona el servicio.
+- [Menú](https://holadieta.mx/menu): Menú semanal de platillos.
+- [Zonas de entrega](https://holadieta.mx/zonasdeentrega): Áreas donde entregamos.
+- [Preguntas frecuentes](https://holadieta.mx/faq): Dudas comunes sobre planes, pagos y entregas.
+- [Blog](https://holadieta.mx/blog): Artículos sobre nutrición y alimentación saludable.
+- [Contacto](https://holadieta.mx/contact): Cómo comunicarte con nosotros.

@@ -266,7 +266,7 @@ export const cmsApi = {
 
       const { error: uploadError } = await supabase.storage
         .from(bucketName)
-        .upload(filePath, file);
+        .upload(filePath, file, { cacheControl: '31536000' });
 
       if (uploadError) {
         throw new Error(`Upload failed: ${uploadError.message}`);

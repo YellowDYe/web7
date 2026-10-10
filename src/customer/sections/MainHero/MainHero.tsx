@@ -1,8 +1,24 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { ResponsiveImage } from '../../components/ResponsiveImage';
 import { Button } from '../../components/ui/button';
 import { CMSContent } from '../../types';
 import { resolveImageUrl } from '../../../utils/imageHelper';
 import { sanitizeHtml } from '../../../utils/sanitizeHtml';
+
+const HERO_WIDTHS = [480, 768, 1080, 1440];
+const DESKTOP_QUERY = '(min-width: 768px)';
+
+// Render only the hero image for the current layout so the hidden one is never downloaded.
+function useIsDesktop(): boolean {
+  const [isDesktop, setIsDesktop] = useState(() => window.matchMedia(DESKTOP_QUERY).matches);
+  useEffect(() => {
+    const mql = window.matchMedia(DESKTOP_QUERY);
+    const onChange = () => setIsDesktop(mql.matches);
+    mql.addEventListener('change', onChange);
+    return () => mql.removeEventListener('change', onChange);
+  }, []);
+  return isDesktop;
+}
 
 interface MainHeroProps extends CMSContent {
   leftBackgroundColor?: string;
@@ -21,6 +37,8 @@ export const MainHero: React.FC<MainHeroProps> = ({
 }) => {
   const [imageError, setImageError] = useState(false);
   const heroImageUrl = resolveImageUrl(rightBackgroundImage);
+  const isDesktop = useIsDesktop();
+  const altText = imageAlt || (title ? `Hola Dieta - ${title.replace(/<[^>]*>/g, '').slice(0, 60)}` : 'Hola Dieta - Come sano, ahorra tiempo y alcanza tus metas');
 
   return (
     <section className="w-full relative">
@@ -28,13 +46,19 @@ export const MainHero: React.FC<MainHeroProps> = ({
       <div className="hidden md:block absolute inset-0 w-1/2 rounded-[45px_0px_0px_45px]" style={{ backgroundColor: leftBackgroundColor }} />
       {heroImageUrl && !imageError ? (
         <div className="hidden md:block absolute inset-0 left-1/2 w-1/2 rounded-[0px_45px_45px_0px] overflow-hidden">
-          <img
-            src={heroImageUrl}
-alt={imageAlt || (title ? `Hola Dieta - ${title.replace(/<[^>]*>/g, '').slice(0, 60)}` : 'Hola Dieta - Come sano, ahorra tiempo y alcanza tus metas')}
-            className="w-full h-full object-cover object-center"
-            onError={() => setImageError(true)}
-            fetchPriority="high"
-          />
+          {isDesktop && (
+            <ResponsiveImage
+              src={heroImageUrl}
+              widths={HERO_WIDTHS}
+              sizes="50vw"
+              width={1288}
+              height={1000}
+              alt={altText}
+              className="w-full h-full object-cover object-center"
+              onError={() => setImageError(true)}
+              fetchPriority="high"
+            />
+          )}
         </div>
       ) : (
         <div className="hidden md:block absolute inset-0 left-1/2 w-1/2 rounded-[0px_45px_45px_0px]" style={{ backgroundColor: leftBackgroundColor }} />
@@ -67,13 +91,19 @@ alt={imageAlt || (title ? `Hola Dieta - ${title.replace(/<[^>]*>/g, '').slice(0,
         {/* Right Image Section */}
         <div className="w-full md:w-1/2 h-80 md:h-[712px] relative md:bg-none rounded-b-[45px] md:rounded-none overflow-hidden">
           {heroImageUrl && !imageError ? (
-            <img
-              src={heroImageUrl}
-  alt={imageAlt || (title ? `Hola Dieta - ${title.replace(/<[^>]*>/g, '').slice(0, 60)}` : 'Hola Dieta - Come sano, ahorra tiempo y alcanza tus metas')}
-              className="w-full h-full object-cover object-center md:hidden rounded-b-[45px]"
-              onError={() => setImageError(true)}
-              fetchPriority="high"
-            />
+            !isDesktop && (
+              <ResponsiveImage
+                src={heroImageUrl}
+                widths={HERO_WIDTHS}
+                sizes="100vw"
+                width={1288}
+                height={1000}
+                alt={altText}
+                className="w-full h-full object-cover object-center md:hidden rounded-b-[45px]"
+                onError={() => setImageError(true)}
+                fetchPriority="high"
+              />
+            )
           ) : (
             <div className="w-full h-full md:hidden rounded-b-[45px]" style={{ backgroundColor: leftBackgroundColor }} />
           )}

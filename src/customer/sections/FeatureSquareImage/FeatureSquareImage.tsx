@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Benefit } from '../../types';
 import { resolveImageUrl } from '../../../utils/imageHelper';
+import { ResponsiveImage } from '../../components/ResponsiveImage';
 import { sanitizeHtml } from '../../../utils/sanitizeHtml';
 
 interface FeatureSquareImageProps {
@@ -64,8 +65,12 @@ export const FeatureSquareImage: React.FC<FeatureSquareImageProps> = ({
           {/* Image - shows second on mobile, first on desktop */}
           <div className="w-full md:w-1/2 order-2 md:order-1 h-64 md:h-auto md:min-h-[500px] lg:min-h-[600px]">
             {imageUrl && !imageError ? (
-              <img
+              <ResponsiveImage
                 className="w-full h-full object-contain object-center rounded-[45px]"
+                widths={[480, 768, 1080]}
+                sizes="(min-width: 1280px) 600px, (min-width: 768px) 50vw, 100vw"
+                width={1000}
+                height={1000}
 alt={imageAlt || (title ? `Hola Dieta - ${title.replace(/<[^>]*>/g, '')}` : 'Hola Dieta - Beneficios')}
                 src={imageUrl}
                 onError={() => setImageError(true)}

@@ -102,6 +102,28 @@ function injectTikTokPixel(pixelId: string) {
   document.head.appendChild(script);
 }
 
+const INTERACTION_EVENTS = ['pointerdown', 'keydown', 'scroll', 'touchstart'] as const;
+const MAX_DELAY_MS = 5000;
+
+// Third-party trackers run after load and on first interaction (or a short delay) to keep them off the critical path.
+function whenPageSettled(run: () => void) {
+  let done = false;
+  let timer: ReturnType<typeof setTimeout>;
+  const fire = () => {
+    if (done) return;
+    done = true;
+    clearTimeout(timer);
+    INTERACTION_EVENTS.forEach(evt => window.removeEventListener(evt, fire));
+    run();
+  };
+  const arm = () => {
+    INTERACTION_EVENTS.forEach(evt => window.addEventListener(evt, fire, { once: true, passive: true }));
+    timer = setTimeout(fire, MAX_DELAY_MS);
+  };
+  if (document.readyState === 'complete') arm();
+  else window.addEventListener('load', arm, { once: true });
+}
+
 export const CustomCodeInjector: React.FC = () => {
   const appliedRef = useRef(false);
 
@@ -140,13 +162,7 @@ export const CustomCodeInjector: React.FC = () => {
 
         removeMarked();
 
-        const run = () => injectAll(settings);
-
-        if ('requestIdleCallback' in window) {
-          (window as any).requestIdleCallback(run, { timeout: 3000 });
-        } else {
-          setTimeout(run, 1500);
-        }
+        whenPageSettled(() => injectAll(settings));
       } catch {
         // Silently fail — tracking just won't load
       }
