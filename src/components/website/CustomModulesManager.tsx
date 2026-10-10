@@ -416,9 +416,9 @@ export const CustomModulesManager: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Custom Modules</h2>
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Custom Modules</h2>
           <p className="text-gray-600 mt-1">Create reusable modules that can be added to any page</p>
         </div>
         {!showCreateForm && (

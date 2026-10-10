@@ -14,17 +14,17 @@ const Website: React.FC = () => {
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="sm:p-6 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-4">
+      <div className="mb-6 sm:mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
           <div className="flex items-center space-x-3">
-            <Globe className="w-8 h-8 text-primary-600" />
-            <h1 className="text-3xl font-bold text-gray-900">Sitio Web</h1>
+            <Globe className="w-7 h-7 sm:w-8 sm:h-8 text-primary-600 flex-shrink-0" />
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Sitio Web</h1>
           </div>
           <button
             onClick={handleOpenLiveSite}
-            className="flex items-center space-x-2 bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-lg font-medium transition-colors shadow-lg"
+            className="flex items-center justify-center space-x-2 bg-primary-600 hover:bg-primary-700 text-white px-5 sm:px-6 py-3 rounded-lg font-medium transition-colors shadow-lg w-full sm:w-auto"
           >
             <ExternalLink className="w-5 h-5" />
             <span>Ver Sitio en Vivo</span>
@@ -37,7 +37,7 @@ const Website: React.FC = () => {
 
       {/* Tabs */}
       <div className="border-b border-gray-200 mb-6">
-        <nav className="-mb-px flex space-x-8">
+        <nav className="-mb-px flex gap-6 sm:gap-8 overflow-x-auto [scrollbar-width:none] [&>button]:whitespace-nowrap [&>button]:flex-shrink-0">
           <button
             onClick={() => setActiveTab('pages')}
             className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
@@ -120,7 +120,7 @@ const Website: React.FC = () => {
       </div>
 
       {/* Tab Content */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-6">
         {activeTab === 'pages' && <PageManager />}
         {activeTab === 'modules' && <ModuleEditor />}
         {activeTab === 'custom-modules' && <CustomModulesManager />}

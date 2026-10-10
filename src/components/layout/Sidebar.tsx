@@ -1,21 +1,7 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { Shield, Globe, Megaphone } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
-
-interface NavigationItem {
-  id: string;
-  label: string;
-  path: string;
-  icon: React.ComponentType<{ className?: string }>;
-  permission?: string;
-}
-
-const navigationItems: NavigationItem[] = [
-  { id: 'website', label: 'Sitio Web', path: '/admin/website', icon: Globe, permission: 'website_view' },
-  { id: 'marketing', label: 'Marketing', path: '/admin/marketing', icon: Megaphone, permission: 'coupons_view' },
-  { id: 'admin', label: 'Admin', path: '/admin/users', icon: Shield, permission: 'admin_users' },
-];
+import { navigationItems } from './navigationItems';
 
 const Sidebar: React.FC = () => {
   const location = useLocation();
@@ -32,9 +18,7 @@ const Sidebar: React.FC = () => {
             }
 
             const Icon = item.icon;
-            const isActive = item.path === '/'
-              ? location.pathname === '/'
-              : location.pathname.startsWith(item.path);
+            const isActive = location.pathname.startsWith(item.path);
 
             return (
               <li key={item.id}>

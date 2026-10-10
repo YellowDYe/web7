@@ -353,7 +353,7 @@ const UserManagement: React.FC = () => {
             <Users className="w-6 h-6 text-primary-600" />
           </div>
           <div>
-            <h2 className="text-2xl font-bold text-gray-900 font-poppins">
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 font-poppins">
               Gestión de Usuarios
             </h2>
             <p className="text-gray-600">

@@ -58,7 +58,7 @@ function renderMacrosEditor(
           </div>
           {(macros.columns ?? []).map((col, colIdx) => (
             <div key={colIdx} className="space-y-2 p-2 bg-white rounded border border-gray-100">
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <div className="space-y-1">
                   <label className="block text-xs font-medium text-gray-500">Header {colIdx + 1}</label>
                   <input

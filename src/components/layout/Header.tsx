@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { Settings, User, LogOut, Menu, X } from 'lucide-react';
-import { NavLink } from 'react-router-dom';
+import { User, LogOut, Menu, X } from 'lucide-react';
+import { NavLink, useLocation } from 'react-router-dom';
+import { navigationItems } from './navigationItems';
 import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../config/supabase';
 
 const Header: React.FC = () => {
   const { user, logout, hasPermission } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const location = useLocation();
 
   const handleLogout = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -37,13 +39,6 @@ const Header: React.FC = () => {
   const closeMobileMenu = () => {
     setIsMobileMenuOpen(false);
   };
-
-  // Navigation items for mobile menu (mirrors Sidebar)
-  const navigationItems = [
-    { label: 'Sitio Web', path: '/admin/website', permission: 'website_view' },
-    { label: 'Admin', path: '/admin/users', permission: 'admin_users' },
-    { label: 'Marketing', path: '/admin/marketing', permission: 'coupons_view' },
-  ];
 
   return (
     <>
@@ -99,8 +94,9 @@ const Header: React.FC = () => {
               {/* Mobile Menu Button */}
               <button
                 onClick={toggleMobileMenu}
-                className="p-2 rounded-lg hover:bg-gray-800 transition-colors text-gray-400 hover:text-white"
-                aria-label="Open menu"
+                className="p-2.5 rounded-lg hover:bg-gray-800 transition-colors text-gray-300 hover:text-white"
+                aria-label="Abrir menú"
+                aria-expanded={isMobileMenuOpen}
               >
                 <Menu className="w-6 h-6" />
               </button>
@@ -121,63 +117,59 @@ const Header: React.FC = () => {
 
       {/* Mobile Navigation Menu */}
       <nav
-        className={`fixed top-0 right-0 h-full w-80 max-w-sm bg-white shadow-2xl transform transition-transform duration-300 ease-in-out z-50 md:hidden ${
+        className={`fixed top-0 right-0 h-full w-80 max-w-[85vw] flex flex-col bg-white shadow-2xl transform transition-transform duration-300 ease-in-out z-50 md:hidden ${
           isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
         aria-label="Mobile navigation"
       >
         {/* Mobile Menu Header */}
-        <div className="bg-gray-900 text-white p-6 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <img 
-              src="https://stackblitz.com/storage/blobs/eyJfcmFpbHMiOnsibWVzc2FnZSI6IkJBaHBCSzJ1eHdFPSIsImV4cCI6bnVsbCwicHVyIjoiYmxvYl9pZCJ9fQ==--45387ef54c46c93300de219ea153929b3bdf5c9d//logoholadietagif.gif"
-              alt="Hola Dieta Logo" 
-              className="h-8 w-auto object-contain"
+        <div className="bg-gray-900 text-white px-5 py-5 flex items-center justify-between flex-shrink-0">
+          <div className="flex items-center space-x-3 min-w-0">
+            <img
+              src="/logo-hd-rojo.gif"
+              alt="Hola Dieta Logo"
+              className="h-8 w-auto object-contain flex-shrink-0"
             />
-            <div>
+            <div className="min-w-0">
               <h2 className="font-bold font-poppins">Hola Dieta</h2>
-              <p className="text-sm text-gray-300">{user?.name || 'Usuario'}</p>
+              <p className="text-sm text-gray-300 truncate">{user?.name || 'Usuario'}</p>
+              {user?.role && <p className="text-xs text-gray-400 truncate">{user.role}</p>}
             </div>
           </div>
           <button
             onClick={closeMobileMenu}
-            className="p-2 rounded-lg hover:bg-gray-800 transition-colors"
-            aria-label="Close menu"
+            className="p-2.5 rounded-lg hover:bg-gray-800 transition-colors flex-shrink-0"
+            aria-label="Cerrar menú"
           >
             <X className="w-6 h-6" />
           </button>
         </div>
 
         {/* Mobile Menu Items */}
-        <div className="py-6 px-4 space-y-2 max-h-full overflow-y-auto">
+        <div className="flex-1 py-6 px-4 space-y-2 overflow-y-auto">
           {navigationItems
             .filter((item) => !item.permission || hasPermission(item.permission))
-            .map((item, index) => (
-            <NavLink
-              key={index}
-              to={item.path}
-              onClick={closeMobileMenu}
-              className={({ isActive }) =>
-                `block px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
-                  isActive
-                    ? 'bg-primary-500 text-white shadow-lg'
-                    : 'text-gray-700 hover:bg-gray-100 hover:text-primary-600'
-                }`
-              }
-            >
-              {item.label}
-            </NavLink>
-          ))}
+            .map((item) => {
+              const Icon = item.icon;
+              const isActive = location.pathname.startsWith(item.path);
+              return (
+                <NavLink
+                  key={item.id}
+                  to={item.path}
+                  onClick={closeMobileMenu}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                    isActive
+                      ? 'bg-primary-500 text-white shadow-lg'
+                      : 'text-gray-700 hover:bg-gray-100 hover:text-primary-600'
+                  }`}
+                >
+                  <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-gray-500'}`} />
+                  {item.label}
+                </NavLink>
+              );
+            })}
 
-          {/* Mobile Menu Footer Actions */}
-          <div className="pt-6 mt-6 border-t border-gray-200 space-y-2">
-            <button
-              className="w-full flex items-center px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-xl transition-colors"
-              aria-label="Settings"
-            >
-              <Settings className="w-5 h-5 mr-3" />
-              Configuración
-            </button>
+          <div className="pt-6 mt-6 border-t border-gray-200">
             <button
               onClick={async (e) => {
                 e.preventDefault();

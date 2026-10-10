@@ -14,7 +14,7 @@ const Layout: React.FC = () => {
           <Sidebar />
         </div>
         <main className="flex-1 overflow-auto w-full">
-          <div className="p-8">
+          <div className="p-3 sm:p-6 lg:p-8">
             <Suspense fallback={<div className="flex justify-center py-16"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-500" /></div>}>
               <Outlet />
             </Suspense>

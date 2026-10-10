@@ -249,7 +249,7 @@ const BanxicoSettings: React.FC = () => {
                 <CheckCircle className="w-4 h-4 text-green-600" />
                 <span className="text-sm font-medium text-green-800">Conexion exitosa</span>
               </div>
-              <dl className="grid grid-cols-3 gap-4 text-sm">
+              <dl className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
                 <div>
                   <dt className="text-green-600 text-xs">Tipo de cambio</dt>
                   <dd className="text-green-900 font-bold text-lg">${testResult.rate.toFixed(4)}</dd>

@@ -117,7 +117,38 @@ const OrphanedUserFixer: React.FC = () => {
           </p>
         </div>
       ) : (
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <>
+        <ul className="md:hidden space-y-3">
+          {orphanedUsers.map((user) => (
+            <li key={user.auth_id} className="bg-white rounded-lg border border-gray-200 p-4">
+              <div className="flex items-center gap-2 min-w-0">
+                <User className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                <span className="text-sm font-medium text-gray-900 break-all">{user.email}</span>
+              </div>
+              <p className="text-xs text-gray-500 mt-1 ml-7">
+                Creado: {new Date(user.created_at).toLocaleString('es-ES')}
+              </p>
+              <button
+                onClick={() => fixOrphanedUser(user.auth_id, user.email)}
+                disabled={fixing === user.auth_id}
+                className="mt-3 w-full inline-flex items-center justify-center gap-2 px-3 py-2.5 bg-green-500 hover:bg-green-600 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+              >
+                {fixing === user.auth_id ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Reparando...</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="w-4 h-4" />
+                    <span>Reparar</span>
+                  </>
+                )}
+              </button>
+            </li>
+          ))}
+        </ul>
+        <div className="hidden md:block bg-white rounded-lg border border-gray-200 overflow-hidden">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
@@ -168,6 +199,7 @@ const OrphanedUserFixer: React.FC = () => {
             </tbody>
           </table>
         </div>
+        </>
       )}
 
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
