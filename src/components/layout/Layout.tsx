@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { Outlet } from 'react-router-dom';
 import Header from './Header';
 import Sidebar from './Sidebar';
@@ -15,7 +15,9 @@ const Layout: React.FC = () => {
         </div>
         <main className="flex-1 overflow-auto w-full">
           <div className="p-8">
-            <Outlet />
+            <Suspense fallback={<div className="flex justify-center py-16"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-500" /></div>}>
+              <Outlet />
+            </Suspense>
           </div>
           <Footer />
         </main>

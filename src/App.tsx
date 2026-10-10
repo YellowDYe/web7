@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './hooks/useAuth';
 import { CustomerAuthProvider } from './customer/contexts/CustomerAuthContext';
@@ -6,7 +6,7 @@ import { CartProvider } from './customer/contexts/CartContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import ProtectedRouteWithPermission from './components/ProtectedRouteWithPermission';
 import { ProtectedCustomerRoute } from './customer/components/ProtectedCustomerRoute';
-import Layout from './components/layout/Layout';
+import LoadingSpinner from './components/common/LoadingSpinner';
 import { CustomerHomePage } from './customer/pages/CustomerHomePage';
 import CustomerLoginPage from './customer/pages/CustomerLoginPage';
 import CustomerGoogleCallbackPage from './customer/pages/CustomerGoogleCallbackPage';
@@ -18,22 +18,26 @@ import CustomerResetPasswordPage from './customer/pages/CustomerResetPasswordPag
 import CustomerOrderPage from './customer/pages/CustomerOrderPage';
 import CustomerCartPage from './customer/pages/CustomerCartPage';
 import CustomerBlogPostPage from './customer/pages/CustomerBlogPostPage';
-import Admin from './pages/Admin';
-import ForcePasswordChange from './pages/ForcePasswordChange';
-import ForgotPassword from './pages/ForgotPassword';
-import ResetPassword from './pages/ResetPassword';
-import AuthCallback from './pages/AuthCallback';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsAndConditions from './pages/TermsAndConditions';
 import SitemapPage from './pages/SitemapPage';
-import Website from './pages/Website';
-import Marketing from './pages/Marketing';
-import CouponsPage from './pages/CouponsPage';
-import GmailOAuthCallback from './pages/GmailOAuthCallback';
+
+// Admin screens are downloaded only when someone opens the admin area.
+const Layout = lazy(() => import('./components/layout/Layout'));
+const Admin = lazy(() => import('./pages/Admin'));
+const ForcePasswordChange = lazy(() => import('./pages/ForcePasswordChange'));
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword'));
+const AuthCallback = lazy(() => import('./pages/AuthCallback'));
+const Website = lazy(() => import('./pages/Website'));
+const Marketing = lazy(() => import('./pages/Marketing'));
+const CouponsPage = lazy(() => import('./pages/CouponsPage'));
+const GmailOAuthCallback = lazy(() => import('./pages/GmailOAuthCallback'));
 
 function App() {
   return (
     <Router>
+      <Suspense fallback={<LoadingSpinner />}>
       <Routes>
         {/* Public routes - NO auth provider */}
         <Route path="/politica-de-privacidad" element={<PrivacyPolicy />} />
@@ -145,6 +149,7 @@ function App() {
           }
         />
       </Routes>
+      </Suspense>
     </Router>
   );
 }
