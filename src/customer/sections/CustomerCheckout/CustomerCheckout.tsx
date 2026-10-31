@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useNavigate, Link } from 'react-router-dom';
 import { CircleCheck as CheckCircle, Circle as XCircle, Loader as Loader2, Trash2, ArrowLeft, CreditCard, Calendar, MapPin, User, Phone, Zap, ShieldCheck, Mail, CircleAlert as AlertCircle, Wallet, ExternalLink, Store } from 'lucide-react';
 import { useCart } from '../../contexts/CartContext';
+import PaymentCountdown from './PaymentCountdown';
 import { useCustomerAuth } from '../../contexts/CustomerAuthContext';
 import {
   customerOrderSubmissionService,
@@ -87,6 +88,8 @@ export const CustomerCheckout: React.FC = () => {
   const brickTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const brickInitArgsRef = useRef<{ amount: number; prefId: string; pubKey: string; paymentMethodsConfig: Record<string, string | string[]> | null } | null>(null);
   const [brickError, setBrickError] = useState<string | null>(null);
+  const [paymentDeadline, setPaymentDeadline] = useState<number | null>(null);
+  const [paymentInFlight, setPaymentInFlight] = useState(false);
 
   const {
     cart, clearCart, hasItems,
@@ -484,6 +487,7 @@ export const CustomerCheckout: React.FC = () => {
             setBrickLoading(false);
           },
           onSubmit: async ({ selectedPaymentMethod, formData }: any) => {
+            setPaymentInFlight(true);
             try {
               const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
               const { data: { session: paySession } } = await supabase.auth.getSession();
@@ -533,6 +537,8 @@ export const CustomerCheckout: React.FC = () => {
             } catch (err: any) {
               console.error('Payment processing error:', err);
               setSubmitError(friendlyError(err, 'Error al procesar el pago'));
+            } finally {
+              setPaymentInFlight(false);
             }
           },
           onError: (error: any) => {
@@ -581,6 +587,21 @@ export const CustomerCheckout: React.FC = () => {
       setStep('review');
     }
   };
+
+  const leavePaymentStep = useCallback(() => {
+    if (brickTimeoutRef.current) { clearTimeout(brickTimeoutRef.current); brickTimeoutRef.current = null; }
+    if (brickControllerRef.current) {
+      try { brickControllerRef.current.unmount(); } catch (_) {}
+      brickControllerRef.current = null;
+      brickInitializedRef.current = false;
+    }
+    setBrickLoading(false);
+    setBrickError(null);
+    setSubmitError(null);
+    setPaymentDeadline(null);
+    setStep('review');
+    window.scrollTo({ top: 0 });
+  }, []);
 
   const handleProceedToPayment = async () => {
     if (!customer) { setSubmitError('Informacion del cliente incompleta'); return; }
@@ -801,6 +822,8 @@ export const CustomerCheckout: React.FC = () => {
         localStorage.setItem('mp_pending_quote_id', prefData.quote_id || '');
       } catch (_) {}
 
+      const serverDeadline = Date.parse(prefData.payment_deadline);
+      setPaymentDeadline(Number.isFinite(serverDeadline) ? serverDeadline : Date.now() + 15 * 60 * 1000);
       setStep('payment');
 
       brickInitArgsRef.current = {
@@ -1056,18 +1079,7 @@ export const CustomerCheckout: React.FC = () => {
       <div className="min-h-screen bg-gray-50 py-8 px-4">
         <div className="max-w-3xl mx-auto">
           <button
-            onClick={() => {
-              if (brickTimeoutRef.current) { clearTimeout(brickTimeoutRef.current); brickTimeoutRef.current = null; }
-              if (brickControllerRef.current) {
-                try { brickControllerRef.current.unmount(); } catch (_) {}
-                brickControllerRef.current = null;
-                brickInitializedRef.current = false;
-              }
-              setBrickLoading(false);
-              setBrickError(null);
-              setSubmitError(null);
-              setStep('review');
-            }}
+            onClick={leavePaymentStep}
             className="flex items-center text-gray-600 hover:text-gray-900 mb-6 transition-colors"
           >
             <ArrowLeft className="h-5 w-5 mr-2" /> Volver a revisar pedido
@@ -1089,6 +1101,14 @@ export const CustomerCheckout: React.FC = () => {
                 </div>
               </div>
             </div>
+
+            {paymentDeadline && (
+              <PaymentCountdown
+                deadline={paymentDeadline}
+                paused={paymentInFlight || submitting}
+                onLeave={leavePaymentStep}
+              />
+            )}
 
             {submitError && (
               <div className="mx-6 mt-4 bg-red-50 border border-red-200 rounded-xl p-4 flex items-center space-x-3">

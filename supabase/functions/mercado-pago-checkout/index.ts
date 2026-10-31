@@ -15,6 +15,8 @@ const STAFF_ROLES = ["admin", "super_admin", "manager", "staff"];
 // Amounts outside this range are never legitimate for this shop.
 const MIN_AMOUNT = 1;
 const MAX_AMOUNT = 200000;
+const PAYMENT_WINDOW_MS = 15 * 60 * 1000;
+const PAYMENT_GRACE_MS = 2 * 60 * 1000;
 
 /**
  * Only these origins may be used to build the provider return links, so a
@@ -417,12 +419,18 @@ async function handleCreatePreference(
     return jsonResponse({ error: "La tienda no esta configurada para recibir pagos" }, 500);
   }
 
+  const now = new Date();
+  const paymentDeadline = new Date(now.getTime() + PAYMENT_WINDOW_MS);
+  // Grace period so a payment submitted at the last second can still be claimed.
+  const expiresAt = new Date(paymentDeadline.getTime() + PAYMENT_GRACE_MS);
+
   // Record the amount server-side FIRST so we can use the quote_id as external_reference
   const { data: quote, error: quoteError } = await supabase
     .from("payment_quotes")
     .insert({
       auth_user_id: callerId,
       amount: quotedTotal,
+      expires_at: expiresAt.toISOString(),
       order_snapshot: order_snapshot && typeof order_snapshot === "object" ? order_snapshot : null,
     })
     .select("id")
@@ -456,10 +464,6 @@ async function handleCreatePreference(
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
   const notificationUrl = supabaseUrl ? `${supabaseUrl}/functions/v1/mercado-pago-webhook` : undefined;
-
-  // Preference expiration: valid for 2 hours (matches quote TTL)
-  const now = new Date();
-  const expiresAt = new Date(now.getTime() + 2 * 60 * 60 * 1000);
 
   // Cash payment expiration: 24 hours
   const cashExpiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
@@ -547,6 +551,7 @@ async function handleCreatePreference(
     sandbox_init_point: preference.sandbox_init_point,
     public_key: publicKey,
     external_reference: externalReference,
+    payment_deadline: paymentDeadline.toISOString(),
   });
 }
 

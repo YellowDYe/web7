@@ -1,0 +1,113 @@
+{
+  "projectId": "68790377",
+  "functions": {
+    "create-auth-user": {
+      "hasChanged": false,
+      "hash": "5825a553582c7f4bc64eb5191b1ba978d8b5b445f8e1c478f5b89438f1b94628"
+    },
+    "create-payment-intent": {
+      "hasChanged": false,
+      "hash": "4ca988c30eb10e166da7ec14abfc5de01d71863eee7bd236d84cb6219669af65"
+    },
+    "delete-auth-user": {
+      "hasChanged": false,
+      "hash": "596d5b0851445118c428f9c1497655e21c01a660d44f65b97acfdb557261767f"
+    },
+    "delete-own-account": {
+      "hasChanged": false,
+      "hash": "3cea33e9d6ef3a77776dd91f6657d092ac0b8cba3f016359fc44aa71e9176ac4"
+    },
+    "delivery-tracking-proxy": {
+      "hasChanged": false,
+      "hash": "0ac7dd062887693cbef9c74ac0ae0b0744f7e718b30265d9c7cd2c230e445379"
+    },
+    "exchange-rate": {
+      "hasChanged": false,
+      "hash": "d3f0df3615b182de2af13f15c969fd23de8bf0e0941503b2ab3a9f0e1d60060c"
+    },
+    "facturama-download": {
+      "hasChanged": false,
+      "hash": "3e87ec6fee9fc11f56cf48abae7a516e4d60aaced6933bb503246175c861452a"
+    },
+    "gmail-oauth-callback": {
+      "hasChanged": false,
+      "hash": "b61df53284c8d34a80a67db1fc6e3e2ce19a84e2fa18b45f4e48a9002877a7ac"
+    },
+    "gmail-sync": {
+      "hasChanged": false,
+      "hash": "4240e5e3a97bc66a935d3484fa801c700f5bd4f7e1a86e15198e9e585e29d53a"
+    },
+    "imss-movement-submit": {
+      "hasChanged": false,
+      "hash": "f2c80020da49f932ea62efb4b060cecf7c6c9cd9c5e516fc48cbe559ec78a8d2"
+    },
+    "manychat-api": {
+      "hasChanged": false,
+      "hash": "6967c8a5e8bec817e690cf4f9cb4add062ac83f1fcdf0100425defbb7cd378f2"
+    },
+    "mercado-pago-checkout": {
+      "hasChanged": false,
+      "hash": "b8dcdc8191c0a83f0f0f8b9ed35a01fc641ce68801adfb1ff5414ae8db75bb22"
+    },
+    "mercado-pago-sync": {
+      "hasChanged": false,
+      "hash": "609bb077e869bfc6e4b57ecc70ff73f90fac8269ed5639eaa678b1c8ef698437"
+    },
+    "mercado-pago-webhook": {
+      "hasChanged": false,
+      "hash": "051c97491aca2f4b912684c42257e3350f1ec4a8e1bd71cf5786e10f1d66c358"
+    },
+    "paypal-webhook": {
+      "hasChanged": false,
+      "hash": "f3192f0273bc74a45de37f44e1baacb9d52cb217efd979404971ea74ca6856f3"
+    },
+    "reset-auth-user-password": {
+      "hasChanged": false,
+      "hash": "cdb47b3b42c9b1c047248623dc1b3146f131460eaece12091301379a268fc3ea"
+    },
+    "sat-descarga-masiva": {
+      "hasChanged": false,
+      "hash": "6582b8f9115104cd39e1ec20fb36ffaccb3453d8fe8ce3656f0b35d79fce2367"
+    },
+    "send-admin-payment-alert": {
+      "hasChanged": false,
+      "hash": "fe3004af67ead99147f155efe01c3427bf81b777a79e3e60098d03811fd9bf72"
+    },
+    "send-order-email": {
+      "hasChanged": false,
+      "hash": "3440c6ebc443005ef2186bb9fba134ebe3973566e90daeb563d3e7dc8216985f"
+    },
+    "send-password-reset": {
+      "hasChanged": false,
+      "hash": "ab5338d8e484d9deab1060664c27c085dfcd730528f4ec687f28245a4f11e82a"
+    },
+    "send-signup-notification": {
+      "hasChanged": false,
+      "hash": "c689cabf5c4cbd0455eabf1915fff1812741e842e9316848c38bab936e54ce12"
+    },
+    "send-verification-email": {
+      "hasChanged": false,
+      "hash": "464bd8311f2aea75e52305de10f0e370bdd0a01fd0b67a8f5ee392836dd9275e"
+    },
+    "sitemap": {
+      "hasChanged": false,
+      "hash": "3706d54163edfa358127f664d07af47851e2f178fdbec8dca502401298cb6a2e"
+    },
+    "stripe-webhook": {
+      "hasChanged": false,
+      "hash": "8339df8ecefa4326d6b9235c429462c74ef081152a1b46585c524de57dd415b7"
+    },
+    "woocommerce-fetch-orders": {
+      "hasChanged": false,
+      "hash": "fbbb4ea959d228cdc64b2f08901c11c760f5016002034b8201affb7df242f52f"
+    },
+    "woocommerce-process-test-order": {
+      "hasChanged": false,
+      "hash": "183054235975edb24833727b3d4091a07581c88ab1d47f11e86bde0b6517c7f9"
+    },
+    "woocommerce-webhook": {
+      "hasChanged": false,
+      "hash": "ec5c9d8967a17a9a8b507e4bea4e2ea17742e0cac26a8f3d829c9125534cb541"
+    }
+  }
+}
