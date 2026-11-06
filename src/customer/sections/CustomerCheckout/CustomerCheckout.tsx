@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { CircleCheck as CheckCircle, Circle as XCircle, Loader as Loader2, Trash2, ArrowLeft, CreditCard, Calendar, MapPin, User, Phone, Zap, ShieldCheck, Mail, CircleAlert as AlertCircle, Wallet, ExternalLink, Store } from 'lucide-react';
 import { useCart } from '../../contexts/CartContext';
 import PaymentCountdown from './PaymentCountdown';
+import { attachBrickAutofillSync } from './brickAutofillSync';
 import { useCustomerAuth } from '../../contexts/CustomerAuthContext';
 import {
   customerOrderSubmissionService,
@@ -96,6 +97,8 @@ export const CustomerCheckout: React.FC = () => {
     proteinCart, clearProteinCart, proteinSubtotal, hasProteinItems,
   } = useCart();
   const { customer } = useCustomerAuth();
+  const customerRef = useRef(customer);
+  customerRef.current = customer;
   const navigate = useNavigate();
 
   // Snapshot cart data at the moment user clicks "Proceed to Payment"
@@ -463,10 +466,12 @@ export const CustomerCheckout: React.FC = () => {
         }
       }, 25000);
 
+      const payerEmail = customerRef.current?.customer_email?.trim();
       const controller = await mp.bricks().create('payment', containerId, {
         initialization: {
           amount: amount,
           preferenceId: prefId,
+          ...(payerEmail ? { payer: { email: payerEmail } } : {}),
         },
         customization: {
           visual: {
@@ -568,6 +573,11 @@ export const CustomerCheckout: React.FC = () => {
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (step !== 'payment' || !brickContainerRef.current) return;
+    return attachBrickAutofillSync(brickContainerRef.current);
+  }, [step]);
 
   const handleRetryBrick = () => {
     if (brickControllerRef.current) {
