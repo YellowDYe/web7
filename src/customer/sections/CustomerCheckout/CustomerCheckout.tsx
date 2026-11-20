@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { CircleCheck as CheckCircle, Circle as XCircle, Loader as Loader2, Trash2, ArrowLeft, CreditCard, Calendar, MapPin, User, Phone, Zap, ShieldCheck, Mail, CircleAlert as AlertCircle, Wallet, ExternalLink, Store } from 'lucide-react';
 import { useCart } from '../../contexts/CartContext';
 import PaymentCountdown from './PaymentCountdown';
-import { attachBrickAutofillSync } from './brickAutofillSync';
+import { attachBrickAutofillSync, fillBrickEmail } from './brickAutofillSync';
 import { useCustomerAuth } from '../../contexts/CustomerAuthContext';
 import {
   customerOrderSubmissionService,
@@ -91,6 +91,9 @@ export const CustomerCheckout: React.FC = () => {
   const [brickError, setBrickError] = useState<string | null>(null);
   const [paymentDeadline, setPaymentDeadline] = useState<number | null>(null);
   const [paymentInFlight, setPaymentInFlight] = useState(false);
+  const [blockedSubmits, setBlockedSubmits] = useState(0);
+  const lastSubmitAtRef = useRef(0);
+  const paymentRescueRef = useRef<HTMLDivElement>(null);
 
   const {
     cart, clearCart, hasItems,
@@ -490,8 +493,12 @@ export const CustomerCheckout: React.FC = () => {
             brickReady = true;
             if (brickTimeoutRef.current) { clearTimeout(brickTimeoutRef.current); brickTimeoutRef.current = null; }
             setBrickLoading(false);
+            setTimeout(() => {
+              if (brickContainerRef.current) fillBrickEmail(brickContainerRef.current, payerEmail);
+            }, 300);
           },
           onSubmit: async ({ selectedPaymentMethod, formData }: any) => {
+            lastSubmitAtRef.current = Date.now();
             setPaymentInFlight(true);
             try {
               const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -576,8 +583,17 @@ export const CustomerCheckout: React.FC = () => {
 
   useEffect(() => {
     if (step !== 'payment' || !brickContainerRef.current) return;
-    return attachBrickAutofillSync(brickContainerRef.current);
+    return attachBrickAutofillSync(brickContainerRef.current, {
+      payerEmail: customerRef.current?.customer_email?.trim(),
+      lastSubmitAt: () => lastSubmitAtRef.current,
+      onBlockedSubmit: () => setBlockedSubmits((n) => n + 1),
+    });
   }, [step]);
+
+  const showPaymentRescue = blockedSubmits >= 2;
+  useEffect(() => {
+    if (showPaymentRescue) paymentRescueRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [showPaymentRescue]);
 
   const handleRetryBrick = () => {
     if (brickControllerRef.current) {
@@ -609,6 +625,7 @@ export const CustomerCheckout: React.FC = () => {
     setBrickError(null);
     setSubmitError(null);
     setPaymentDeadline(null);
+    setBlockedSubmits(0);
     setStep('review');
     window.scrollTo({ top: 0 });
   }, []);
@@ -1185,11 +1202,45 @@ export const CustomerCheckout: React.FC = () => {
                   <p className="text-gray-600">Cargando formulario de pago...</p>
                 </div>
               )}
+              {!brickLoading && !brickError && (
+                <p className="mb-4 flex items-start gap-2 rounded-lg bg-blue-50 px-3 py-2.5 text-xs leading-relaxed text-blue-900">
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
+                  Si tu celular te sugiere los datos de tu tarjeta, toca la sugerencia para aceptarla o escribelos a mano.
+                </p>
+              )}
               <div
                 id="paymentBrick_container"
                 ref={brickContainerRef}
                 style={{ minHeight: brickLoading ? 0 : 200 }}
               />
+
+              {showPaymentRescue && (
+                <div
+                  ref={paymentRescueRef}
+                  role="status"
+                  className="mt-6 rounded-xl border border-amber-300 bg-amber-50 p-5"
+                >
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+                    <div>
+                      <p className="font-semibold text-amber-900">¿Problemas con el formulario?</p>
+                      <p className="mt-1 text-sm leading-relaxed text-amber-800">
+                        {mpCheckoutProEnabled && mpInitPoint
+                          ? 'Algunos celulares no registran los datos que se llenan automaticamente. Termina tu pago de forma segura en la pagina de Mercado Pago; tu pedido se mantiene igual.'
+                          : 'Algunos celulares no registran los datos que se llenan automaticamente. Borra y escribe a mano tu nombre y correo, y elige el numero de pagos antes de tocar Pagar.'}
+                      </p>
+                    </div>
+                  </div>
+                  {mpCheckoutProEnabled && mpInitPoint && (
+                    <button
+                      onClick={() => { window.location.href = mpInitPoint; }}
+                      className="mt-4 w-full rounded-xl bg-[#FFE600] py-3.5 text-base font-semibold text-gray-900 shadow-md transition-colors hover:bg-[#E6CF00]"
+                    >
+                      Terminar mi pago en Mercado Pago
+                    </button>
+                  )}
+                </div>
+              )}
 
               {/* TEST ONLY - Simulate Payment Block (visible only when test mode is on) */}
               {mpTestMode && (
